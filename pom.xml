@@ -15,7 +15,7 @@
     <url>https://fun.axosmp.com</url> <!-- From your plugin.yml website field -->
 
     <properties>
-        <java.version>21</java.version> <!-- Use Java 16 for Minecraft 1.17.x -->
+        <java.version>16</java.version> <!-- Use Java 16 for Minecraft 1.17.x -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
