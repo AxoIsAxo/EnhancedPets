@@ -1,6 +1,6 @@
 # EnhancedPets
 
-Your ultimate Minecraft pet management solution!
+Best pet management suite on the planet :D
 
 ---
 
