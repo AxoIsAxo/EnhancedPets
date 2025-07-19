@@ -3,7 +3,7 @@ name: EnhancedPets
 version: 1.0.0
 main: dev.asteriamc.enhancedpets.Enhancedpets
 api-version: 1.17
-authors: [AxolotlSMP]
+authors: [AxoIsAxo, cystol]
 description: Enhances pet management in Minecraft.
 website: fun.axosmp.com
 namespace: fun.axosmp.enhancedpets
