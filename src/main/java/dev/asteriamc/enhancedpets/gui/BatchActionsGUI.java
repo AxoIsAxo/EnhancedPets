@@ -1,8 +1,8 @@
-package cystol.enhancedpets.gui;
+package dev.asteriamc.enhancedpets.gui;
 
-import cystol.enhancedpets.Enhancedpets;
-import cystol.enhancedpets.data.PetData;
-import cystol.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.data.PetData;
+import dev.asteriamc.enhancedpets.manager.PetManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;

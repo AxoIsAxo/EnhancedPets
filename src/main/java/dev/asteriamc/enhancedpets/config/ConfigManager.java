@@ -1,6 +1,6 @@
-package cystol.enhancedpets.config;
+package dev.asteriamc.enhancedpets.config;
 
-import cystol.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.Enhancedpets;
 import org.bukkit.configuration.file.FileConfiguration;
 
 public class ConfigManager {

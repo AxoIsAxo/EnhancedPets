@@ -1,7 +1,7 @@
 # Basic Plugin Info
 name: EnhancedPets
 version: 1.0.0
-main: cystol.enhancedpets.Enhancedpets
+main: dev.asteriamc.enhancedpets.Enhancedpets
 api-version: 1.17
 authors: [AxolotlSMP]
 description: Enhances pet management in Minecraft.

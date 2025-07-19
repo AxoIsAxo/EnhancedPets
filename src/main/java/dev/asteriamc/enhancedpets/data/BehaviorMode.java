@@ -1,4 +1,4 @@
-package cystol.enhancedpets.data;
+package dev.asteriamc.enhancedpets.data;
 
 public enum BehaviorMode {
    PASSIVE,

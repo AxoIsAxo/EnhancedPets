@@ -1,9 +1,9 @@
-package cystol.enhancedpets.gui;
+package dev.asteriamc.enhancedpets.gui;
 
-import cystol.enhancedpets.Enhancedpets;
-import cystol.enhancedpets.data.BehaviorMode;
-import cystol.enhancedpets.data.PetData;
-import cystol.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.data.BehaviorMode;
+import dev.asteriamc.enhancedpets.data.PetData;
+import dev.asteriamc.enhancedpets.manager.PetManager;
 
 import java.util.*;
 import java.util.stream.Collectors;

@@ -1,16 +1,15 @@
-package cystol.enhancedpets.listeners;
+package dev.asteriamc.enhancedpets.listeners;
 
-import cystol.enhancedpets.Enhancedpets;
-import cystol.enhancedpets.data.BehaviorMode;
-import cystol.enhancedpets.data.PetData;
-import cystol.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.data.BehaviorMode;
+import dev.asteriamc.enhancedpets.data.PetData;
+import dev.asteriamc.enhancedpets.manager.PetManager;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.Material;

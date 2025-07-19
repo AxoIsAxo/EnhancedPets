@@ -1,10 +1,10 @@
-package cystol.enhancedpets.listeners;
+package dev.asteriamc.enhancedpets.listeners;
 
-import cystol.enhancedpets.Enhancedpets;
-import cystol.enhancedpets.data.PetData;
-import cystol.enhancedpets.gui.PetGUIListener;
-import cystol.enhancedpets.gui.PetManagerGUI;
-import cystol.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.data.PetData;
+import dev.asteriamc.enhancedpets.gui.PetGUIListener;
+import dev.asteriamc.enhancedpets.gui.PetManagerGUI;
+import dev.asteriamc.enhancedpets.manager.PetManager;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;

@@ -1,9 +1,9 @@
-package cystol.enhancedpets.tasks;
+package dev.asteriamc.enhancedpets.tasks;
 
-import cystol.enhancedpets.Enhancedpets;
-import cystol.enhancedpets.data.BehaviorMode;
-import cystol.enhancedpets.data.PetData;
-import cystol.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.data.BehaviorMode;
+import dev.asteriamc.enhancedpets.data.PetData;
+import dev.asteriamc.enhancedpets.manager.PetManager;
 import java.util.List;
 import java.util.logging.Level;
 import org.bukkit.Bukkit;

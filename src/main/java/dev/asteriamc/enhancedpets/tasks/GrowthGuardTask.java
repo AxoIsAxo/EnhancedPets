@@ -1,7 +1,7 @@
-package cystol.enhancedpets.tasks;
+package dev.asteriamc.enhancedpets.tasks;
 
-import cystol.enhancedpets.Enhancedpets;
-import cystol.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.manager.PetManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Ageable;
 import org.bukkit.entity.Entity;

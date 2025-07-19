@@ -1,7 +1,7 @@
-package cystol.enhancedpets.commands;
+package dev.asteriamc.enhancedpets.commands;
 
-import cystol.enhancedpets.Enhancedpets;
-import cystol.enhancedpets.gui.PetManagerGUI;
+import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.gui.PetManagerGUI;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

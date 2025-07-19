@@ -1,6 +1,6 @@
-package cystol.enhancedpets.data;
+package dev.asteriamc.enhancedpets.data;
 
-import cystol.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.Enhancedpets;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;

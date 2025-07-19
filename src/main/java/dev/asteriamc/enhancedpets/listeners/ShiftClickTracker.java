@@ -1,4 +1,4 @@
-package cystol.enhancedpets.listeners;
+package dev.asteriamc.enhancedpets.listeners;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;

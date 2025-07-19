@@ -1,14 +1,14 @@
-package cystol.enhancedpets;
+package dev.asteriamc.enhancedpets;
 
-import cystol.enhancedpets.commands.PetCommand;
-import cystol.enhancedpets.config.ConfigManager;
-import cystol.enhancedpets.gui.PetGUIListener;
-import cystol.enhancedpets.gui.PetManagerGUI;
-import cystol.enhancedpets.listeners.PetListener;
-import cystol.enhancedpets.listeners.PlayerChatListener;
-import cystol.enhancedpets.manager.PetManager;
-import cystol.enhancedpets.tasks.GrowthGuardTask;
-import cystol.enhancedpets.tasks.PetTargetingTask;
+import dev.asteriamc.enhancedpets.commands.PetCommand;
+import dev.asteriamc.enhancedpets.config.ConfigManager;
+import dev.asteriamc.enhancedpets.gui.PetGUIListener;
+import dev.asteriamc.enhancedpets.gui.PetManagerGUI;
+import dev.asteriamc.enhancedpets.listeners.PetListener;
+import dev.asteriamc.enhancedpets.listeners.PlayerChatListener;
+import dev.asteriamc.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.tasks.GrowthGuardTask;
+import dev.asteriamc.enhancedpets.tasks.PetTargetingTask;
 import java.util.Objects;
 import java.util.logging.Level;
 import org.bukkit.Bukkit;
