@@ -8,4 +8,4 @@
 ## Github
 https://github.com/AxoIsAxo/EnhancedPets
 
-`we are working to add helpful comments to the code :D`
+`we are working on adding helpful comments to the code :D`
