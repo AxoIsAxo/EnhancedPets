@@ -3,7 +3,7 @@
 ## Thanks to:
 AxoIsAxo
 
-Crystol
+cystol
 
 ## Github
 https://github.com/AxoIsAxo/EnhancedPets
