@@ -1,0 +1,40 @@
+# Basic Plugin Information
+name: EnhancedPets
+version: 1.0.0
+main: cystol.enhancedpets.Enhancedpets
+api-version: 1.17 # Adjust if using newer API features
+authors: [AxolotlSMP]
+description: Enhances pet management in Minecraft.
+website: fun.axosmp.com
+namespace: fun.axosmp.enhancedpets
+
+# Commands
+commands:
+  pets:
+    description: Manage your enhanced pets via a GUI or reload config.
+    usage: /<command> [reload]
+    permission: enhancedpets.use # Base permission for /pets GUI
+    aliases: [pet, mypets, ep] # <-- ADD 'ep' HERE
+
+# Permissions
+permissions:
+  enhancedpets.use:
+    description: Allows using the /pets command GUI to manage owned pets.
+    default: true
+  enhancedpets.reload: # <-- ADD NEW PERMISSION
+    description: Allows using /<command> reload to reload the plugin configuration.
+    default: op # Only OPs get this by default
+  enhancedpets.admin:
+    description: Allows access to administrative features (currently includes reload).
+    default: op
+    # Optionally link reload permission as a child:
+    # children:
+    #   enhancedpets.reload: true
+
+# Optional: Dependencies
+# softdepend: [Vault]
+# depend: [OtherPlugin]
+
+# Optional: Load order
+# loadbefore: [AnotherPlugin]
+# load: STARTUP
