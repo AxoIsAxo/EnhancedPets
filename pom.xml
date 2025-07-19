@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- Project Information derived from your plugin.yml and package structure -->
+    
     <groupId>fun.axosmp</groupId>
     <artifactId>enhancedpets</artifactId>
     <version>1.0.0</version>
@@ -12,16 +12,16 @@
 
     <name>EnhancedPets</name>
     <description>Enhances pet management in Minecraft.</description>
-    <url>https://fun.axosmp.com</url> <!-- From your plugin.yml website field -->
+    <url>https://fun.axosmp.com</url> 
 
     <properties>
-        <java.version>16</java.version> <!-- Use Java 16 for Minecraft 1.17.x -->
+        <java.version>16</java.version> 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <build>
         <plugins>
-            <!-- Maven Compiler Plugin: Sets the Java version for compilation -->
+            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -32,8 +32,8 @@
                 </configuration>
             </plugin>
 
-            <!-- Maven Shade Plugin: Packages the plugin into a single JAR file -->
-            <!-- This is essential for Bukkit plugins -->
+            
+            
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -49,7 +49,7 @@
             </plugin>
         </plugins>
         <resources>
-            <!-- Includes files from src/main/resources (like plugin.yml) in the final JAR -->
+            
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
@@ -58,12 +58,12 @@
     </build>
 
     <repositories>
-        <!-- Repository for Spigot/Paper API -->
+        
         <repository>
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
-        <!-- Repository for Sonatype (sometimes needed for legacy versions) -->
+        
         <repository>
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
@@ -71,13 +71,7 @@
     </repositories>
 
     <dependencies>
-        <!--
-        The Spigot/Paper API dependency.
-        This provides all the 'org.bukkit.*' and 'net.minecraft.server.*' classes.
-        The 'scope' is set to 'provided' because the server itself provides these
-        files at runtime, so we don't need to package them into our JAR.
-        The version '1.17.1-R0.1-SNAPSHOT' matches your plugin.yml 'api-version'.
-        -->
+        
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
@@ -85,11 +79,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!--
-        Dependency for @NotNull annotations. While often included with the Paper API,
-        it's good practice to include it explicitly if you see related errors.
-        This should also be 'provided'.
-        -->
+        
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
