@@ -17,7 +17,7 @@ EnhancedPets is a powerful Spigot/PaperMC plugin designed to give Minecraft play
 
 ---
 
-## Key Features
+## Core Features
 
 ### Graphical User Interface (GUI)
 
@@ -93,7 +93,7 @@ Easily exchange pets between players:
 
 ## Configuration
 
-The plugin generates a `config.yml` in your `plugins/EnhancedPets/` folder. Here are the key configurable options:
+The plugin generates a `config.yml` in your `plugins/EnhancedPets/` folder. Here are the currently configurable options:
 
 *   `cats-attack-hostiles`: (boolean) `true` to make tamed cats actively attack hostile mobs, `false` for vanilla behavior.
 *   `dog-creeper-behavior`: (string) How dogs react to creepers. Options: `NEUTRAL`, `ATTACK`, `FLEE`.
