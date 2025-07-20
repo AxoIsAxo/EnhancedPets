@@ -20,6 +20,7 @@ public class PetData {
    private Set<UUID> friendlyPlayers = new HashSet<>();
    private boolean favorite = false;
    private boolean growthPaused = false;
+   private boolean dead = false;
 
    public PetData(UUID petUUID, UUID ownerUUID, EntityType entityType, String displayName) {
       this.petUUID = petUUID;
@@ -44,6 +45,9 @@ public class PetData {
 
    public boolean isGrowthPaused() { return growthPaused; }
    public void setGrowthPaused(boolean growthPaused) { this.growthPaused = growthPaused; }
+
+   public boolean isDead() { return dead; }
+   public void setDead(boolean dead) { this.dead = dead; }
 
    public String getDisplayName() {
       return this.displayName;
@@ -98,6 +102,7 @@ public class PetData {
       map.put("friendlyPlayers", this.friendlyPlayers.stream().map(UUID::toString).collect(Collectors.toList()));
       map.put("favorite", this.favorite);
       map.put("growthPaused", growthPaused);
+      map.put("dead", dead);
       return map;
    }
 
@@ -109,6 +114,7 @@ public class PetData {
          BehaviorMode mode = BehaviorMode.valueOf((String)map.getOrDefault("mode", "NEUTRAL"));
          boolean favorite = (boolean) map.getOrDefault("favorite", false);
          boolean growthPaused = (boolean) map.getOrDefault("growthPaused", false);
+         boolean dead = (boolean) map.getOrDefault("dead", false);
          Set<UUID> friendlies = new HashSet<>();
          Object friendliesObj = map.get("friendlyPlayers");
          if (friendliesObj instanceof List) {
@@ -125,22 +131,14 @@ public class PetData {
             });
          }
 
-         if (type != EntityType.UNKNOWN && type.getEntityClass() != null && Tameable.class.isAssignableFrom(type.getEntityClass())) {
-            PetData data = new PetData(petUUID, owner, type, name);
-            data.setMode(mode);
-            data.setFriendlyPlayers(friendlies);
-            data.setFavorite(favorite);
-            data.setGrowthPaused(growthPaused);
-            return data;
-         } else {
-            if (Enhancedpets.getInstance() != null) {
-               Enhancedpets.getInstance()
-                  .getLogger()
-                  .warning("Skipping loading invalid or non-tameable pet type '" + map.get("type") + "' for UUID: " + petUUID);
-            }
-
-            return null;
-         }
+         // Remove Tameable.class check to allow non-Tameable pets (e.g., Happy Ghast)
+         PetData data = new PetData(petUUID, owner, type, name);
+         data.setMode(mode);
+         data.setFriendlyPlayers(friendlies);
+         data.setFavorite(favorite);
+         data.setGrowthPaused(growthPaused);
+         data.setDead(dead);
+         return data;
       } catch (Exception var9) {
          if (Enhancedpets.getInstance() != null) {
             Enhancedpets.getInstance().getLogger().severe("Error deserializing pet data for UUID " + petUUID + ": " + var9.getMessage());

@@ -18,10 +18,13 @@ import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.*;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.NamespacedKey;
 
 public class PetManager {
    private final Enhancedpets plugin;
    private final Map<UUID, PetData> petDataMap = new HashMap<>();
+   private static final NamespacedKey PET_ID_KEY = new NamespacedKey("enhancedpets", "pet_id");
 
    public PetManager(Enhancedpets plugin) {
       this.plugin = plugin;
@@ -57,11 +60,18 @@ public class PetManager {
             }
             return existingData;
          } else {
-            
+            // Check for stored pet ID
+            int id = -1;
+            if (pet.getPersistentDataContainer().has(PET_ID_KEY, PersistentDataType.INTEGER)) {
+               id = pet.getPersistentDataContainer().get(PET_ID_KEY, PersistentDataType.INTEGER);
+               pet.getPersistentDataContainer().remove(PET_ID_KEY);
+            }
             String customName = pet.getCustomName();
             String finalName;
             if (customName != null && !customName.isEmpty() && !customName.equalsIgnoreCase(pet.getType().name().replace('_', ' '))) {
                finalName = ChatColor.stripColor(customName);
+            } else if (id != -1) {
+               finalName = this.formatEntityType(pet.getType()) + " #" + id;
             } else {
                finalName = this.assignNewDefaultName(pet.getType());
             }
@@ -118,9 +128,39 @@ public class PetManager {
    }
 
    public void unregisterPet(UUID petUUID) {
+      PetData data = this.petDataMap.get(petUUID);
+      if (data != null) {
+         data.setDead(true);
+         this.updatePetData(data);
+         this.plugin.getLogger().info("Marking pet as dead: " + data.getDisplayName() + " (UUID: " + petUUID + ")");
+      }
+   }
+
+   // Actually remove pet data (used for freeing)
+   public void freePetCompletely(UUID petUUID) {
+      Entity entity = Bukkit.getEntity(petUUID);
+      if (entity instanceof Tameable t && t.isTamed()) {
+         t.setOwner(null);
+         t.setTamed(false);
+         // Store pet ID in persistent data
+         PetData data = this.petDataMap.get(petUUID);
+         if (data != null) {
+            String name = data.getDisplayName();
+            int id = -1;
+            int idx = name.lastIndexOf('#');
+            if (idx != -1) {
+               try {
+                  id = Integer.parseInt(name.substring(idx + 1).trim());
+               } catch (NumberFormatException ignored) {}
+            }
+            if (id != -1) {
+               t.getPersistentDataContainer().set(PET_ID_KEY, PersistentDataType.INTEGER, id);
+            }
+         }
+      }
       PetData removedData = this.petDataMap.remove(petUUID);
       if (removedData != null) {
-         this.plugin.getLogger().info("Unregistering pet: " + removedData.getDisplayName() + " (UUID: " + petUUID + ")");
+         this.plugin.getLogger().info("Completely removing pet: " + removedData.getDisplayName() + " (UUID: " + petUUID + ")");
          this.savePetData();
       }
    }
@@ -231,6 +271,31 @@ public class PetManager {
             }
             this.plugin.getLogger().info("Loaded data for " + count + " pets" + (errors > 0 ? " with " + errors + " errors." : "."));
          }
+      }
+   }
+
+   // Register a non-Tameable pet (e.g., Happy Ghast)
+   public PetData registerNonTameablePet(Entity entity, UUID ownerUUID, String displayName) {
+      if (entity == null || !entity.isValid() || ownerUUID == null) {
+         this.plugin.getLogger().log(Level.WARNING, "Attempted to register an invalid non-tameable pet entity: {0}", entity != null ? entity.getUniqueId() : "null");
+         return null;
+      }
+      UUID petUUID = entity.getUniqueId();
+      if (this.petDataMap.containsKey(petUUID)) {
+         PetData existingData = this.petDataMap.get(petUUID);
+         if (!Objects.equals(existingData.getOwnerUUID(), ownerUUID)) {
+            existingData.setOwnerUUID(ownerUUID);
+            this.savePetData();
+         }
+         return existingData;
+      } else {
+         String finalName = displayName != null && !displayName.isEmpty() ? ChatColor.stripColor(displayName) : this.assignNewDefaultName(entity.getType());
+         PetData data = new PetData(petUUID, ownerUUID, entity.getType(), finalName);
+         this.petDataMap.put(petUUID, data);
+         String ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
+         this.plugin.getLogger().info("Registered new non-tameable pet: " + finalName + " (Owner: " + ownerName + ")");
+         this.savePetData();
+         return data;
       }
    }
 }

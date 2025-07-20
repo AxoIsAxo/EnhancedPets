@@ -21,6 +21,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -52,9 +53,25 @@ public class PetGUIListener implements Listener {
 
       String title = event.getView().getTitle();
       boolean isPetGui = title.startsWith(ChatColor.DARK_AQUA.toString())
-              || title.startsWith(ChatColor.DARK_RED + "Confirm Free:");
+              || title.startsWith(ChatColor.DARK_RED + "Confirm Free:")
+              || title.startsWith(ChatColor.GREEN + "Confirm Revival")
+              || title.startsWith(ChatColor.RED + "Confirm Removal");
 
       if (!isPetGui) return;
+      // Always cancel event in confirmation menus to prevent item movement
+      if (title.startsWith(ChatColor.GREEN + "Confirm Revival") || title.startsWith(ChatColor.RED + "Confirm Removal")) {
+         event.setCancelled(true);
+         ItemStack clickedItem = event.getCurrentItem();
+         if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
+         ItemMeta meta = clickedItem.getItemMeta();
+         if (meta == null) return;
+         PersistentDataContainer data = meta.getPersistentDataContainer();
+         String action = data.get(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING);
+         if (action != null) {
+            handleRegularAction(player, action, data, title);
+         }
+         return;
+      }
       if (event.getClickedInventory() != event.getView().getTopInventory()) {
          if (event.isShiftClick()) event.setCancelled(true);
          return;
@@ -412,7 +429,9 @@ public class PetGUIListener implements Listener {
             }
             break;
          case "free_pet":
-            guiManager.openConfirmFreeMenu(player, petUUID);
+            petManager.freePetCompletely(petUUID);
+            player.sendMessage(ChatColor.YELLOW + "You have freed " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.YELLOW + ".");
+            guiManager.openMainMenu(player);
             break;
          case "friendly_page":
             Integer friendlyPage = data.get(PetManagerGUI.PAGE_KEY, PersistentDataType.INTEGER);
@@ -491,6 +510,62 @@ public class PetGUIListener implements Listener {
                guiManager.openFriendlyPlayerMenu(player, petUUID, 0);
             }
             break;
+         case "confirm_revive_pet":
+            openConfirmMenu(player, petUUID, true);
+            break;
+         case "confirm_remove_pet":
+            openConfirmMenu(player, petUUID, false);
+            break;
+         case "do_revive_pet":
+            if (!petData.isDead()) {
+               player.sendMessage(ChatColor.RED + "This pet is not dead.");
+               return;
+            }
+            ItemStack hand = player.getInventory().getItemInMainHand();
+            if (hand == null || hand.getType() != Material.NETHER_STAR) {
+               player.sendMessage(ChatColor.RED + "You need a Nether Star in your main hand to revive this pet.");
+               return;
+            }
+            hand.setAmount(hand.getAmount() - 1);
+            petData.setDead(false);
+            petManager.updatePetData(petData);
+            EntityType type = petData.getEntityType();
+            Entity newPet = player.getWorld().spawnEntity(player.getLocation(), type);
+            newPet.setCustomName(petData.getDisplayName());
+            if (newPet instanceof Tameable t) {
+               t.setOwner(player);
+               t.setTamed(true);
+            }
+            player.sendMessage(ChatColor.GREEN + "You have revived " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.GREEN + "!");
+            guiManager.openPetMenu(player, petUUID);
+            break;
+         case "do_remove_pet":
+            petManager.freePetCompletely(petUUID);
+            player.sendMessage(ChatColor.YELLOW + "You have permanently deleted " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.YELLOW + ".");
+            guiManager.openMainMenu(player);
+            break;
+         case "cancel_confirm":
+            guiManager.openPetMenu(player, petUUID);
+            break;
       }
+   }
+
+   private void openConfirmMenu(Player player, UUID petUUID, boolean isRevive) {
+      Inventory gui = Bukkit.createInventory(player, 27, (isRevive ? ChatColor.GREEN + "Confirm Revival" : ChatColor.RED + "Confirm Removal"));
+      ItemStack confirm = new ItemStack(isRevive ? Material.NETHER_STAR : Material.BARRIER);
+      ItemMeta meta = confirm.getItemMeta();
+      meta.setDisplayName(isRevive ? ChatColor.GREEN + "Confirm Revival" : ChatColor.RED + "Confirm Removal");
+      meta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING, isRevive ? "do_revive_pet" : "do_remove_pet");
+      meta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING, petUUID.toString());
+      confirm.setItemMeta(meta);
+      gui.setItem(11, confirm);
+      ItemStack cancel = new ItemStack(Material.ARROW);
+      ItemMeta cancelMeta = cancel.getItemMeta();
+      cancelMeta.setDisplayName(ChatColor.YELLOW + "Cancel");
+      cancelMeta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING, "cancel_confirm");
+      cancelMeta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING, petUUID.toString());
+      cancel.setItemMeta(cancelMeta);
+      gui.setItem(15, cancel);
+      player.openInventory(gui);
    }
 }

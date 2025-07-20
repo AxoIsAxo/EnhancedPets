@@ -381,6 +381,37 @@ public class PetManagerGUI {
          Inventory gui = Bukkit.createInventory(player, 27, title);
          boolean isFavorite = petData.isFavorite();
          String favoriteDisplayName = (isFavorite ? ChatColor.GOLD + "★ " : "") + ChatColor.YELLOW + ChatColor.BOLD + petData.getDisplayName();
+         // Dead pet: show skeleton skull and only allow revival
+         if (petData.isDead()) {
+            ItemStack skull = new ItemStack(Material.SKELETON_SKULL);
+            SkullMeta meta = (SkullMeta) skull.getItemMeta();
+            meta.setDisplayName(ChatColor.RED + "[DEAD] " + petData.getDisplayName());
+            meta.setLore(List.of(
+               ChatColor.DARK_RED + "This pet is dead!",
+               ChatColor.GRAY + "Choose an action below."
+            ));
+            skull.setItemMeta(meta);
+            gui.setItem(13, skull);
+            // Revive button
+            gui.setItem(11, this.createActionButton(
+               Material.NETHER_STAR,
+               ChatColor.GREEN + "Revive Pet",
+               "confirm_revive_pet",
+               petUUID,
+               List.of(ChatColor.GRAY + "Revive this pet with a Nether Star.")
+            ));
+            // Remove button
+            gui.setItem(15, this.createActionButton(
+               Material.BARRIER,
+               ChatColor.RED + "Remove Pet",
+               "confirm_remove_pet",
+               petUUID,
+               List.of(ChatColor.GRAY + "Permanently delete this pet.")
+            ));
+            player.openInventory(gui);
+            return;
+         }
+
          gui.setItem(4, this.createActionButton(
                  this.getPetMaterial(petData.getEntityType()),
                  favoriteDisplayName,
@@ -703,26 +734,40 @@ public class PetManagerGUI {
    }
 
    private ItemStack createPetItem(PetData petData) {
+      Entity petEntity = Bukkit.getEntity(petData.getPetUUID());
+      if (petData.isDead()) {
+         ItemStack skull = new ItemStack(Material.SKELETON_SKULL);
+         SkullMeta meta = (SkullMeta) skull.getItemMeta();
+         meta.setDisplayName(ChatColor.RED + "[DEAD] " + petData.getDisplayName());
+         meta.setLore(List.of(
+            ChatColor.DARK_RED + "This pet is dead!",
+            ChatColor.GRAY + "Click to view revival or removal options."
+         ));
+         meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, petData.getPetUUID().toString());
+         skull.setItemMeta(meta);
+         return skull;
+      }
       Material mat = this.getPetMaterial(petData.getEntityType());
       ItemStack item = new ItemStack(mat);
       ItemMeta meta = item.getItemMeta();
-      if (meta != null) {
-         String displayName = (petData.isFavorite() ? ChatColor.GOLD + "★ " : "") + ChatColor.AQUA + petData.getDisplayName();
-         meta.setDisplayName(displayName);
-
-         List<String> lore = new ArrayList<>();
-         lore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + petData.getEntityType().name());
-         lore.add(ChatColor.GRAY + "Mode: " + ChatColor.WHITE + petData.getMode().name());
-         int friendlyCount = petData.getFriendlyPlayers().size();
-         if (friendlyCount > 0) {
-            lore.add("" + ChatColor.GREEN + friendlyCount + " Friendly Player" + (friendlyCount == 1 ? "" : "s"));
-         }
-         lore.add("");
-         lore.add(ChatColor.YELLOW + "Click to manage this pet.");
-         meta.setLore(lore);
-         meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, petData.getPetUUID().toString());
-         item.setItemMeta(meta);
+      String displayName = (petData.isFavorite() ? ChatColor.GOLD + "★ " : "") + ChatColor.AQUA + petData.getDisplayName();
+      meta.setDisplayName(displayName);
+      List<String> lore = new java.util.ArrayList<>();
+      lore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + petData.getEntityType().name());
+      lore.add(ChatColor.GRAY + "Mode: " + ChatColor.WHITE + petData.getMode().name());
+      int friendlyCount = petData.getFriendlyPlayers().size();
+      if (friendlyCount > 0) {
+         lore.add("" + ChatColor.GREEN + friendlyCount + " Friendly Player" + (friendlyCount == 1 ? "" : "s"));
       }
+      // Add baby label if pet is a baby
+      if (petEntity instanceof Ageable ageable && !ageable.isAdult()) {
+         lore.add(ChatColor.LIGHT_PURPLE + "Baby");
+      }
+      lore.add("");
+      lore.add(ChatColor.YELLOW + "Click to manage this pet.");
+      meta.setLore(lore);
+      meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, petData.getPetUUID().toString());
+      item.setItemMeta(meta);
       return item;
    }
 

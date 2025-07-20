@@ -1,0 +1,16 @@
+dev\asteriamc\enhancedpets\config\ConfigManager.class
+dev\asteriamc\enhancedpets\listeners\ShiftClickTracker.class
+dev\asteriamc\enhancedpets\gui\PetGUIListener.class
+dev\asteriamc\enhancedpets\listeners\PetListener.class
+dev\asteriamc\enhancedpets\data\BehaviorMode.class
+dev\asteriamc\enhancedpets\gui\BatchActionsGUI.class
+dev\asteriamc\enhancedpets\tasks\PetTargetingTask.class
+dev\asteriamc\enhancedpets\listeners\PetListener$PendingClick.class
+dev\asteriamc\enhancedpets\manager\PetManager.class
+dev\asteriamc\enhancedpets\listeners\PlayerChatListener.class
+dev\asteriamc\enhancedpets\data\PetData.class
+dev\asteriamc\enhancedpets\gui\PetManagerGUI.class
+dev\asteriamc\enhancedpets\commands\PetCommand.class
+dev\asteriamc\enhancedpets\Enhancedpets.class
+dev\asteriamc\enhancedpets\tasks\GrowthGuardTask.class
+dev\asteriamc\enhancedpets\gui\PetManagerGUI$1.class
