@@ -49,10 +49,15 @@ Our goal is to provide a solution that is both **easy to use** for players and *
 ---
 
 ## ⚙️ Installation
-
-1.  Download the latest `enhancedpets.jar` from the downloads.
+**Prebuilt-Releases**
+1.  Download the latest `enhancedpets.jar` from the Releases.
 2.  Place the `.jar` file into your server's `plugins` folder.
 3.  Restart your server.
+
+**Build it yourself** (Maven needed)
+1. `git clone https://github.com/AxoIsAxo/EnhancedPets.git`
+2. `cd EnhancedPets`
+3. `mvn clean install`
 
 ---
 
