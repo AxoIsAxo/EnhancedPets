@@ -1,9 +1,3 @@
-# EnhancedPets
-
-Best pet management suite on the planet :D
-
----
-
 ## Thanks to:
 
 - AxoIsAxo
