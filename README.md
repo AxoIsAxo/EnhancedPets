@@ -58,7 +58,7 @@ Our goal is to provide a solution that is both **easy to use** for players and *
 1. `git clone https://github.com/AxoIsAxo/EnhancedPets.git`
 2. `cd EnhancedPets`
 3. `mvn clean install`
-4. Place the `enhanced-xxx.jar` file from the `target` directory into your server's `plugins` folder.
+4. Place the `enhancedpets-xxx.jar` file from the `target` directory into your server's `plugins` folder.
 5. Restart your server.
 
 ---
