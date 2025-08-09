@@ -64,7 +64,7 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
         - Dont torture your Happy Ghasts Kids
 
 Note on Aggressive mode: Pets in Aggressive mode proactively look for nearby valid targets they can see and that aren’t friendly or owned by you. This is not limited to “hostiles only.”
-Note on other stuff: Passive Aggressive mode is in the works and will be released if you dont fix your lifestyle
+\nNote on other stuff: Passive Aggressive mode is in the works and will be released if you dont fix your lifestyle
 ---
 
 ## 🖼️ Screens & UX
