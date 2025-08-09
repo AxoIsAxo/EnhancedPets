@@ -144,16 +144,24 @@ Notes
 
 ## 🧪 What gets restored on revive?
 
-When a dead pet is revived, EnhancedPets restores a lot of details (when available):
-- Age and sitting state
-- Custom name + visibility
-- Health / max health
-- Wolf collar color + 1.21+ variant (via registry)
-- Cat type, collar color, lying down
-- Parrot variant
-- Some horse/llama traits (movement, color, strength, etc.)
+Everything that can be seen of course, The pets are brought back to life in their prior glory.
+When a dead pet is revived, EnhancedPets restores everything it can!:
+
+<details>
+  <summary><b>Click at your own discretion: may cause questions about nature of existence and recreation leading to lack of authenticity</b></summary>
+
+- **Age and sitting state**
+- **Custom name + visibility**
+- **Health / max health**
+- **Wolf collar color + 1.21+ variant (via registry)**
+- **Cat type, collar color, lying down**
+- **Parrot variant**
+- **Some horse/llama traits (movement, color, strength, etc.)**
 
 Some inventory-related pieces are collected but not reapplied yet (kept for future expansion).
+</details>
+
+
 
 ---
 
