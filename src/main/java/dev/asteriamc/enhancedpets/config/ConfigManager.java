@@ -1,4 +1,3 @@
-
 package dev.asteriamc.enhancedpets.config;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
