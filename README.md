@@ -158,7 +158,7 @@ When a dead pet is revived, EnhancedPets restores everything it can!:
 - **Parrot variant**
 - **Some horse/llama traits (movement, color, strength, etc.)**
 
-Should you find an attribute you feel is yet to be etched in our restore list, I humbly request you to let us know post-haste
+Should you find an attribute you feel is yet to be etched in our restoration list, I humbly request you to let us know post-haste
 </details>
 
 
