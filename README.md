@@ -5,7 +5,7 @@
 ![Java](https://img.shields.io/badge/Java-17%2B-RED)
 ![Discord Support](https://img.shields.io/discord/b7BVkJ56mR?label=Discord&logo=discord&color=7289DA)
 
-> Enhance the vanilla pet experience without adding new mobs.
+> Enhance the vanilla pet experience now without mental gymnastics!
 > Wolves, cats, parrots, and more — but smarter, friendlier, and easier to manage.
 
 Thanks to:
@@ -20,6 +20,7 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
 
 - Player-friendly: intuitive menus, shift-double right-click to open pet GUI, safe confirmations
 - Admin-friendly: flat JSON storage per player, autosave, quick config reload, migration from legacy config
+- Devs who keep uttering bad jokes periodically at your service (Use the Issues section)
 
 ---
 
@@ -27,18 +28,22 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
 
 - 💎 Pet Modes
     - Passive, Neutral, Aggressive — switch instantly from the GUI
+    - AKA ‘we vibe’, ‘default’, and ‘try me.
 - 🧭 Teleport & Calm
     - Summon any pet to you; clear targets/anger with a click
 - 🏷️ Rename (with validation)
     - Rename via chat (A–Z, 0–9, _ and -), or reset to a clean default if invalid
+    - bypassing nametag requirements since 2025
 - ⭐ Favorites
     - Pin pets you care about — favorites bubble to the top
+    - *you should use this on all your pets lest you a monster*
 - 🪑 Sit / Stand
     - Toggle sitting for sittable pets (wolves, cats)
 - 🌱 Baby Growth Control
     - Pause baby growth (per-pet and batch); protected by a guard task
 - 👥 Friendly Players (Whitelist)
     - Add players your pet should never attack; manage per-pet or in batch
+    - apes together stronk
 - 🧺 Batch Actions
     - Select a type (e.g., Wolves) → pick pets → do things at scale:
     - Set modes, toggle favorites, sit/stand, teleport, calm, manage friendlies, transfer, or free
@@ -56,9 +61,10 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
         - Right-click with a Snowball to tame (20% chance each try)
         - Manage via the same GUI and batch tools
         - Ride it and left-click to shoot a fireball (cooldown)
+        - Dont torture your Happy Ghasts Kids
 
 Note on Aggressive mode: Pets in Aggressive mode proactively look for nearby valid targets they can see and that aren’t friendly or owned by you. This is not limited to “hostiles only.”
-
+Note on other stuff: Passive Aggressive mode is in the works and will be released if you dont fix your lifestyle
 ---
 
 ## 🖼️ Screens & UX
@@ -192,4 +198,4 @@ Should you find an attribute you feel is yet to be etched in our restoration lis
 - Code & design: AxoIsAxo, cystol
 - Community feedback and testing: You 💙
 
-Bring your pets to life — slightly effectively
+Bring your pets to life — slightly more effectively than vanilla.
