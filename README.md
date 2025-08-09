@@ -33,17 +33,18 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
     - Summon any pet to you; clear targets/anger with a click
 - 🏷️ Rename (with validation)
     - Rename via chat (A–Z, 0–9, _ and -), or reset to a clean default if invalid
-    - bypassing nametag requirements since 2025
+    - Bypassing nametag requirements since 2025
 - ⭐ Favorites
     - Pin pets you care about — favorites bubble to the top
-    - *you should use this on all your pets lest you a monster*
+    - *You should use this on all your pets lest you a monster*
 - 🪑 Sit / Stand
     - Toggle sitting for sittable pets (wolves, cats)
+    - More micromanagement for our dear users
 - 🌱 Baby Growth Control
     - Pause baby growth (per-pet and batch); protected by a guard task
 - 👥 Friendly Players (Whitelist)
     - Add players your pet should never attack; manage per-pet or in batch
-    - apes together stronk
+    - Apes together stronk
 - 🧺 Batch Actions
     - Select a type (e.g., Wolves) → pick pets → do things at scale:
     - Set modes, toggle favorites, sit/stand, teleport, calm, manage friendlies, transfer, or free
