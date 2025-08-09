@@ -1,6 +1,6 @@
 # ✨ EnhancedPets — Enhanced Pet System ✨
 
-![Version](https://img.shields.io/badge/Version-v1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/Version-v1.1.0-blue.svg)
 ![Compatibility](https://img.shields.io/badge/MC%20Version-1.17%E2%80%941.21.x-orange.svg)
 ![Java](https://img.shields.io/badge/Java-17%2B-RED)
 ![Discord Support](https://img.shields.io/discord/b7BVkJ56mR?label=Discord&logo=discord&color=7289DA)
