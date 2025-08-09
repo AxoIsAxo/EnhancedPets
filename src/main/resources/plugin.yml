@@ -1,6 +1,6 @@
 # Basic Plugin Info
 name: EnhancedPets
-version: 1.0.0
+version: 1.1.0
 main: dev.asteriamc.enhancedpets.Enhancedpets
 api-version: 1.17
 authors: [AxoIsAxo, cystol]
