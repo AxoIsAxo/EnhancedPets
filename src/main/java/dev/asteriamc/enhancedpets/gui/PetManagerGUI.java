@@ -154,7 +154,7 @@ public class PetManagerGUI {
               .collect(Collectors.toList());
 
       String title = ChatColor.DARK_AQUA + "Batch Manage " + selectedPets.size() + " Pets";
-      Inventory gui = Bukkit.createInventory(player, 45, title);
+      Inventory gui = Bukkit.createInventory(player, 54, title);
 
       long favoriteCount = selectedPets.stream().filter(PetData::isFavorite).count();
       boolean allFavorites = favoriteCount == selectedPets.size();
@@ -248,9 +248,9 @@ public class PetManagerGUI {
       meta.getPersistentDataContainer().set(BatchActionsGUI.BATCH_ACTION_KEY, PersistentDataType.STRING, "open_pet_select");
       meta.getPersistentDataContainer().set(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING, type.name());
       backButton.setItemMeta(meta);
-      gui.setItem(36, backButton);
+      gui.setItem(45, backButton);
 
-      gui.setItem(44, this.createActionButton(Material.BARRIER, ChatColor.RED + "Free Selected Pets", "batch_free_pet_prompt", null, Arrays.asList(ChatColor.DARK_RED + "" + ChatColor.BOLD + "WARNING:", ChatColor.RED + "This is permanent!")));
+      gui.setItem(53, this.createActionButton(Material.BARRIER, ChatColor.RED + "Free Selected Pets", "batch_free_pet_prompt", null, Arrays.asList(ChatColor.DARK_RED + "" + ChatColor.BOLD + "WARNING:", ChatColor.RED + "This is permanent!")));
 
       player.openInventory(gui);
    }

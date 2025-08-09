@@ -29,6 +29,8 @@ public final class Enhancedpets extends JavaPlugin {
    private PetTargetingTask targetingTaskRunnable;
    private BukkitTask targetingTask;
    private PetStorageManager storageManager;
+   private BukkitTask autosaveTask;
+
 
    public void onEnable() {
       instance = this;
@@ -56,12 +58,14 @@ public final class Enhancedpets extends JavaPlugin {
       
 
       this.startTargetingTask();
+      this.startAutosaveTask();
       this.getLogger().info("EnhancedPets has been enabled successfully!");
 
    }
 
    public void onDisable() {
       this.getLogger().info("EnhancedPets is disabling...");
+      this.stopAutosaveTask();
       this.stopTargetingTask();
       if (this.petManager != null) {
          this.petManager.saveAllCachedData();
@@ -69,6 +73,30 @@ public final class Enhancedpets extends JavaPlugin {
 
       this.getLogger().info("EnhancedPets has been disabled.");
    }
+
+   private void startAutosaveTask() {
+      stopAutosaveTask();
+      long periodTicks = 2L * 60L * 20L; // 2 minutes
+      autosaveTask = Bukkit.getScheduler().runTaskTimerAsynchronously(
+              this,
+              () -> {
+                 if (petManager != null) {
+                    petManager.saveAllCachedData(); // grouped by owner
+                 }
+              },
+              periodTicks, periodTicks
+      );
+      getLogger().info("Autosave scheduled every 2 minutes.");
+   }
+
+   private void stopAutosaveTask() {
+      if (autosaveTask != null && !autosaveTask.isCancelled()) {
+         autosaveTask.cancel();
+         autosaveTask = null;
+         getLogger().info("Autosave task cancelled.");
+      }
+   }
+
 
    private void loadConfigurationAndData() {
       try {
