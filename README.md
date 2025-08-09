@@ -5,7 +5,7 @@
 ![Java](https://img.shields.io/badge/Java-17%2B-RED)
 ![Discord Support](https://img.shields.io/discord/b7BVkJ56mR?label=Discord&logo=discord&color=7289DA)
 
-> Enhance the vanilla pet experience now without mental gymnastics!
+> Enhance the vanilla pet experience now without mental gymnastics!\
 > Wolves, cats, parrots, and more — but smarter, friendlier, and easier to manage.
 
 Thanks to:
