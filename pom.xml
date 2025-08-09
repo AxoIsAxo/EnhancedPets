@@ -12,7 +12,7 @@
 
     <name>EnhancedPets</name>
     <description>Enhances pet management in Minecraft.</description>
-    <url>https://fun.axosmp.com</url> 
+    <url>https://fun.axosmp.com</url>
 
     <properties>
         <java.version>16</java.version> 

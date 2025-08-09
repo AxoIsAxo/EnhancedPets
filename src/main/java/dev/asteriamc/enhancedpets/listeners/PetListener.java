@@ -68,8 +68,9 @@ public class PetListener implements Listener {
          UUID petUUID = event.getEntity().getUniqueId();
          PetData data = this.petManager.getPetData(petUUID);
          String name = data != null ? data.getDisplayName() : "Unknown Pet";
-         this.plugin.getLogger().info("Managed pet " + name + " (UUID: " + petUUID + ") died. Unregistering.");
-         this.petManager.unregisterPet(petUUID);
+         this.plugin.getLogger().info("Managed pet " + name + " (UUID: " + petUUID + ") died. Marking as dead.");
+         
+         this.petManager.unregisterPet(event.getEntity());
       }
    }
 
@@ -264,16 +265,16 @@ public class PetListener implements Listener {
 
    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
    public void onPlayerInteractEntity(PlayerInteractEntityEvent e) {
-      // Happy Ghast harness logic
+      
       Player player = e.getPlayer();
       Entity target = e.getRightClicked();
       ItemStack itemInHand = player.getInventory().getItem(e.getHand());
-      // Check for Happy Ghast (EntityType.HAPPY_GHAST) and taming with Snowball (20% chance)
+      
       if (target != null && target.getType().name().equalsIgnoreCase("HAPPY_GHAST") &&
           itemInHand != null && itemInHand.getType() == Material.SNOWBALL) {
          e.setCancelled(true);
          if (!petManager.isManagedPet(target.getUniqueId())) {
-            if (Math.random() < 0.2) { // 20% chance
+            if (Math.random() < 0.2) { 
                String defaultName = petManager.assignNewDefaultName(target.getType());
                petManager.registerNonTameablePet(target, player.getUniqueId(), defaultName);
                player.sendMessage(ChatColor.GREEN + "You have tamed this Happy Ghast! It is now your pet.");
@@ -326,7 +327,7 @@ public class PetListener implements Listener {
       }, 5L); 
    }
 
-   // Track when a player mounts a Happy Ghast
+   
    private final Map<UUID, Long> ghastMountTime = new HashMap<>();
 
    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -336,7 +337,7 @@ public class PetListener implements Listener {
       }
    }
 
-   // Cooldown map for fireball shooting
+   
    private final Map<UUID, Long> ghastFireballCooldown = new HashMap<>();
 
    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
@@ -347,7 +348,7 @@ public class PetListener implements Listener {
       if (vehicle == null || !vehicle.getType().name().equalsIgnoreCase("HAPPY_GHAST")) return;
       PetData petData = petManager.getPetData(vehicle.getUniqueId());
       if (petData == null || !petData.getOwnerUUID().equals(player.getUniqueId())) return;
-      // Ignore arm swing if within 1 second of mounting
+      
       if (ghastMountTime.containsKey(player.getUniqueId())) {
          long mountTime = ghastMountTime.get(player.getUniqueId());
          if (System.currentTimeMillis() - mountTime < 1000) return;
@@ -365,9 +366,9 @@ public class PetListener implements Listener {
       fireball.setIsIncendiary(true);
    }
 
-   // (Optional) Remove or comment out the PlayerInteractEvent handler for this feature
-   // @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-   // public void onPlayerInteract(PlayerInteractEvent event) { ... }
+   
+   
+   
 
 
 }

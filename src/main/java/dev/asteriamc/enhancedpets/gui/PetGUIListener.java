@@ -58,7 +58,7 @@ public class PetGUIListener implements Listener {
               || title.startsWith(ChatColor.RED + "Confirm Removal");
 
       if (!isPetGui) return;
-      // Always cancel event in confirmation menus to prevent item movement
+      
       if (title.startsWith(ChatColor.GREEN + "Confirm Revival") || title.startsWith(ChatColor.RED + "Confirm Removal")) {
          event.setCancelled(true);
          ItemStack clickedItem = event.getCurrentItem();
@@ -407,6 +407,9 @@ public class PetGUIListener implements Listener {
                guiManager.openPetMenu(player, petUUID);
             }
             break;
+         case "confirm_free_pet_prompt":
+            guiManager.openConfirmFreeMenu(player, petUUID);
+            break;
          case "manage_friendly":
             guiManager.openFriendlyPlayerMenu(player, petUUID, 0);
             break;
@@ -490,9 +493,11 @@ public class PetGUIListener implements Listener {
             break;
          case "confirm_free":
             String petDisplayName = petData.getDisplayName();
-            petManager.freePet(petUUID);
+            
+            petManager.freePetCompletely(petUUID);
             player.sendMessage(ChatColor.YELLOW + "You have freed " + ChatColor.AQUA + petDisplayName + ".");
-            player.closeInventory();
+            
+            guiManager.openMainMenu(player);
             break;
          case "add_friendly_prompt":
             awaitingFriendlyInput.put(player.getUniqueId(), petUUID);
@@ -519,25 +524,27 @@ public class PetGUIListener implements Listener {
          case "do_revive_pet":
             if (!petData.isDead()) {
                player.sendMessage(ChatColor.RED + "This pet is not dead.");
+               guiManager.openPetMenu(player, petData.getPetUUID());
                return;
             }
             ItemStack hand = player.getInventory().getItemInMainHand();
-            if (hand == null || hand.getType() != Material.NETHER_STAR) {
+            if (hand.getType() != Material.NETHER_STAR) {
                player.sendMessage(ChatColor.RED + "You need a Nether Star in your main hand to revive this pet.");
+               guiManager.openPetMenu(player, petData.getPetUUID());
                return;
             }
             hand.setAmount(hand.getAmount() - 1);
-            petData.setDead(false);
-            petManager.updatePetData(petData);
-            EntityType type = petData.getEntityType();
-            Entity newPet = player.getWorld().spawnEntity(player.getLocation(), type);
-            newPet.setCustomName(petData.getDisplayName());
-            if (newPet instanceof Tameable t) {
-               t.setOwner(player);
-               t.setTamed(true);
-            }
+
+            
+            LivingEntity newPet = (LivingEntity) player.getWorld().spawnEntity(player.getLocation(), petData.getEntityType());
+
+            
+            petManager.revivePet(petData, newPet);
+
             player.sendMessage(ChatColor.GREEN + "You have revived " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.GREEN + "!");
-            guiManager.openPetMenu(player, petUUID);
+
+            
+            guiManager.openPetMenu(player, newPet.getUniqueId());
             break;
          case "do_remove_pet":
             petManager.freePetCompletely(petUUID);

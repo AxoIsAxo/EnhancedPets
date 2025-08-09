@@ -21,6 +21,7 @@ public class PetData {
    private boolean favorite = false;
    private boolean growthPaused = false;
    private boolean dead = false;
+   private Map<String, Object> metadata = new HashMap<>(); 
 
    public PetData(UUID petUUID, UUID ownerUUID, EntityType entityType, String displayName) {
       this.petUUID = petUUID;
@@ -31,66 +32,15 @@ public class PetData {
       this.mode = BehaviorMode.NEUTRAL;
    }
 
-   public UUID getPetUUID() {
-      return this.petUUID;
+   
+
+   
+   public Map<String, Object> getMetadata() {
+      return this.metadata;
    }
 
-   public UUID getOwnerUUID() {
-      return this.ownerUUID;
-   }
-
-   public EntityType getEntityType() {
-      return this.entityType;
-   }
-
-   public boolean isGrowthPaused() { return growthPaused; }
-   public void setGrowthPaused(boolean growthPaused) { this.growthPaused = growthPaused; }
-
-   public boolean isDead() { return dead; }
-   public void setDead(boolean dead) { this.dead = dead; }
-
-   public String getDisplayName() {
-      return this.displayName;
-   }
-
-   public BehaviorMode getMode() {
-      return this.mode;
-   }
-
-   public Set<UUID> getFriendlyPlayers() {
-      return new HashSet<>(this.friendlyPlayers);
-   }
-
-   public void setOwnerUUID(UUID ownerUUID) {
-      this.ownerUUID = ownerUUID;
-   }
-
-   public void setEntityType(EntityType entityType) {
-      this.entityType = entityType;
-   }
-
-   public void setDisplayName(String displayName) {
-      this.displayName = displayName;
-   }
-
-   public void setMode(BehaviorMode mode) {
-      this.mode = mode;
-   }
-
-   public void setFriendlyPlayers(Set<UUID> friendlyPlayers) {
-      this.friendlyPlayers = friendlyPlayers != null ? new HashSet<>(friendlyPlayers) : new HashSet<>();
-   }
-
-   public void addFriendlyPlayer(UUID playerUUID) {
-      this.friendlyPlayers.add(playerUUID);
-   }
-
-   public void removeFriendlyPlayer(UUID playerUUID) {
-      this.friendlyPlayers.remove(playerUUID);
-   }
-
-   public boolean isFriendlyPlayer(UUID playerUUID) {
-      return this.ownerUUID.equals(playerUUID) || this.friendlyPlayers.contains(playerUUID);
+   public void setMetadata(Map<String, Object> metadata) {
+      this.metadata = metadata != null ? new HashMap<>(metadata) : new HashMap<>();
    }
 
    public Map<String, Object> serialize() {
@@ -101,8 +51,11 @@ public class PetData {
       map.put("mode", this.mode.name());
       map.put("friendlyPlayers", this.friendlyPlayers.stream().map(UUID::toString).collect(Collectors.toList()));
       map.put("favorite", this.favorite);
-      map.put("growthPaused", growthPaused);
-      map.put("dead", dead);
+      map.put("growthPaused", this.growthPaused);
+      map.put("dead", this.dead);
+      if (this.metadata != null && !this.metadata.isEmpty()) { 
+         map.put("metadata", this.metadata);
+      }
       return map;
    }
 
@@ -115,6 +68,9 @@ public class PetData {
          boolean favorite = (boolean) map.getOrDefault("favorite", false);
          boolean growthPaused = (boolean) map.getOrDefault("growthPaused", false);
          boolean dead = (boolean) map.getOrDefault("dead", false);
+
+         Map<String, Object> metadata = (Map<String, Object>) map.get("metadata"); 
+
          Set<UUID> friendlies = new HashSet<>();
          Object friendliesObj = map.get("friendlyPlayers");
          if (friendliesObj instanceof List) {
@@ -131,13 +87,15 @@ public class PetData {
             });
          }
 
-         // Remove Tameable.class check to allow non-Tameable pets (e.g., Happy Ghast)
          PetData data = new PetData(petUUID, owner, type, name);
          data.setMode(mode);
          data.setFriendlyPlayers(friendlies);
          data.setFavorite(favorite);
          data.setGrowthPaused(growthPaused);
          data.setDead(dead);
+         if (metadata != null) { 
+            data.setMetadata(metadata);
+         }
          return data;
       } catch (Exception var9) {
          if (Enhancedpets.getInstance() != null) {
@@ -149,12 +107,25 @@ public class PetData {
       }
    }
 
-   public boolean isFavorite() {
-      return this.favorite;
-   }
-
-   public void setFavorite(boolean favorite) {
-      this.favorite = favorite;
-   }
-
+   
+   public UUID getPetUUID() { return this.petUUID; }
+   public UUID getOwnerUUID() { return this.ownerUUID; }
+   public EntityType getEntityType() { return this.entityType; }
+   public boolean isGrowthPaused() { return growthPaused; }
+   public void setGrowthPaused(boolean growthPaused) { this.growthPaused = growthPaused; }
+   public boolean isDead() { return dead; }
+   public void setDead(boolean dead) { this.dead = dead; }
+   public String getDisplayName() { return this.displayName; }
+   public BehaviorMode getMode() { return this.mode; }
+   public Set<UUID> getFriendlyPlayers() { return new HashSet<>(this.friendlyPlayers); }
+   public void setOwnerUUID(UUID ownerUUID) { this.ownerUUID = ownerUUID; }
+   public void setEntityType(EntityType entityType) { this.entityType = entityType; }
+   public void setDisplayName(String displayName) { this.displayName = displayName; }
+   public void setMode(BehaviorMode mode) { this.mode = mode; }
+   public void setFriendlyPlayers(Set<UUID> friendlyPlayers) { this.friendlyPlayers = friendlyPlayers != null ? new HashSet<>(friendlyPlayers) : new HashSet<>(); }
+   public void addFriendlyPlayer(UUID playerUUID) { this.friendlyPlayers.add(playerUUID); }
+   public void removeFriendlyPlayer(UUID playerUUID) { this.friendlyPlayers.remove(playerUUID); }
+   public boolean isFriendlyPlayer(UUID playerUUID) { return this.ownerUUID.equals(playerUUID) || this.friendlyPlayers.contains(playerUUID); }
+   public boolean isFavorite() { return this.favorite; }
+   public void setFavorite(boolean favorite) { this.favorite = favorite; }
 }

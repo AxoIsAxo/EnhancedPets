@@ -154,9 +154,8 @@ public class PetManagerGUI {
               .collect(Collectors.toList());
 
       String title = ChatColor.DARK_AQUA + "Batch Manage " + selectedPets.size() + " Pets";
-      Inventory gui = Bukkit.createInventory(player, 27, title);
+      Inventory gui = Bukkit.createInventory(player, 45, title);
 
-      
       long favoriteCount = selectedPets.stream().filter(PetData::isFavorite).count();
       boolean allFavorites = favoriteCount == selectedPets.size();
       boolean anyFavorites = favoriteCount > 0;
@@ -171,11 +170,10 @@ public class PetManagerGUI {
       boolean anySitting = allCanSit && sittingCount > 0;
 
 
-      
       PetData batchData = new PetData(null, player.getUniqueId(), null, "Batch");
       batchData.setMode(commonMode);
 
-      
+
       String favoriteDisplayName = (anyFavorites ? ChatColor.GOLD + "★ " : "") + ChatColor.YELLOW + ChatColor.BOLD + "Managing " + selectedPets.size() + " Pets";
       gui.setItem(4, this.createActionButton(Material.HOPPER, favoriteDisplayName, "batch_toggle_favorite", null,
               Arrays.asList(
@@ -185,7 +183,7 @@ public class PetManagerGUI {
               )
       ));
 
-      
+
       List<Ageable> babies = selectedPetUUIDs.stream()
               .map(Bukkit::getEntity)
               .filter(e -> e instanceof Ageable)
@@ -193,7 +191,7 @@ public class PetManagerGUI {
               .filter(a -> !a.isAdult())
               .toList();
 
-      if (babies.size() == selectedPetUUIDs.size()) {          
+      if (babies.size() == selectedPetUUIDs.size()) {
          long pausedCount = selectedPetUUIDs.stream()
                  .map(petManager::getPetData)
                  .filter(java.util.Objects::nonNull)
@@ -214,7 +212,7 @@ public class PetManagerGUI {
          }
 
          Material mat = pausedCount == totalBabies ? Material.GOLDEN_CARROT : Material.CARROT;
-         gui.setItem(24, createActionButton(
+         gui.setItem(26, createActionButton(
                  mat,
                  (pausedCount == totalBabies ? ChatColor.GREEN : ChatColor.YELLOW) + "Toggle Growth",
                  "batch_toggle_growth_pause",
@@ -232,18 +230,16 @@ public class PetManagerGUI {
       gui.setItem(13, this.createModeButton(Material.IRON_SWORD, "Set Neutral", BehaviorMode.NEUTRAL, batchData));
       gui.setItem(15, this.createModeButton(Material.DIAMOND_SWORD, "Set Aggressive", BehaviorMode.AGGRESSIVE, batchData));
 
-      gui.setItem(19, this.createActionButton(Material.PLAYER_HEAD, ChatColor.GREEN + "Manage Friendly Players", "batch_manage_friendly", null, Collections.singletonList(ChatColor.GRAY + "Manage common friendly players.")));
-      gui.setItem(21, this.createActionButton(Material.ENDER_PEARL, ChatColor.LIGHT_PURPLE + "Teleport Pets to You", "batch_teleport", null, Collections.singletonList(ChatColor.GRAY + "Summons all selected pets.")));
-      gui.setItem(22, this.createActionButton(Material.LEAD, ChatColor.GOLD + "Transfer Pets", "batch_open_transfer", null, Arrays.asList(ChatColor.GRAY + "Give selected pets to another player", ChatColor.YELLOW + "⚠ This cannot be undone!")));
-
       if (allCanSit) {
          String sitStandName = allSitting ? ChatColor.GREEN + "Make Pets Stand" : ChatColor.YELLOW + "Make Pets Sit";
          String sitStandStatus = "Current: " + (allSitting ? "All Sitting" : anySitting ? "Mixed" : "All Standing");
-         gui.setItem(23, this.createActionButton(allSitting ? Material.ARMOR_STAND : Material.SADDLE, sitStandName, "batch_toggle_sit", null, Collections.singletonList(ChatColor.GRAY + sitStandStatus)));
+         gui.setItem(20, this.createActionButton(allSitting ? Material.ARMOR_STAND : Material.SADDLE, sitStandName, "batch_toggle_sit", null, Collections.singletonList(ChatColor.GRAY + sitStandStatus)));
       }
 
-      gui.setItem(20, this.createActionButton(Material.MILK_BUCKET, ChatColor.AQUA + "Calm Pets", "batch_calm", null, Collections.singletonList(ChatColor.GRAY + "Clears targets for all selected pets.")));
-      gui.setItem(25, this.createActionButton(Material.BARRIER, ChatColor.RED + "Free Selected Pets", "batch_free_pet_prompt", null, Arrays.asList(ChatColor.DARK_RED + "" + ChatColor.BOLD + "WARNING:", ChatColor.RED + "This is permanent!")));
+      gui.setItem(22, this.createActionButton(Material.ENDER_PEARL, ChatColor.LIGHT_PURPLE + "Teleport Pets to You", "batch_teleport", null, Collections.singletonList(ChatColor.GRAY + "Summons all selected pets.")));
+      gui.setItem(24, this.createActionButton(Material.MILK_BUCKET, ChatColor.AQUA + "Calm Pets", "batch_calm", null, Collections.singletonList(ChatColor.GRAY + "Clears targets for all selected pets.")));
+      gui.setItem(30, this.createActionButton(Material.PLAYER_HEAD, ChatColor.GREEN + "Manage Friendly Players", "batch_manage_friendly", null, Collections.singletonList(ChatColor.GRAY + "Manage common friendly players.")));
+      gui.setItem(32, this.createActionButton(Material.LEAD, ChatColor.GOLD + "Transfer Pets", "batch_open_transfer", null, Arrays.asList(ChatColor.GRAY + "Give selected pets to another player", ChatColor.YELLOW + "⚠ This cannot be undone!")));
 
       EntityType type = selectedPets.get(0).getEntityType();
       ItemStack backButton = new ItemStack(Material.ARROW);
@@ -252,7 +248,9 @@ public class PetManagerGUI {
       meta.getPersistentDataContainer().set(BatchActionsGUI.BATCH_ACTION_KEY, PersistentDataType.STRING, "open_pet_select");
       meta.getPersistentDataContainer().set(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING, type.name());
       backButton.setItemMeta(meta);
-      gui.setItem(26, backButton);
+      gui.setItem(36, backButton);
+
+      gui.setItem(44, this.createActionButton(Material.BARRIER, ChatColor.RED + "Free Selected Pets", "batch_free_pet_prompt", null, Arrays.asList(ChatColor.DARK_RED + "" + ChatColor.BOLD + "WARNING:", ChatColor.RED + "This is permanent!")));
 
       player.openInventory(gui);
    }
@@ -365,7 +363,7 @@ public class PetManagerGUI {
       player.openInventory(gui);
    }
 
-   
+
 
    public void openPetMenu(Player player, UUID petUUID) {
       PetData petData = this.petManager.getPetData(petUUID);
@@ -378,35 +376,33 @@ public class PetManagerGUI {
             title = title.substring(0, 29) + "...";
          }
 
-         Inventory gui = Bukkit.createInventory(player, 27, title);
+         Inventory gui = Bukkit.createInventory(player, 54, title);
          boolean isFavorite = petData.isFavorite();
          String favoriteDisplayName = (isFavorite ? ChatColor.GOLD + "★ " : "") + ChatColor.YELLOW + ChatColor.BOLD + petData.getDisplayName();
-         // Dead pet: show skeleton skull and only allow revival
+
          if (petData.isDead()) {
             ItemStack skull = new ItemStack(Material.SKELETON_SKULL);
             SkullMeta meta = (SkullMeta) skull.getItemMeta();
             meta.setDisplayName(ChatColor.RED + "[DEAD] " + petData.getDisplayName());
             meta.setLore(List.of(
-               ChatColor.DARK_RED + "This pet is dead!",
-               ChatColor.GRAY + "Choose an action below."
+                    ChatColor.DARK_RED + "This pet is dead!",
+                    ChatColor.GRAY + "Choose an action below."
             ));
             skull.setItemMeta(meta);
             gui.setItem(13, skull);
-            // Revive button
             gui.setItem(11, this.createActionButton(
-               Material.NETHER_STAR,
-               ChatColor.GREEN + "Revive Pet",
-               "confirm_revive_pet",
-               petUUID,
-               List.of(ChatColor.GRAY + "Revive this pet with a Nether Star.")
+                    Material.NETHER_STAR,
+                    ChatColor.GREEN + "Revive Pet",
+                    "confirm_revive_pet",
+                    petUUID,
+                    List.of(ChatColor.GRAY + "Revive this pet with a Nether Star.")
             ));
-            // Remove button
             gui.setItem(15, this.createActionButton(
-               Material.BARRIER,
-               ChatColor.RED + "Remove Pet",
-               "confirm_remove_pet",
-               petUUID,
-               List.of(ChatColor.GRAY + "Permanently delete this pet.")
+                    Material.BARRIER,
+                    ChatColor.RED + "Remove Pet",
+                    "confirm_remove_pet",
+                    petUUID,
+                    List.of(ChatColor.GRAY + "Permanently delete this pet.")
             ));
             player.openInventory(gui);
             return;
@@ -444,37 +440,6 @@ public class PetManagerGUI {
          gui.setItem(11, this.createModeButton(Material.FEATHER, "Set Passive", BehaviorMode.PASSIVE, petData));
          gui.setItem(13, this.createModeButton(Material.IRON_SWORD, "Set Neutral", BehaviorMode.NEUTRAL, petData));
          gui.setItem(15, this.createModeButton(Material.DIAMOND_SWORD, "Set Aggressive", BehaviorMode.AGGRESSIVE, petData));
-         gui.setItem(
-                 19,
-                 this.createActionButton(
-                         Material.PLAYER_HEAD,
-                         ChatColor.GREEN + "Manage Friendly Players",
-                         "manage_friendly",
-                         petData.getPetUUID(),
-                         Collections.singletonList(ChatColor.GRAY + "Set players this pet will never attack.")
-                 )
-         );
-         gui.setItem(
-                 21,
-                 this.createActionButton(
-                         Material.ENDER_PEARL,
-                         ChatColor.LIGHT_PURPLE + "Teleport Pet to You",
-                         "teleport_pet",
-                         petData.getPetUUID(),
-                         Collections.singletonList(ChatColor.GRAY + "Summons this pet to your location.")
-                 )
-         );
-
-         gui.setItem(22, this.createActionButton(
-                 Material.LEAD,
-                 ChatColor.GOLD + "Transfer Pet",
-                 "open_transfer",
-                 petData.getPetUUID(),
-                 Arrays.asList(
-                         ChatColor.GRAY + "Give this pet to another player",
-                         ChatColor.YELLOW + "⚠ This cannot be undone!"
-                 )
-         ));
 
          Entity petEntity = Bukkit.getEntity(petUUID);
          boolean canSit = petEntity instanceof Sittable;
@@ -484,8 +449,7 @@ public class PetManagerGUI {
             if (petEntity instanceof Sittable s) {
                isSitting = s.isSitting();
             }
-
-            gui.setItem(23, this.createActionButton(
+            gui.setItem(20, this.createActionButton(
                     isSitting ? Material.ARMOR_STAND : Material.SADDLE,
                     isSitting ? ChatColor.GREEN + "Make Pet Stand" : ChatColor.YELLOW + "Make Pet Sit",
                     "toggle_sit",
@@ -494,7 +458,15 @@ public class PetManagerGUI {
             ));
          }
 
-         gui.setItem(20, this.createActionButton(
+         gui.setItem(22, this.createActionButton(
+                 Material.ENDER_PEARL,
+                 ChatColor.LIGHT_PURPLE + "Teleport Pet to You",
+                 "teleport_pet",
+                 petData.getPetUUID(),
+                 Collections.singletonList(ChatColor.GRAY + "Summons this pet to your location.")
+         ));
+
+         gui.setItem(24, this.createActionButton(
                  Material.MILK_BUCKET,
                  ChatColor.AQUA + "Calm Pet",
                  "calm_pet",
@@ -505,7 +477,7 @@ public class PetManagerGUI {
                  )
          ));
 
-         gui.setItem(24, this.createActionButton(
+         gui.setItem(29, this.createActionButton(
                  Material.ANVIL,
                  ChatColor.GREEN + "Rename Pet",
                  "rename_pet_prompt",
@@ -513,17 +485,34 @@ public class PetManagerGUI {
                  Collections.singletonList(ChatColor.GRAY + "Change your pet's name via chat.")
          ));
 
-         gui.setItem(
-                 25,
-                 this.createActionButton(
-                         Material.BARRIER,
-                         ChatColor.RED + "Free This Pet",
-                         "free_pet",
-                         petData.getPetUUID(),
-                         Arrays.asList("" + ChatColor.DARK_RED + ChatColor.BOLD + "WARNING:", ChatColor.RED + "This is permanent!")
+         gui.setItem(31, this.createActionButton(
+                 Material.PLAYER_HEAD,
+                 ChatColor.GREEN + "Manage Friendly Players",
+                 "manage_friendly",
+                 petData.getPetUUID(),
+                 Collections.singletonList(ChatColor.GRAY + "Set players this pet will never attack.")
+         ));
+
+         gui.setItem(33, this.createActionButton(
+                 Material.LEAD,
+                 ChatColor.GOLD + "Transfer Pet",
+                 "open_transfer",
+                 petData.getPetUUID(),
+                 Arrays.asList(
+                         ChatColor.GRAY + "Give this pet to another player",
+                         ChatColor.YELLOW + "⚠ This cannot be undone!"
                  )
-         );
-         gui.setItem(26, this.createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Pet List", "back_to_main", null, null));
+         ));
+
+         gui.setItem(49, this.createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Pet List", "back_to_main", null, null));
+
+         gui.setItem(53, this.createActionButton(
+                 Material.BARRIER,
+                 ChatColor.RED + "Free This Pet",
+                 "confirm_free_pet_prompt", 
+                 petData.getPetUUID(),
+                 Arrays.asList("" + ChatColor.DARK_RED + ChatColor.BOLD + "WARNING:", ChatColor.RED + "This is permanent!")
+         ));
 
          player.openInventory(gui);
       }
@@ -759,7 +748,7 @@ public class PetManagerGUI {
       if (friendlyCount > 0) {
          lore.add("" + ChatColor.GREEN + friendlyCount + " Friendly Player" + (friendlyCount == 1 ? "" : "s"));
       }
-      // Add baby label if pet is a baby
+      
       if (petEntity instanceof Ageable ageable && !ageable.isAdult()) {
          lore.add(ChatColor.LIGHT_PURPLE + "Baby");
       }

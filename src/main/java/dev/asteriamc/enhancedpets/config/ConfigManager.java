@@ -1,3 +1,4 @@
+
 package dev.asteriamc.enhancedpets.config;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
@@ -27,14 +28,6 @@ public class ConfigManager {
          this.plugin.getLogger().warning("Invalid value for 'dog-creeper-behavior' in config.yml. Defaulting to NEUTRAL.");
          this.dogCreeperBehavior = "NEUTRAL";
       }
-
-      if (!this.config.contains("next-pet-id")) {
-         this.config.set("next-pet-id", 1);
-      }
-
-      if (!this.config.contains("pet-data")) {
-         this.config.createSection("pet-data");
-      }
    }
 
    public boolean isCatsAttackHostiles() {
@@ -51,16 +44,6 @@ public class ConfigManager {
 
    public boolean isShiftDoubleClickGUI(){
       return this.shiftdoubleclickgui;
-   }
-
-   public int getNextPetId() {
-      return this.config.getInt("next-pet-id", 1);
-   }
-
-   public void incrementAndSaveNextPetId() {
-      int nextId = this.getNextPetId();
-      this.config.set("next-pet-id", nextId + 1);
-      this.plugin.saveConfig();
    }
 
    public FileConfiguration getConfig() {

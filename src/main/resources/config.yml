@@ -18,8 +18,4 @@ ocelot-taming-legacy-style: false # Default to false to maintain vanilla behavio
 # If true, right-clicking within a window of 250ms on your OWN pet will open the GUI/
 shift-doubleclick-pet-gui: true
 
-# --- Internal Data ---
-# Do not modify this directly unless you know what you are doing.
-# This section will be automatically managed by the plugin.
-next-pet-id: 1
-pet-data: {}
+#END OF CONFIGURATION

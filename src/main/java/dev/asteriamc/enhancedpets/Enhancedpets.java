@@ -1,3 +1,4 @@
+
 package dev.asteriamc.enhancedpets;
 
 import dev.asteriamc.enhancedpets.commands.PetCommand;
@@ -6,7 +7,9 @@ import dev.asteriamc.enhancedpets.gui.PetGUIListener;
 import dev.asteriamc.enhancedpets.gui.PetManagerGUI;
 import dev.asteriamc.enhancedpets.listeners.PetListener;
 import dev.asteriamc.enhancedpets.listeners.PlayerChatListener;
+import dev.asteriamc.enhancedpets.listeners.PlayerConnectionListener;
 import dev.asteriamc.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.manager.PetStorageManager;
 import dev.asteriamc.enhancedpets.tasks.GrowthGuardTask;
 import dev.asteriamc.enhancedpets.tasks.PetTargetingTask;
 import java.util.Objects;
@@ -25,10 +28,13 @@ public final class Enhancedpets extends JavaPlugin {
    private PetGUIListener petGUIListener;
    private PetTargetingTask targetingTaskRunnable;
    private BukkitTask targetingTask;
+   private PetStorageManager storageManager;
 
    public void onEnable() {
       instance = this;
       this.getLogger().info("EnhancedPets is enabling...");
+      this.storageManager = new PetStorageManager(this);
+      this.storageManager.migrateFromConfig();
       this.configManager = new ConfigManager(this);
       this.petManager = new PetManager(this);
       this.guiManager = new PetManagerGUI(this);
@@ -39,15 +45,26 @@ public final class Enhancedpets extends JavaPlugin {
       Bukkit.getPluginManager().registerEvents(new PetListener(this), this);
       Bukkit.getPluginManager().registerEvents(this.petGUIListener, this);
       Bukkit.getPluginManager().registerEvents(new PlayerChatListener(this, this.petManager, this.guiManager, this.petGUIListener), this);
+      Bukkit.getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
+
+      
+      
+      if (!Bukkit.getOnlinePlayers().isEmpty()) {
+         getLogger().info("Reload detected. Loading pet data for " + Bukkit.getOnlinePlayers().size() + " online players...");
+         Bukkit.getOnlinePlayers().forEach(player -> petManager.loadPetsForPlayer(player.getUniqueId()));
+      }
+      
+
       this.startTargetingTask();
       this.getLogger().info("EnhancedPets has been enabled successfully!");
+
    }
 
    public void onDisable() {
       this.getLogger().info("EnhancedPets is disabling...");
       this.stopTargetingTask();
       if (this.petManager != null) {
-         this.petManager.savePetData();
+         this.petManager.saveAllCachedData();
       }
 
       this.getLogger().info("EnhancedPets has been disabled.");
@@ -56,9 +73,8 @@ public final class Enhancedpets extends JavaPlugin {
    private void loadConfigurationAndData() {
       try {
          this.configManager.loadConfig();
-         this.petManager.loadPetData();
       } catch (Exception var2) {
-         this.getLogger().log(Level.SEVERE, "Failed during initial configuration/data load!", (Throwable)var2);
+         this.getLogger().log(Level.SEVERE, "Failed during initial configuration load!", (Throwable)var2);
       }
    }
 
@@ -69,7 +85,7 @@ public final class Enhancedpets extends JavaPlugin {
       try {
          this.configManager.loadConfig();
          sender.sendMessage(ChatColor.GREEN + "Configuration reloaded successfully.");
-         sender.sendMessage(ChatColor.GRAY + "(Pet data was not reloaded from config.)");
+         sender.sendMessage(ChatColor.GRAY + "(Pet data is now stored in JSON files and was not reloaded.)");
       } catch (Exception var6) {
          sender.sendMessage(ChatColor.RED + "An error occurred while reloading the configuration. Check console logs!");
          this.getLogger().log(Level.SEVERE, "Error during EnhancedPets configuration reload:", (Throwable)var6);
@@ -113,6 +129,8 @@ public final class Enhancedpets extends JavaPlugin {
    public PetManager getPetManager() {
       return this.petManager;
    }
+
+   public PetStorageManager getStorageManager() { return this.storageManager; }
 
    public PetManagerGUI getGuiManager() {
       return this.guiManager;
