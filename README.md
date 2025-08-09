@@ -51,12 +51,11 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
     - Per-player JSON files; automatic autosave (every 2 minutes); one-time migration from legacy config.yml
 - 🔁 Reload Safe
     - /pets reload updates config and transparently restarts internal tasks
-- 🐙 Happy Ghast (optional/custom)
-    - If your server has a custom entity type named HAPPY_GHAST:
+- 🐙 Happy Ghast (1.21.6)
+    - If your server is 1.21.6+:
         - Right-click with a Snowball to tame (20% chance each try)
         - Manage via the same GUI and batch tools
         - Ride it and left-click to shoot a fireball (cooldown)
-        - Requires your server to define this custom mob, best on 1.21.6+
 
 Note on Aggressive mode: Pets in Aggressive mode proactively look for nearby valid targets they can see and that aren’t friendly or owned by you. This is not limited to “hostiles only.”
 
