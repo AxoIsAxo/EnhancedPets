@@ -518,6 +518,7 @@ public class PetManager {
       newData.setFriendlyPlayers(oldData.getFriendlyPlayers());
       newData.setFavorite(oldData.isFavorite());
       newData.setGrowthPaused(oldData.isGrowthPaused());
+      newData.setPausedAgeTicks(oldData.getPausedAgeTicks());
 
 
 
