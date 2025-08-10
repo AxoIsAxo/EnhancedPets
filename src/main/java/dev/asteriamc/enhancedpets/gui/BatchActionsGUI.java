@@ -20,21 +20,23 @@ import java.util.stream.Collectors;
 
 public class BatchActionsGUI {
 
-    private final Enhancedpets plugin;
-    private final PetManager petManager;
-    private final PetManagerGUI mainGui;
-
-    private final Map<UUID, Set<UUID>> playerSelections = new HashMap<>();
-
     public static final NamespacedKey BATCH_ACTION_KEY = new NamespacedKey(Enhancedpets.getInstance(), "batch_action");
     public static final NamespacedKey PET_TYPE_KEY = new NamespacedKey(Enhancedpets.getInstance(), "pet_type");
     public static final NamespacedKey PAGE_KEY = new NamespacedKey(Enhancedpets.getInstance(), "gui_page");
+    private final Enhancedpets plugin;
+    private final PetManager petManager;
+    private final PetManagerGUI mainGui;
+    private final Map<UUID, Set<UUID>> playerSelections = new HashMap<>();
 
 
     public BatchActionsGUI(Enhancedpets plugin, PetManagerGUI mainGui) {
         this.plugin = plugin;
         this.petManager = plugin.getPetManager();
         this.mainGui = mainGui;
+    }
+
+    public void clearSelections(UUID playerId) {
+        playerSelections.remove(playerId);
     }
 
     public void openPetTypeSelectionMenu(Player player) {
@@ -45,11 +47,11 @@ public class BatchActionsGUI {
                 .sorted(Comparator.comparing(Enum::name))
                 .collect(Collectors.toList());
 
-        
+
         int rows = (int) Math.ceil((double) petTypes.size() / 9.0);
-        int invSize = Math.max(18, (rows + 1) * 9); 
-        if (petTypes.isEmpty()) invSize = 27; 
-        invSize = Math.min(54, invSize); 
+        int invSize = Math.max(18, (rows + 1) * 9);
+        if (petTypes.isEmpty()) invSize = 27;
+        invSize = Math.min(54, invSize);
 
         Inventory gui = Bukkit.createInventory(player, invSize, ChatColor.DARK_AQUA + "Batch Actions: Select Type");
 
@@ -80,16 +82,16 @@ public class BatchActionsGUI {
                             String name1 = p1.getDisplayName();
                             String name2 = p2.getDisplayName();
 
-                            
+
                             Integer id1 = PetManagerGUI.extractPetIdFromName(name1);
                             Integer id2 = PetManagerGUI.extractPetIdFromName(name2);
 
-                            
+
                             if (id1 != null && id2 != null) {
                                 return Integer.compare(id1, id2);
                             }
 
-                            
+
                             return String.CASE_INSENSITIVE_ORDER.compare(name1, name2);
                         }))
                 .collect(Collectors.toList());
@@ -110,7 +112,7 @@ public class BatchActionsGUI {
             }
         }
 
-        
+
         gui.setItem(45, createNavButton(Material.OAK_DOOR, ChatColor.YELLOW + "Back to Type Selection", "open_type_select", petType, -1));
 
         if (page > 0) {
@@ -172,11 +174,11 @@ public class BatchActionsGUI {
             lore.add(ChatColor.YELLOW + "Click to toggle selection.");
             meta.setLore(lore);
 
-            
+
             meta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING, petData.getPetUUID().toString());
             meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, "toggle_pet_selection");
             meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, petData.getEntityType().name());
-            
+
             meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, currentPage);
 
             item.setItemMeta(meta);

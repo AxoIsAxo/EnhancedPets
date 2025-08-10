@@ -1,4 +1,3 @@
-
 package dev.asteriamc.enhancedpets.manager;
 
 import com.google.gson.Gson;
@@ -24,8 +23,9 @@ public class PetStorageManager {
     private final Enhancedpets plugin;
     private final File playerDataFolder;
     private final File dataFile;
-    private FileConfiguration dataConfig;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    private final java.util.concurrent.ConcurrentHashMap<UUID, Object> ioLocks = new java.util.concurrent.ConcurrentHashMap<>();
+    private FileConfiguration dataConfig;
 
     public PetStorageManager(Enhancedpets plugin) {
         this.plugin = plugin;
@@ -58,64 +58,76 @@ public class PetStorageManager {
             return new ArrayList<>();
         }
 
-        try (FileReader reader = new FileReader(playerFile)) {
-            Type listType = new TypeToken<ArrayList<HashMap<String, Object>>>() {}.getType();
-            List<Map<String, Object>> serializedPets = gson.fromJson(reader, listType);
+        Object lock = ioLocks.computeIfAbsent(ownerUUID, k -> new Object());
+        synchronized (lock) {
+            try {
+                String json = Files.readString(playerFile.toPath());
+                Type listType = new TypeToken<ArrayList<HashMap<String, Object>>>() {}.getType();
+                List<Map<String, Object>> serializedPets = gson.fromJson(json, listType);
 
-            if (serializedPets == null) return new ArrayList<>();
+                if (serializedPets == null) return new ArrayList<>();
 
-            List<PetData> pets = new ArrayList<>();
-            for (Map<String, Object> petMap : serializedPets) {
-                
-                
-                
-                
-                
-                
-                
-                
-
-                
-                if (petMap.containsKey("petUUID")) {
-                    UUID petUUID = UUID.fromString((String) petMap.get("petUUID"));
-                    PetData data = PetData.deserialize(petUUID, petMap);
-                    if (data != null) {
-                        pets.add(data);
+                List<PetData> pets = new ArrayList<>();
+                for (Map<String, Object> petMap : serializedPets) {
+                    if (petMap.containsKey("petUUID")) {
+                        UUID petUUID = UUID.fromString((String) petMap.get("petUUID"));
+                        PetData data = PetData.deserialize(petUUID, petMap);
+                        if (data != null) {
+                            pets.add(data);
+                        }
                     }
                 }
+                return pets;
+            } catch (IOException ex) {
+                plugin.getLogger().log(Level.SEVERE, "Could not load pet data for " + ownerUUID, ex);
+                return new ArrayList<>();
+            } catch (com.google.gson.JsonSyntaxException jse) {
+                plugin.getLogger().log(Level.SEVERE, "Corrupt JSON for " + ownerUUID + " — leaving file intact.", jse);
+                return new ArrayList<>();
             }
-            return pets;
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not load pet data for " + ownerUUID, e);
-            return new ArrayList<>();
         }
     }
 
     public void savePets(UUID ownerUUID, List<PetData> pets) {
         File playerFile = new File(playerDataFolder, ownerUUID.toString() + ".json");
-        
-        try {
-            Files.createDirectories(playerFile.toPath().getParent());
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not create playerdata directory!", e);
-            return;
-        }
 
-        
-        List<Map<String, Object>> serializedPets = pets.stream()
+        // Take a snapshot to avoid concurrent mutation during serialization
+        List<PetData> snapshot = (pets == null) ? Collections.emptyList() : new ArrayList<>(pets);
+
+        List<Map<String, Object>> serializedPets = snapshot.stream()
                 .map(petData -> {
                     Map<String, Object> map = petData.serialize();
-                    map.put("petUUID", petData.getPetUUID().toString()); 
+                    map.put("petUUID", petData.getPetUUID().toString());
                     return map;
                 })
                 .collect(Collectors.toList());
 
-        try (FileWriter writer = new FileWriter(playerFile)) {
-            gson.toJson(serializedPets, writer);
-        } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save pet data for " + ownerUUID, e);
+        Object lock = ioLocks.computeIfAbsent(ownerUUID, k -> new Object());
+        synchronized (lock) {
+            File tempFile = new File(playerFile.getParentFile(), playerFile.getName() + ".tmp");
+            try (FileWriter writer = new FileWriter(tempFile, false)) {
+                gson.toJson(serializedPets, writer);
+            } catch (IOException e) {
+                plugin.getLogger().log(Level.SEVERE, "Could not write temp pet data for " + ownerUUID, e);
+                return; // don’t clobber the original on failure
+            }
+
+            try {
+                try {
+                    Files.move(tempFile.toPath(), playerFile.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                            java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                } catch (IOException atomicUnsupported) {
+                    Files.move(tempFile.toPath(), playerFile.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                plugin.getLogger().log(Level.SEVERE, "Could not replace pet data for " + ownerUUID, e);
+                try { Files.deleteIfExists(tempFile.toPath()); } catch (IOException ignore) {}
+            }
         }
     }
+
 
     public void migrateFromConfig() {
         File configFile = new File(plugin.getDataFolder(), "config.yml");
@@ -123,7 +135,7 @@ public class PetStorageManager {
 
         FileConfiguration oldConfig = YamlConfiguration.loadConfiguration(configFile);
         if (!oldConfig.isConfigurationSection("pet-data") || oldConfig.getConfigurationSection("pet-data").getKeys(false).isEmpty()) {
-            return; 
+            return;
         }
 
         plugin.getLogger().info("Old pet data found in config.yml. Starting one-time migration...");
@@ -146,10 +158,10 @@ public class PetStorageManager {
             return;
         }
 
-        
+
         petsByOwner.forEach(this::savePets);
 
-        
+
         oldConfig.set("pet-data", null);
         try {
             oldConfig.save(configFile);

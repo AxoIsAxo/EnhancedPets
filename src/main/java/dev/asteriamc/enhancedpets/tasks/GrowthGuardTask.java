@@ -20,7 +20,7 @@ public class GrowthGuardTask extends BukkitRunnable {
             if (!data.isGrowthPaused()) return;
             Entity e = Bukkit.getEntity(data.getPetUUID());
             if (e instanceof Ageable a && !a.isAdult()) {
-                a.setAge(Integer.MIN_VALUE); 
+                a.setAge(Integer.MIN_VALUE);
             }
         });
     }

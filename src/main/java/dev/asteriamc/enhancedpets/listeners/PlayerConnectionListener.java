@@ -10,23 +10,31 @@ import org.bukkit.event.player.PlayerQuitEvent;
 
 public class PlayerConnectionListener implements Listener {
 
+    private final Enhancedpets plugin;
     private final PetManager petManager;
 
+
     public PlayerConnectionListener(Enhancedpets plugin) {
+        this.plugin = plugin;
         this.petManager = plugin.getPetManager();
     }
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        
+
         petManager.loadPetsForPlayer(player.getUniqueId());
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        
+
+        // purge ephemeral maps/state
+        plugin.getPetGUIListener().forgetPlayer(player.getUniqueId());
+        plugin.getPetListener().forgetPlayer(player.getUniqueId());
+
+        // unload pet data (async save inside)
         petManager.unloadPetsForPlayer(player.getUniqueId());
     }
 }
