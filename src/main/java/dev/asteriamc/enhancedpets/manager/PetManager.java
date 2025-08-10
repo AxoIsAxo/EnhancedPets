@@ -1,4 +1,3 @@
-
 package dev.asteriamc.enhancedpets.manager;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
@@ -110,7 +109,7 @@ public class PetManager {
          }
       }
       if (newPetsFound > 0) {
-         
+
          List<PetData> petsToSave = getPetsOwnedBy(ownerUUID);
          storageManager.savePets(ownerUUID, petsToSave);
       }
@@ -228,7 +227,7 @@ public class PetManager {
       }
 
       data.setMetadata(metadata);
-      plugin.getLogger().info("Captured comprehensive metadata for dead pet: " + data.getDisplayName());
+      plugin.getLogger().info("Captured metadata for dead pet: " + data.getDisplayName());
    }
 
 
@@ -240,7 +239,7 @@ public class PetManager {
 
       if (newPetEntity instanceof Ageable a && metadata.containsKey("isAdult")) {
          if (!(boolean) metadata.get("isAdult")) {
-            a.setAge((Integer) metadata.get("age"));
+            a.setAge(((Number) metadata.get("age")).intValue());
          }
       }
 
@@ -253,34 +252,34 @@ public class PetManager {
 
       if (metadata.containsKey("maxHealth")) {
          if (newPetEntity instanceof LivingEntity le) {
-            le.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue((Double) metadata.get("maxHealth"));
-            le.setHealth((Double) metadata.get("maxHealth"));
+            le.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(((Number) metadata.get("maxHealth")).doubleValue());
+            le.setHealth(((Number) metadata.get("maxHealth")).doubleValue());
          }
       }
 
       if (newPetEntity instanceof AbstractHorse ah) {
          if (metadata.containsKey("jumpStrength")) {
-            ah.setJumpStrength((Double) metadata.get("jumpStrength"));
+            ah.setJumpStrength(((Number) metadata.get("jumpStrength")).doubleValue());
          }
          if (metadata.containsKey("movementSpeed")) {
-            double speed = (Double) metadata.get("movementSpeed");
+            double speed = ((Number) metadata.get("movementSpeed")).doubleValue();
             if (speed > 0) {
                ah.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(speed);
             }
          }
          if (metadata.containsKey("domestication")) {
-            ah.setDomestication((Integer) metadata.get("domestication"));
+            ah.setDomestication(((Number) metadata.get("domestication")).intValue());
          }
          if (metadata.containsKey("maxDomestication")) {
-            ah.setMaxDomestication((Integer) metadata.get("maxDomestication"));
+            ah.setMaxDomestication(((Number) metadata.get("maxDomestication")).intValue());
          }
 
-         
+
          if (metadata.containsKey("inventory")) {
             /*@SuppressWarnings("unchecked")
             List<Map<String, Object>> inventoryData = (List<Map<String, Object>>) metadata.get("inventory");
             for (Map<String, Object> itemData : inventoryData) {
-               int slot = (Integer) itemData.get("slot");
+               int slot = ((Number) itemData.get("slot")).intValue();
                @SuppressWarnings("unchecked")
                Map<String, Object> itemMap = (Map<String, Object>) itemData.get("item");
                ItemStack item = ItemStack.deserialize(itemMap);
@@ -288,7 +287,7 @@ public class PetManager {
             }*/
          }
 
-         
+
          if (ah instanceof ChestedHorse ch && metadata.containsKey("hasChest")) {
             /*ch.setCarryingChest((Boolean) metadata.get("hasChest"));*/
          }
@@ -306,7 +305,7 @@ public class PetManager {
             l.setColor(Llama.Color.valueOf((String) metadata.get("llamaColor")));
          }
          if (metadata.containsKey("llamaStrength")) {
-            l.setStrength((Integer) metadata.get("llamaStrength"));
+            l.setStrength(((Number) metadata.get("llamaStrength")).intValue());
          }
          if (metadata.containsKey("decoration")) {
             @SuppressWarnings("unchecked")
@@ -362,8 +361,8 @@ public class PetManager {
       }
 
 
-      
-      
+
+
       if (metadata.containsKey("potionEffects") && newPetEntity instanceof LivingEntity le) {
          /*@SuppressWarnings("unchecked")
          List<Map<String, Object>> effectsData = (List<Map<String, Object>>) metadata.get("potionEffects");
@@ -371,8 +370,8 @@ public class PetManager {
             try {
                PotionEffectType type = PotionEffectType.getByName((String) effectData.get("type"));
                if (type != null) {
-                  int duration = (Integer) effectData.get("duration");
-                  int amplifier = (Integer) effectData.get("amplifier");
+                  int duration = ((Number) effectData.get("duration")).intValue();
+                  int amplifier = ((Number) effectData.get("amplifier")).intValue();
                   boolean ambient = (Boolean) effectData.get("ambient");
                   boolean particles = (Boolean) effectData.get("particles");
                   boolean icon = (Boolean) effectData.get("icon");
@@ -388,7 +387,7 @@ public class PetManager {
 
 
       if (newPetEntity instanceof Animals animal && metadata.containsKey("loveModeTicks")) {
-         int loveTicks = (Integer) metadata.get("loveModeTicks");
+         int loveTicks = ((Number) metadata.get("loveModeTicks")).intValue();
          if (loveTicks > 0) {
             animal.setLoveModeTicks(loveTicks);
          }
@@ -398,13 +397,13 @@ public class PetManager {
          s.setSitting((Boolean) metadata.get("isSitting"));
       }
 
-      plugin.getLogger().info("Applied comprehensive metadata to revived pet: " + petData.getDisplayName());
+      plugin.getLogger().info("Applied metadata to revived pet: " + petData.getDisplayName());
    }
 
-   
 
 
-   
+
+
    private boolean executeCommand(String command) {
       try {
          return Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
@@ -413,7 +412,7 @@ public class PetManager {
       }
    }
 
-   
+
    private static class CommandOutputCapture implements CommandSender {
       private StringBuilder output = new StringBuilder();
 
@@ -433,7 +432,7 @@ public class PetManager {
          return output.toString();
       }
 
-      
+
       @Override
       public String getName() { return "VariantCapture"; }
 
@@ -504,30 +503,30 @@ public class PetManager {
       }
    }
 
-   
+
    public void revivePet(PetData oldData, LivingEntity newPetEntity) {
       if (oldData == null || newPetEntity == null) return;
 
-      
+
       this.petDataMap.remove(oldData.getPetUUID());
 
-      
+
       PetData newData = new PetData(newPetEntity.getUniqueId(), oldData.getOwnerUUID(), oldData.getEntityType(), oldData.getDisplayName());
 
-      
+
       newData.setMode(oldData.getMode());
       newData.setFriendlyPlayers(oldData.getFriendlyPlayers());
       newData.setFavorite(oldData.isFavorite());
       newData.setGrowthPaused(oldData.isGrowthPaused());
-      
 
-      
+
+
       applyMetadata(newPetEntity, oldData);
 
-      
+
       this.petDataMap.put(newData.getPetUUID(), newData);
 
-      
+
       newPetEntity.setCustomName(ChatColor.translateAlternateColorCodes('&', newData.getDisplayName()));
       if(newPetEntity instanceof Tameable t) {
          Player owner = Bukkit.getPlayer(newData.getOwnerUUID());
@@ -539,16 +538,38 @@ public class PetManager {
       queueOwnerSave(newData.getOwnerUUID());
    }
 
-   public void setGrowthPaused(UUID petUUID, boolean paused) {
-      PetData data = getPetData(petUUID);
-      if (data == null) return;
-      data.setGrowthPaused(paused);
-      Entity e = Bukkit.getEntity(petUUID);
-      if (e instanceof Ageable a) {
-         a.setAge(paused ? Integer.MIN_VALUE : -24000);
+   public void setGrowthPaused(UUID petId, boolean isPaused) {
+      PetData petData = getPetData(petId);
+      if (petData == null) return;
+      petData.setGrowthPaused(isPaused);
+      Entity entity = Bukkit.getEntity(petId);
+      if (entity instanceof Ageable ageable) {
+         if (isPaused) {
+            petData.setPausedAgeTicks(ageable.getAge());
+            ageable.setAge(Integer.MIN_VALUE);
+         } else {
+            ageable.setAge(petData.getPausedAgeTicks());
+            petData.setPausedAgeTicks(-24000);
+         }
       }
-      queueOwnerSave(data.getOwnerUUID());
+      queueOwnerSave(petData.getOwnerUUID());
    }
+
+   public void resetPetAge(UUID petId) {
+      PetData petData = getPetData(petId);
+      if (petData == null || petData.isDead()) return; // <-- FIX: Don't run on dead pets
+
+      Entity entity = Bukkit.getEntity(petId);
+      if (!(entity instanceof Ageable ageable) || ageable.isAdult()) return;
+
+      // Set age to default grow-up time
+      ageable.setAge(-24000);
+      petData.setPausedAgeTicks(-24000);
+
+      queueOwnerSave(petData.getOwnerUUID());
+   }
+
+
 
    public void unregisterPet(LivingEntity petEntity) {
       if (petEntity == null) return;
@@ -556,28 +577,28 @@ public class PetManager {
       PetData data = this.petDataMap.get(petUUID);
       if (data != null) {
          data.setDead(true);
-         captureMetadata(data, petEntity); 
+         captureMetadata(data, petEntity);
          this.plugin.getLogger().info("Marking pet as dead: " + data.getDisplayName() + " (UUID: " + petUUID + ")");
       }
       queueOwnerSave(data.getOwnerUUID());
    }
 
-   
+
    public void unregisterPet(UUID petUUID) {
       PetData data = this.petDataMap.get(petUUID);
       if (data != null) {
          data.setDead(true);
-         
+
          this.plugin.getLogger().info("Marking pet as dead: " + data.getDisplayName() + " (UUID: " + petUUID + ")");
       }
       queueOwnerSave(data.getOwnerUUID());
    }
 
    public void freePetCompletely(UUID petUUID) {
-      PetData removedData = this.petDataMap.remove(petUUID); 
+      PetData removedData = this.petDataMap.remove(petUUID);
 
       if (removedData != null) {
-         
+
          Bukkit.getScheduler().runTask(plugin, () -> {
             Entity entity = Bukkit.getEntity(petUUID);
             if (entity instanceof Tameable t && t.isTamed()) {
@@ -600,11 +621,11 @@ public class PetManager {
 
          plugin.getLogger().info("Completely removing pet: " + removedData.getDisplayName() + " (UUID: " + petUUID + ")");
 
-         
-         
+
+
          unloadPetsForPlayer(removedData.getOwnerUUID());
-         loadPetsForPlayer(removedData.getOwnerUUID()); 
-         
+         loadPetsForPlayer(removedData.getOwnerUUID());
+
       }
    }
 

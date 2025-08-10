@@ -381,6 +381,7 @@ public class PetManagerGUI {
          String favoriteDisplayName = (isFavorite ? ChatColor.GOLD + "★ " : "") + ChatColor.YELLOW + ChatColor.BOLD + petData.getDisplayName();
 
          if (petData.isDead()) {
+            gui = Bukkit.createInventory(player, 27, title);
             ItemStack skull = new ItemStack(Material.SKELETON_SKULL);
             SkullMeta meta = (SkullMeta) skull.getItemMeta();
             meta.setDisplayName(ChatColor.RED + "[DEAD] " + petData.getDisplayName());

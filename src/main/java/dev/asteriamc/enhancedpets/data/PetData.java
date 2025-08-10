@@ -20,8 +20,9 @@ public class PetData {
    private Set<UUID> friendlyPlayers = new HashSet<>();
    private boolean favorite = false;
    private boolean growthPaused = false;
+   private int pausedAgeTicks = 0;
    private boolean dead = false;
-   private Map<String, Object> metadata = new HashMap<>(); 
+   private Map<String, Object> metadata = new HashMap<>();
 
    public PetData(UUID petUUID, UUID ownerUUID, EntityType entityType, String displayName) {
       this.petUUID = petUUID;
@@ -52,6 +53,7 @@ public class PetData {
       map.put("friendlyPlayers", this.friendlyPlayers.stream().map(UUID::toString).collect(Collectors.toList()));
       map.put("favorite", this.favorite);
       map.put("growthPaused", this.growthPaused);
+      map.put("pausedAgeTicks", this.pausedAgeTicks);
       map.put("dead", this.dead);
       if (this.metadata != null && !this.metadata.isEmpty()) { 
          map.put("metadata", this.metadata);
@@ -67,9 +69,10 @@ public class PetData {
          BehaviorMode mode = BehaviorMode.valueOf((String)map.getOrDefault("mode", "NEUTRAL"));
          boolean favorite = (boolean) map.getOrDefault("favorite", false);
          boolean growthPaused = (boolean) map.getOrDefault("growthPaused", false);
+         int pausedAgeTicks = ((Number) map.getOrDefault("pausedAgeTicks", 0)).intValue();
          boolean dead = (boolean) map.getOrDefault("dead", false);
 
-         Map<String, Object> metadata = (Map<String, Object>) map.get("metadata"); 
+         Map<String, Object> metadata = (Map<String, Object>) map.get("metadata");
 
          Set<UUID> friendlies = new HashSet<>();
          Object friendliesObj = map.get("friendlyPlayers");
@@ -92,8 +95,9 @@ public class PetData {
          data.setFriendlyPlayers(friendlies);
          data.setFavorite(favorite);
          data.setGrowthPaused(growthPaused);
+         data.setPausedAgeTicks(pausedAgeTicks);
          data.setDead(dead);
-         if (metadata != null) { 
+         if (metadata != null) {
             data.setMetadata(metadata);
          }
          return data;
@@ -113,6 +117,7 @@ public class PetData {
    public EntityType getEntityType() { return this.entityType; }
    public boolean isGrowthPaused() { return growthPaused; }
    public void setGrowthPaused(boolean growthPaused) { this.growthPaused = growthPaused; }
+   public void setPausedAgeTicks(int pausedAgeTicks) { this.pausedAgeTicks = pausedAgeTicks; }
    public boolean isDead() { return dead; }
    public void setDead(boolean dead) { this.dead = dead; }
    public String getDisplayName() { return this.displayName; }
@@ -128,4 +133,8 @@ public class PetData {
    public boolean isFriendlyPlayer(UUID playerUUID) { return this.ownerUUID.equals(playerUUID) || this.friendlyPlayers.contains(playerUUID); }
    public boolean isFavorite() { return this.favorite; }
    public void setFavorite(boolean favorite) { this.favorite = favorite; }
+
+   public int getPausedAgeTicks() {
+      return this.pausedAgeTicks;
+   }
 }
