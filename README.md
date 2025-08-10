@@ -46,6 +46,10 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
 - 👥 Friendly Players (Whitelist)
     - Add players your pet should never attack; manage per-pet or in batch
     - Apes together stronk
+- 🤝 Mutual Non-Aggression
+  - Upon enabling this, pets won't attack players (even in aggressive mode)
+  - In return players cant hurt said pets (Through direct attacks)
+  - peace treaty goes hard! use this feature irresponsibly... unless dog army
 - 🧺 Batch Actions
     - Select a type (e.g., Wolves) → pick pets → do things at scale:
     - Set modes, toggle favorites, sit/stand, teleport, calm, manage friendlies, transfer, or free
