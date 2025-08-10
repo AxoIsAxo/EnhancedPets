@@ -30,7 +30,8 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
     - Passive, Neutral, Aggressive — switch instantly from the GUI
     - AKA ‘we vibe’, ‘default’, and ‘try me.
 - 🧭 Teleport & Calm
-    - Summon any pet to you; clear targets/anger with a click
+    - Summon any pet to you
+    - clear targets/anger with a click
 - 🏷️ Rename (with validation)
     - Rename via chat (A–Z, 0–9, _ and -), or reset to a clean default if invalid
     - Bypassing nametag requirements since 2025
