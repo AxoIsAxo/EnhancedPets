@@ -9,8 +9,8 @@
 > Wolves, cats, parrots, and more — but smarter, friendlier, and easier to manage.
 
 Thanks to:
-- AxoIsAxo
 - cystol
+- AxoIsAxo
 
 ---
 
@@ -70,12 +70,13 @@ Note on other stuff: Passive Aggressive mode is in the works and will be release
 ---
 
 ## 🖼️ Screens & UX
+Everything beautifully designed to match aesthetic and usability (Real)
 
 - Main menu shows all your pets, sorted by favorites → type → name/ID
 - Per-pet management screen with quick actions and safety confirmations
 - Batch menus for type selection, pet selection, and mass-management
 
-(Images coming soon!)
+(Images coming soon!) (Maybe GIFs)
 
 ---
 
@@ -95,7 +96,7 @@ Build from source (Maven)
 
 Requirements
 - Java 17+
-- Spigot/Paper 1.17–1.21.x (some advanced features—like wolf variants—are best on 1.21+)
+- Spigot/Paper 1.17–1.21.x (some new features—like wolf variants—are best on 1.21+)
 
 ---
 
@@ -143,6 +144,7 @@ Notes
 ---
 
 ## 🔍 Data & Autosave
+Meticulously Tested to ensure loss only where no one is looking (jk its pretty good)
 
 - Each player’s pets are saved in plugins/EnhancedPets/playerdata/<player-uuid>.json
 - Autosave runs asynchronously every 2 minutes
@@ -175,9 +177,9 @@ Should you find an attribute you feel is yet to be etched in our restoration lis
 
 ## 🧠 Tips for Players
 
-- Use Favorites (★) to quickly find your main companions
+- Use Favorites (★) to quickly pin your main companions to the TOP
 - Use Batch Actions to handle big stables in seconds
-- “Scan for My Pets” helps if you tamed animals before installing the plugin
+- “Scan for My Pets” helps if you tamed animals before installing the plugin (Use every 10 seconds to prove OCD (medically certified))
 - Reviving costs a Nether Star — plan accordingly!
 
 ---
@@ -191,13 +193,13 @@ Should you find an attribute you feel is yet to be etched in our restoration lis
 
 ## 🤝 Support
 
-- Questions, ideas, or need help? Join our Discord: https://discord.gg/b7BVkJ56mR
+- Questions, ideas, or need help? Join our Discord: https://discord.gg/b7BVkJ56mR (WE NEED YOU PEEPS)
 
 ---
 
 ## 🙌 Credits
 
-- Code & design: AxoIsAxo, cystol
+- Code & design: cystol, AxoIsAxo
 - Community feedback and testing: You 💙
 
 Bring your pets to life — slightly more effectively than vanilla.
