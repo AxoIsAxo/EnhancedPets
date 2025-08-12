@@ -106,18 +106,19 @@ public class PetListener implements Listener {
                 PetData data = this.petManager.getPetData(pet.getUniqueId());
                 if (data != null) {
                     if (!pet.isValid()) {
-                        this.plugin.getLogger().info("Managed pet " + data.getDisplayName() + " became invalid. Unregistering.");
-                        this.petManager.removePetRecord(pet.getUniqueId());
+                        // Entity likely unloading — do not destroy persistent record
+                        this.plugin.getLogger().fine("Managed pet " + data.getDisplayName() + " became invalid after unleash. Keeping record.");
                     } else {
                         UUID currentOwner = pet.getOwnerUniqueId();
                         if (currentOwner == null || !currentOwner.equals(data.getOwnerUUID())) {
-                            this.plugin.getLogger().info("Pet " + data.getDisplayName() + " owner changed unexpectedly or lost owner. Untaming and unregistering.");
-                            if (pet.isTamed()) {
-                                pet.setOwner(null);
-                                pet.setTamed(false);
+                            this.plugin.getLogger().warning("Pet " + data.getDisplayName() + " owner mismatch on unleash. Restoring owner if possible.");
+                            // Try to reattach to stored owner if online
+                            Player owner = Bukkit.getPlayer(data.getOwnerUUID());
+                            if (owner != null) {
+                                pet.setOwner(owner);
+                                pet.setTamed(true);
                             }
-
-                            this.petManager.removePetRecord(pet.getUniqueId());
+                            // Never remove the stored record here
                         }
                     }
                 }
@@ -412,7 +413,4 @@ public class PetListener implements Listener {
             return System.currentTimeMillis() > expiry;
         }
     }
-
-
 }
-

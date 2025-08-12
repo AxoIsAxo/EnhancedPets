@@ -24,6 +24,8 @@ public class PetManager {
     private final PetStorageManager storageManager;
     private final Map<UUID, PetData> petDataMap = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitTask> pendingOwnerSaves = new ConcurrentHashMap<>();
+    // Track owners whose full dataset is currently loaded (i.e., they are online and we loaded their full file)
+    private final java.util.Set<UUID> loadedOwners = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private void cancelPendingOwnerSave(UUID ownerUUID) {
         if (ownerUUID == null) return;
@@ -77,10 +79,38 @@ public class PetManager {
         }
 
         UUID petUUID = pet.getUniqueId();
+        UUID ownerUUID = pet.getOwnerUniqueId();
+
+        // If the pet is already in the live cache, just return it.
         if (this.petDataMap.containsKey(petUUID)) {
             return this.petDataMap.get(petUUID);
         }
 
+        // --- START OF THE CRITICAL FIX ---
+        // If the owner of this pet is offline, we MUST check their file first
+        // to avoid creating a new "amnesiac" PetData object.
+        if (!isOwnerLoaded(ownerUUID)) {
+            plugin.getLogger().fine("Registering a pet for an offline owner (" + ownerUUID + "). Checking persistent storage first...");
+            List<PetData> offlinePets = storageManager.loadPets(ownerUUID);
+            Optional<PetData> existingData = offlinePets.stream()
+                    .filter(p -> p.getPetUUID().equals(petUUID))
+                    .findFirst();
+
+            if (existingData.isPresent()) {
+                plugin.getLogger().info("Found existing persistent data for offline owner's pet " + petUUID + ". Loading it into cache.");
+                PetData data = existingData.get();
+                this.petDataMap.put(petUUID, data);
+                // We don't need to queue a save here, as we haven't changed anything.
+                return data;
+            }
+            // If we're here, it means the owner is offline AND this is a genuinely
+            // new pet not found in their file. We can proceed to create a new record.
+        }
+        // --- END OF THE CRITICAL FIX ---
+
+
+        // This part of the logic is now only reached if the owner is online,
+        // or if the owner is offline but the pet is truly new.
         int id = -1;
         if (pet.getPersistentDataContainer().has(PET_ID_KEY, PersistentDataType.INTEGER)) {
             id = pet.getPersistentDataContainer().get(PET_ID_KEY, PersistentDataType.INTEGER);
@@ -96,9 +126,9 @@ public class PetManager {
             finalName = this.assignNewDefaultName(pet.getType());
         }
 
-        PetData data = new PetData(petUUID, pet.getOwnerUniqueId(), pet.getType(), finalName);
+        PetData data = new PetData(petUUID, ownerUUID, pet.getType(), finalName);
         this.petDataMap.put(petUUID, data);
-        String ownerName = Bukkit.getOfflinePlayer(pet.getOwnerUniqueId()).getName();
+        String ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
         this.plugin.getLogger().info("Registered new pet: " + finalName + " (Owner: " + ownerName + ")");
         queueOwnerSave(data.getOwnerUUID());
         return data;
@@ -589,6 +619,34 @@ public class PetManager {
         return formatted.toString().trim();
     }
 
+    public boolean isOwnerLoaded(UUID ownerUUID) {
+        return loadedOwners.contains(ownerUUID);
+    }
+
+    // MERGE-SAFE SAVE for offline owners (runs async)
+    private void mergeSaveOwner(UUID ownerUUID) {
+        // Snapshot current in-memory pets for this owner
+        List<PetData> current = getPetsOwnedBy(ownerUUID);
+
+        // If we have nothing in memory, don’t touch the file
+        if (current.isEmpty()) {
+            plugin.getLogger().fine("mergeSaveOwner: no in-memory pets for offline owner " + ownerUUID + " — skipping to avoid clobbering.");
+            return;
+        }
+
+        // Load existing file and merge: prefer existing records if the same petUUID exists,
+        // so we don’t lose favorites/friendlies/mode, etc.
+        List<PetData> existing = storageManager.loadPets(ownerUUID);
+        java.util.Map<UUID, PetData> merged = new java.util.LinkedHashMap<>();
+
+        for (PetData p : existing) merged.put(p.getPetUUID(), p);
+        // Then, overwrite with any in-memory data, as it is more current.
+        for (PetData p : current) merged.put(p.getPetUUID(), p);
+
+        storageManager.savePets(ownerUUID, new java.util.ArrayList<>(merged.values()));
+        plugin.getLogger().fine("mergeSaveOwner: merged (" + current.size() + " in-memory) into (" + existing.size() + " existing) for owner " + ownerUUID);
+    }
+
     public void queueOwnerSave(UUID ownerUUID) {
         if (ownerUUID == null) return;
 
@@ -606,8 +664,14 @@ public class PetManager {
                 plugin,
                 () -> {
                     pendingOwnerSaves.remove(ownerUUID);
-                    List<PetData> pets = getPetsOwnedBy(ownerUUID);
-                    storageManager.savePets(ownerUUID, pets);
+                    if (isOwnerLoaded(ownerUUID)) {
+                        // Full dataset is loaded, regular save is safe
+                        List<PetData> pets = getPetsOwnedBy(ownerUUID);
+                        storageManager.savePets(ownerUUID, pets);
+                    } else {
+                        // Owner is offline/partial dataset in memory: merge to avoid clobbering
+                        mergeSaveOwner(ownerUUID);
+                    }
                 },
                 40L // ~2 seconds debounce
         ));
@@ -644,10 +708,22 @@ public class PetManager {
         Map<UUID, List<PetData>> petsByOwner = this.petDataMap.values().stream()
                 .collect(java.util.stream.Collectors.groupingBy(PetData::getOwnerUUID));
 
-        petsByOwner.forEach(storageManager::savePets);
-        plugin.getLogger().info("Saved all cached pet data for " + petsByOwner.size() + " players (immediate).");
+        petsByOwner.forEach((owner, list) -> {
+            if (isOwnerLoaded(owner)) {
+                storageManager.savePets(owner, list);
+            } else {
+                // Merge to avoid clobbering file for owners who aren’t fully loaded
+                List<PetData> existing = storageManager.loadPets(owner);
+                java.util.Map<UUID, PetData> merged = new java.util.LinkedHashMap<>();
+                // First, load all data from the file.
+                for (PetData p : existing) merged.put(p.getPetUUID(), p);
+                // THEN, overwrite with any in-memory data, as it is more current (e.g., dead status).
+                for (PetData p : list) merged.put(p.getPetUUID(), p);
+                storageManager.savePets(owner, new java.util.ArrayList<>(merged.values()));
+            }
+        });
+        plugin.getLogger().info("Saved all cached pet data (merge-safe) for " + petsByOwner.size() + " players (immediate).");
     }
-
 
     public void saveAllCachedData() {
         if (!plugin.isEnabled()) {
@@ -671,6 +747,7 @@ public class PetManager {
             List<PetData> loadedPets = storageManager.loadPets(ownerUUID);
             Bukkit.getScheduler().runTask(plugin, () -> {
                 loadedPets.forEach(pet -> petDataMap.put(pet.getPetUUID(), pet));
+                loadedOwners.add(ownerUUID);
                 plugin.getLogger().info("Loaded " + loadedPets.size() + " pets for " + ownerUUID);
             });
         });
@@ -683,6 +760,7 @@ public class PetManager {
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> storageManager.savePets(ownerUUID, petsToSave));
         }
         petsToSave.forEach(pet -> petDataMap.remove(pet.getPetUUID()));
+        loadedOwners.remove(ownerUUID);
         plugin.getLogger().info("Unloaded " + petsToSave.size() + " pets for " + ownerUUID);
     }
 
