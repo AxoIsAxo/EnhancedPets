@@ -27,7 +27,7 @@ public class PetTargetingTask extends BukkitRunnable {
 
     @Override
     public void run() {
-        // Collect aggressive pets
+
         java.util.List<PetData> pets = new java.util.ArrayList<>();
         for (PetData pd : this.petManager.getAllPetData()) {
             if (pd.getMode() == BehaviorMode.AGGRESSIVE) {
@@ -57,13 +57,13 @@ public class PetTargetingTask extends BukkitRunnable {
                 if (!(nearby instanceof LivingEntity target)) continue;
                 if (target.equals(petCreature) || target.isDead() || !target.isValid()) continue;
 
-                // Skip owner, friendly players, and owner's other tamed entities
+
                 if (target.getUniqueId().equals(petData.getOwnerUUID())) continue;
                 if (petData.isFriendlyPlayer(target.getUniqueId())) continue;
                 if (target instanceof Tameable nearbyTameable && nearbyTameable.isTamed()
                         && petData.getOwnerUUID().equals(nearbyTameable.getOwnerUniqueId())) continue;
 
-                // Respect mutual non-aggression: don't target players if protected
+
                 if (target instanceof Player p && p.getGameMode() == GameMode.SPECTATOR) continue;
                 if (target instanceof Player && petData.isProtectedFromPlayers()) continue;
 

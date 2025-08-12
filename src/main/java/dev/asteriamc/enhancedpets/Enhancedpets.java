@@ -50,7 +50,7 @@ public final class Enhancedpets extends JavaPlugin {
         PetCommand petCommandExecutor = new PetCommand(this, this.guiManager);
         Objects.requireNonNull(this.getCommand("pets")).setExecutor(petCommandExecutor);
 
-        // Keep references to listeners that have per-player state
+
         this.petListener = new PetListener(this);
 
         Bukkit.getPluginManager().registerEvents(this.petListener, this);
@@ -89,12 +89,12 @@ public final class Enhancedpets extends JavaPlugin {
 
     private void startAutosaveTask() {
         stopAutosaveTask();
-        long periodTicks = 2L * 60L * 20L; // 2 minutes
+        long periodTicks = 2L * 60L * 20L;
         autosaveTask = Bukkit.getScheduler().runTaskTimerAsynchronously(
                 this,
                 () -> {
                     if (petManager != null) {
-                        petManager.saveAllCachedData(); // grouped by owner
+                        petManager.saveAllCachedData();
                     }
                 },
                 periodTicks, periodTicks

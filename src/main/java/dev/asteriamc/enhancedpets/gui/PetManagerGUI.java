@@ -180,7 +180,7 @@ public class PetManagerGUI {
         boolean allSitting = allCanSit && sittingCount == petEntities.size();
         boolean anySitting = allCanSit && sittingCount > 0;
 
-        // Protection aggregation
+
         long protectedCount = selectedPets.stream().filter(PetData::isProtectedFromPlayers).count();
         boolean allProtected = protectedCount == selectedPets.size();
         boolean anyProtected = protectedCount > 0;
@@ -248,7 +248,7 @@ public class PetManagerGUI {
         gui.setItem(22, this.createActionButton(Material.ENDER_PEARL, ChatColor.LIGHT_PURPLE + "Teleport Pets to You", "batch_teleport", null, Collections.singletonList(ChatColor.GRAY + "Summons all selected pets.")));
         gui.setItem(24, this.createActionButton(Material.MILK_BUCKET, ChatColor.AQUA + "Calm Pets", "batch_calm", null, Collections.singletonList(ChatColor.GRAY + "Clears targets for all selected pets.")));
 
-        // NEW: Batch Mutual Non-Aggression toggle
+
         String protName = allProtected
                 ? ChatColor.YELLOW + "Disable Mutual Non-Aggression"
                 : ChatColor.GREEN + "Enable Mutual Non-Aggression";
@@ -529,7 +529,7 @@ public class PetManagerGUI {
                     )
             ));
 
-            // NEW: Mutual Non-Aggression toggle
+
             String protName = protectionEnabled
                     ? ChatColor.YELLOW + "Disable Mutual Non-Aggression"
                     : ChatColor.GREEN + "Enable Mutual Non-Aggression";
@@ -559,7 +559,6 @@ public class PetManagerGUI {
             player.openInventory(gui);
         }
     }
-
 
 
     public void openConfirmFreeMenu(Player player, UUID petUUID) {

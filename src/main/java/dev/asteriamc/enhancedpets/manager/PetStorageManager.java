@@ -9,7 +9,6 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -62,7 +61,8 @@ public class PetStorageManager {
         synchronized (lock) {
             try {
                 String json = Files.readString(playerFile.toPath());
-                Type listType = new TypeToken<ArrayList<HashMap<String, Object>>>() {}.getType();
+                Type listType = new TypeToken<ArrayList<HashMap<String, Object>>>() {
+                }.getType();
                 List<Map<String, Object>> serializedPets = gson.fromJson(json, listType);
 
                 if (serializedPets == null) return new ArrayList<>();
@@ -91,7 +91,7 @@ public class PetStorageManager {
     public void savePets(UUID ownerUUID, List<PetData> pets) {
         File playerFile = new File(playerDataFolder, ownerUUID.toString() + ".json");
 
-        // Take a snapshot to avoid concurrent mutation during serialization
+
         List<PetData> snapshot = (pets == null) ? Collections.emptyList() : new ArrayList<>(pets);
 
         List<Map<String, Object>> serializedPets = snapshot.stream()
@@ -109,7 +109,7 @@ public class PetStorageManager {
                 gson.toJson(serializedPets, writer);
             } catch (IOException e) {
                 plugin.getLogger().log(Level.SEVERE, "Could not write temp pet data for " + ownerUUID, e);
-                return; // don’t clobber the original on failure
+                return;
             }
 
             try {
@@ -123,7 +123,10 @@ public class PetStorageManager {
                 }
             } catch (IOException e) {
                 plugin.getLogger().log(Level.SEVERE, "Could not replace pet data for " + ownerUUID, e);
-                try { Files.deleteIfExists(tempFile.toPath()); } catch (IOException ignore) {}
+                try {
+                    Files.deleteIfExists(tempFile.toPath());
+                } catch (IOException ignore) {
+                }
             }
         }
     }

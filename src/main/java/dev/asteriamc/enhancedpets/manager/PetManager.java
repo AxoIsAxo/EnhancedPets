@@ -24,28 +24,8 @@ public class PetManager {
     private final PetStorageManager storageManager;
     private final Map<UUID, PetData> petDataMap = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitTask> pendingOwnerSaves = new ConcurrentHashMap<>();
-    // Track owners whose full dataset is currently loaded (i.e., they are online and we loaded their full file)
+
     private final java.util.Set<UUID> loadedOwners = java.util.concurrent.ConcurrentHashMap.newKeySet();
-
-    private void cancelPendingOwnerSave(UUID ownerUUID) {
-        if (ownerUUID == null) return;
-        BukkitTask existing = pendingOwnerSaves.remove(ownerUUID);
-        if (existing != null && !existing.isCancelled()) {
-            existing.cancel();
-        }
-    }
-
-
-
-    public void cancelAllPendingOwnerSaves() {
-        for (BukkitTask task : pendingOwnerSaves.values()) {
-            if (task != null && !task.isCancelled()) task.cancel();
-        }
-        pendingOwnerSaves.clear();
-    }
-
-
-
 
     public PetManager(Enhancedpets plugin) {
         this.plugin = plugin;
@@ -58,6 +38,21 @@ public class PetManager {
 
     private static Double asDouble(Object o) {
         return (o instanceof Number) ? ((Number) o).doubleValue() : null;
+    }
+
+    private void cancelPendingOwnerSave(UUID ownerUUID) {
+        if (ownerUUID == null) return;
+        BukkitTask existing = pendingOwnerSaves.remove(ownerUUID);
+        if (existing != null && !existing.isCancelled()) {
+            existing.cancel();
+        }
+    }
+
+    public void cancelAllPendingOwnerSaves() {
+        for (BukkitTask task : pendingOwnerSaves.values()) {
+            if (task != null && !task.isCancelled()) task.cancel();
+        }
+        pendingOwnerSaves.clear();
     }
 
     public PetData getPetData(UUID petUUID) {
@@ -81,14 +76,12 @@ public class PetManager {
         UUID petUUID = pet.getUniqueId();
         UUID ownerUUID = pet.getOwnerUniqueId();
 
-        // If the pet is already in the live cache, just return it.
+
         if (this.petDataMap.containsKey(petUUID)) {
             return this.petDataMap.get(petUUID);
         }
 
-        // --- START OF THE CRITICAL FIX ---
-        // If the owner of this pet is offline, we MUST check their file first
-        // to avoid creating a new "amnesiac" PetData object.
+
         if (!isOwnerLoaded(ownerUUID)) {
             plugin.getLogger().fine("Registering a pet for an offline owner (" + ownerUUID + "). Checking persistent storage first...");
             List<PetData> offlinePets = storageManager.loadPets(ownerUUID);
@@ -100,17 +93,14 @@ public class PetManager {
                 plugin.getLogger().info("Found existing persistent data for offline owner's pet " + petUUID + ". Loading it into cache.");
                 PetData data = existingData.get();
                 this.petDataMap.put(petUUID, data);
-                // We don't need to queue a save here, as we haven't changed anything.
+
                 return data;
             }
-            // If we're here, it means the owner is offline AND this is a genuinely
-            // new pet not found in their file. We can proceed to create a new record.
+
+
         }
-        // --- END OF THE CRITICAL FIX ---
 
 
-        // This part of the logic is now only reached if the owner is online,
-        // or if the owner is offline but the pet is truly new.
         int id = -1;
         if (pet.getPersistentDataContainer().has(PET_ID_KEY, PersistentDataType.INTEGER)) {
             id = pet.getPersistentDataContainer().get(PET_ID_KEY, PersistentDataType.INTEGER);
@@ -224,15 +214,15 @@ public class PetManager {
         } else if (petEntity instanceof Wolf w) {
             metadata.put("collarColor", w.getCollarColor().name());
 
-            String wolfVariant = WolfVariantUtil.getVariantName(w); // 1.21+ only
+            String wolfVariant = WolfVariantUtil.getVariantName(w);
             if (wolfVariant != null) {
-                metadata.put("wolfVariant", wolfVariant); // e.g. "ASHEN"
+                metadata.put("wolfVariant", wolfVariant);
             }
 
             metadata.put("isAngry", w.isAngry());
         } else if (petEntity instanceof Cat c) {
-            // Use API (stable 1.14+)
-            metadata.put("catVariant", c.getCatType().name()); // e.g. "ALL_BLACK"
+
+            metadata.put("catVariant", c.getCatType().name());
             metadata.put("isLyingDown", c.isLyingDown());
             metadata.put("collarColor", c.getCollarColor().name());
         } else if (petEntity instanceof Parrot p) {
@@ -311,7 +301,7 @@ public class PetManager {
             Integer maxDom = asInt(metadata.get("maxDomestication"));
             if (maxDom != null) ah.setMaxDomestication(maxDom);
 
-            // Inventory and chest application intentionally left commented out (version sensitive)
+
         }
 
         if (newPetEntity instanceof Horse h) {
@@ -524,12 +514,12 @@ public class PetManager {
 
     public void resetPetAge(UUID petId) {
         PetData petData = getPetData(petId);
-        if (petData == null || petData.isDead()) return; // <-- FIX: Don't run on dead pets
+        if (petData == null || petData.isDead()) return;
 
         Entity entity = Bukkit.getEntity(petId);
         if (!(entity instanceof Ageable ageable) || ageable.isAdult()) return;
 
-        // Set age to default grow-up time
+
         ageable.setAge(-24000);
         petData.setPausedAgeTicks(-24000);
 
@@ -623,24 +613,23 @@ public class PetManager {
         return loadedOwners.contains(ownerUUID);
     }
 
-    // MERGE-SAFE SAVE for offline owners (runs async)
+
     private void mergeSaveOwner(UUID ownerUUID) {
-        // Snapshot current in-memory pets for this owner
+
         List<PetData> current = getPetsOwnedBy(ownerUUID);
 
-        // If we have nothing in memory, don’t touch the file
+
         if (current.isEmpty()) {
             plugin.getLogger().fine("mergeSaveOwner: no in-memory pets for offline owner " + ownerUUID + " — skipping to avoid clobbering.");
             return;
         }
 
-        // Load existing file and merge: prefer existing records if the same petUUID exists,
-        // so we don’t lose favorites/friendlies/mode, etc.
+
         List<PetData> existing = storageManager.loadPets(ownerUUID);
         java.util.Map<UUID, PetData> merged = new java.util.LinkedHashMap<>();
 
         for (PetData p : existing) merged.put(p.getPetUUID(), p);
-        // Then, overwrite with any in-memory data, as it is more current.
+
         for (PetData p : current) merged.put(p.getPetUUID(), p);
 
         storageManager.savePets(ownerUUID, new java.util.ArrayList<>(merged.values()));
@@ -656,7 +645,7 @@ public class PetManager {
             return;
         }
 
-        // Cancel any pending save for this owner and reschedule
+
         BukkitTask existing = pendingOwnerSaves.remove(ownerUUID);
         if (existing != null) existing.cancel();
 
@@ -665,15 +654,15 @@ public class PetManager {
                 () -> {
                     pendingOwnerSaves.remove(ownerUUID);
                     if (isOwnerLoaded(ownerUUID)) {
-                        // Full dataset is loaded, regular save is safe
+
                         List<PetData> pets = getPetsOwnedBy(ownerUUID);
                         storageManager.savePets(ownerUUID, pets);
                     } else {
-                        // Owner is offline/partial dataset in memory: merge to avoid clobbering
+
                         mergeSaveOwner(ownerUUID);
                     }
                 },
-                40L // ~2 seconds debounce
+                40L
         ));
     }
 
@@ -686,7 +675,7 @@ public class PetManager {
 
     public void saveAllPetData(List<PetData> petDataList) {
         if (petDataList != null) {
-            petDataList.forEach(this::updatePetData); // queueOwnerSave is called in updatePetData
+            petDataList.forEach(this::updatePetData);
         }
     }
 
@@ -712,12 +701,12 @@ public class PetManager {
             if (isOwnerLoaded(owner)) {
                 storageManager.savePets(owner, list);
             } else {
-                // Merge to avoid clobbering file for owners who aren’t fully loaded
+
                 List<PetData> existing = storageManager.loadPets(owner);
                 java.util.Map<UUID, PetData> merged = new java.util.LinkedHashMap<>();
-                // First, load all data from the file.
+
                 for (PetData p : existing) merged.put(p.getPetUUID(), p);
-                // THEN, overwrite with any in-memory data, as it is more current (e.g., dead status).
+
                 for (PetData p : list) merged.put(p.getPetUUID(), p);
                 storageManager.savePets(owner, new java.util.ArrayList<>(merged.values()));
             }
@@ -948,7 +937,7 @@ public class PetManager {
         private static final Method GET_VARIANT;
         private static final Method SET_VARIANT;
         private static final Class<?> VARIANT_CLASS;
-        private static final Object WOLF_VARIANT_REGISTRY; // This will be a Registry<Wolf.Variant> on 1.21+
+        private static final Object WOLF_VARIANT_REGISTRY;
         private static final Method REGISTRY_GET_METHOD;
 
         static {
@@ -958,22 +947,22 @@ public class PetManager {
             Method registryGet = null;
 
             try {
-                // Available on 1.21+ (and some 1.20.x snapshots)
+
                 Class<Wolf> wolfClass = Wolf.class;
                 get = wolfClass.getMethod("getVariant");
-                variantClass = get.getReturnType(); // This is org.bukkit.entity.Wolf$Variant
+                variantClass = get.getReturnType();
                 set = wolfClass.getMethod("setVariant", variantClass);
 
-                // Get the server's registry for Wolf.Variant
+
                 Method getRegistry = Bukkit.class.getMethod("getRegistry", Class.class);
                 registry = getRegistry.invoke(null, variantClass);
 
-                // Get the 'get' method from the Registry interface
+
                 Class<?> registryClass = Class.forName("org.bukkit.Registry");
                 registryGet = registryClass.getMethod("get", NamespacedKey.class);
 
             } catch (Exception ignored) {
-                // This will fail gracefully on older MC versions where variants don't exist
+
             }
             GET_VARIANT = get;
             SET_VARIANT = set;
@@ -985,15 +974,15 @@ public class PetManager {
         static String getVariantName(Wolf wolf) {
             if (GET_VARIANT == null) return null;
             try {
-                // wolf.getVariant()
+
                 Object variant = GET_VARIANT.invoke(wolf);
                 if (variant == null) return null;
 
-                // variant.getKey().toString()
+
                 Method getKey = variant.getClass().getMethod("getKey");
                 Object namespacedKey = getKey.invoke(variant);
 
-                return namespacedKey.toString(); // e.g., "minecraft:ashen"
+                return namespacedKey.toString();
             } catch (Exception e) {
                 return null;
             }
@@ -1002,16 +991,15 @@ public class PetManager {
         static boolean setVariant(Wolf wolf, String nameOrKey) {
             if (SET_VARIANT == null || WOLF_VARIANT_REGISTRY == null || nameOrKey == null) return false;
             try {
-                // Create a NamespacedKey from the saved string
+
                 NamespacedKey key = NamespacedKey.fromString(nameOrKey.toLowerCase(Locale.ROOT));
                 if (key == null) return false;
 
-                // Use the registry to get the Variant object from the key
-                // Object variant = Registry.WOLF_VARIANT.get(key);
+
                 Object variantToSet = REGISTRY_GET_METHOD.invoke(WOLF_VARIANT_REGISTRY, key);
                 if (variantToSet == null) return false;
 
-                // wolf.setVariant(variant)
+
                 SET_VARIANT.invoke(wolf, variantToSet);
                 return true;
             } catch (Exception e) {

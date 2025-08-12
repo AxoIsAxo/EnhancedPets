@@ -38,7 +38,7 @@ public class PetData {
                 String typeName = (String) map.getOrDefault("type", "UNKNOWN");
                 type = EntityType.valueOf(typeName);
             } catch (Exception ex) {
-                type = EntityType.HORSE; // fallback to a safe default
+                type = EntityType.HORSE;
                 if (Enhancedpets.getInstance() != null) {
                     Enhancedpets.getInstance().getLogger().warning("Unknown entity type for pet " + petUUID + ". Defaulting to HORSE.");
                 }
@@ -209,7 +209,6 @@ public class PetData {
     public int getPausedAgeTicks() {
         return this.pausedAgeTicks;
     }
-
 
 
     public void setPausedAgeTicks(int pausedAgeTicks) {

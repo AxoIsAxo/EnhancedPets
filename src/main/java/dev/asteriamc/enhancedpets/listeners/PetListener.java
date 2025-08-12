@@ -22,7 +22,6 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,6 +38,15 @@ public class PetListener implements Listener {
     public PetListener(Enhancedpets plugin) {
         this.plugin = plugin;
         this.petManager = plugin.getPetManager();
+    }
+
+    private static String formatEntityType(EntityType type) {
+        String name = type.name().toLowerCase().replace('_', ' ');
+        StringBuilder sb = new StringBuilder();
+        for (String w : name.split(" ")) {
+            if (!w.isEmpty()) sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(" ");
+        }
+        return sb.toString().trim();
     }
 
     @EventHandler(
@@ -72,7 +80,7 @@ public class PetListener implements Listener {
             PetData data = this.petManager.getPetData(petUUID);
             String name = data != null ? data.getDisplayName() : "Unknown Pet";
             this.plugin.getLogger().info("Managed pet " + name + " (UUID: " + petUUID + ") died. Marking as dead.");
-            this.petManager.unregisterPet(livingEntity); // No cast needed
+            this.petManager.unregisterPet(livingEntity);
         } else if (entity instanceof Tameable t && t.isTamed() && t.getOwnerUniqueId() != null && entity instanceof LivingEntity le) {
             UUID ownerUUID = t.getOwnerUniqueId();
             UUID petUUID = t.getUniqueId();
@@ -85,17 +93,6 @@ public class PetListener implements Listener {
         }
     }
 
-
-    private static String formatEntityType(EntityType type) {
-        String name = type.name().toLowerCase().replace('_', ' ');
-        StringBuilder sb = new StringBuilder();
-        for (String w : name.split(" ")) {
-            if (!w.isEmpty()) sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(" ");
-        }
-        return sb.toString().trim();
-    }
-
-
     @EventHandler(
             priority = EventPriority.MONITOR,
             ignoreCancelled = true
@@ -106,28 +103,25 @@ public class PetListener implements Listener {
                 PetData data = this.petManager.getPetData(pet.getUniqueId());
                 if (data != null) {
                     if (!pet.isValid()) {
-                        // Entity likely unloading — do not destroy persistent record
+
                         this.plugin.getLogger().fine("Managed pet " + data.getDisplayName() + " became invalid after unleash. Keeping record.");
                     } else {
                         UUID currentOwner = pet.getOwnerUniqueId();
                         if (currentOwner == null || !currentOwner.equals(data.getOwnerUUID())) {
                             this.plugin.getLogger().warning("Pet " + data.getDisplayName() + " owner mismatch on unleash. Restoring owner if possible.");
-                            // Try to reattach to stored owner if online
+
                             Player owner = Bukkit.getPlayer(data.getOwnerUUID());
                             if (owner != null) {
                                 pet.setOwner(owner);
                                 pet.setTamed(true);
                             }
-                            // Never remove the stored record here
+
                         }
                     }
                 }
             }, 1L);
         }
     }
-
-
-
 
 
     @EventHandler(
@@ -234,7 +228,7 @@ public class PetListener implements Listener {
                                 event.setTarget(null);
                                 event.setCancelled(true);
                             } else if (target instanceof Player && petData.isProtectedFromPlayers()) {
-                                // Mutual Non-Aggression: don't target players if protected
+
                                 event.setTarget(null);
                                 event.setCancelled(true);
                             } else if (pet instanceof Wolf && target instanceof Creeper && this.plugin.getConfigManager().getDogCreeperBehavior().equals("FLEE")) {
@@ -242,7 +236,7 @@ public class PetListener implements Listener {
                                 event.setCancelled(true);
                             } else {
                                 if (pet instanceof Cat && this.plugin.getConfigManager().isCatsAttackHostiles() && target instanceof Monster) {
-                                    // Allow cat to target hostiles if configured (no-op block kept for clarity)
+
                                 }
                             }
                         }
@@ -260,7 +254,7 @@ public class PetListener implements Listener {
         Entity damager = event.getDamager();
         Entity victim = event.getEntity();
 
-        // If damager is a managed pet
+
         if (this.petManager.isManagedPet(event.getDamager().getUniqueId())) {
             PetData petData = this.petManager.getPetData(event.getDamager().getUniqueId());
             if (petData == null) return;
@@ -270,26 +264,26 @@ public class PetListener implements Listener {
                 return;
             }
 
-            // Respect friendly list
+
             if (petData.isFriendlyPlayer(victim.getUniqueId())) {
                 event.setCancelled(true);
                 return;
             }
 
-            // Mutual Non-Aggression: pets won't attack players if protected
+
             if (victim instanceof Player && petData.isProtectedFromPlayers()) {
                 event.setCancelled(true);
                 return;
             }
         }
 
-        // If victim is a managed pet
+
         if (victim instanceof Tameable victimPet && this.petManager.isManagedPet(victimPet.getUniqueId())) {
             PetData victimData = this.petManager.getPetData(victimPet.getUniqueId());
             if (victimData == null) return;
 
             if (victimData.isProtectedFromPlayers()) {
-                // Block direct player damage and player projectiles
+
                 if (damager instanceof Player) {
                     event.setCancelled(true);
                     return;

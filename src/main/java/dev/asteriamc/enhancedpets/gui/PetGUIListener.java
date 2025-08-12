@@ -176,8 +176,8 @@ public class PetGUIListener implements Listener {
 
 
     private void handleRegularAction(Player player, String action, PersistentDataContainer data, String title) {
-        // If the action is a GUI-level action unrelated to a specific pet,
-        // fall through to the correct handler case below.
+
+
         String petUUIDString = data.get(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING);
         UUID petUUID = (petUUIDString != null) ? UUID.fromString(petUUIDString) : null;
         Set<UUID> selectedPets = batchActionsGUI.getPlayerSelections().get(player.getUniqueId());
@@ -214,7 +214,7 @@ public class PetGUIListener implements Listener {
                 player.closeInventory();
                 player.sendMessage(ChatColor.YELLOW + "Scanning for your unregistered pets...");
 
-                // Run scan on the main thread (Bukkit API is not thread-safe off-thread)
+
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     int foundCount = petManager.scanAndRegisterPetsForOwner(player);
 
@@ -228,7 +228,7 @@ public class PetGUIListener implements Listener {
                 return;
         }
 
-        // batch actions (selectedPets present)
+
         if (action.startsWith("batch_")) {
             if (selectedPets == null || selectedPets.isEmpty()) {
                 player.sendMessage(ChatColor.RED + "Your pet selection was lost. Please start again.");
@@ -239,7 +239,7 @@ public class PetGUIListener implements Listener {
             return;
         }
 
-        // single pet actions
+
         if (petUUID != null) {
             PetData petData = petManager.getPetData(petUUID);
             if (petData == null) {
@@ -266,7 +266,7 @@ public class PetGUIListener implements Listener {
         }
         List<PetData> petDataList = selectedPets.stream().map(petManager::getPetData).filter(Objects::nonNull).toList();
 
-        switch(action) {
+        switch (action) {
             case "batch_set_mode_PASSIVE":
             case "batch_set_mode_NEUTRAL":
             case "batch_set_mode_AGGRESSIVE":
@@ -283,7 +283,7 @@ public class PetGUIListener implements Listener {
                 guiManager.openBatchManagementMenu(player, selectedPets);
                 break;
             case "batch_toggle_growth_pause": {
-                // Babies only
+
                 java.util.List<UUID> babyUUIDs = selectedPets.stream()
                         .map(Bukkit::getEntity)
                         .filter(e -> e instanceof Ageable a && !a.isAdult())
@@ -302,7 +302,7 @@ public class PetGUIListener implements Listener {
                         .filter(PetData::isGrowthPaused)
                         .count();
 
-                boolean shouldPause = pausedCount < babyUUIDs.size(); // if any are growing, pause all babies; else resume all
+                boolean shouldPause = pausedCount < babyUUIDs.size();
                 int changed = 0;
                 for (UUID id : babyUUIDs) {
                     PetData pd = petManager.getPetData(id);
@@ -342,13 +342,13 @@ public class PetGUIListener implements Listener {
                         .map(Bukkit::getEntity)
                         .filter(e -> e instanceof Creature)
                         .peek(e -> {
-                            ((Creature)e).setTarget(null);
+                            ((Creature) e).setTarget(null);
                             if (e instanceof Wolf w) w.setAngry(false);
                         }).count();
                 player.sendMessage(ChatColor.GREEN + "Calmed " + calmed + " pets.");
                 break;
             case "batch_toggle_sit":
-                List<Sittable> sittables = selectedPets.stream().map(Bukkit::getEntity).filter(e -> e instanceof Sittable).map(e -> (Sittable)e).toList();
+                List<Sittable> sittables = selectedPets.stream().map(Bukkit::getEntity).filter(e -> e instanceof Sittable).map(e -> (Sittable) e).toList();
                 if (!sittables.isEmpty()) {
                     long sittingCount = sittables.stream().filter(Sittable::isSitting).count();
                     boolean shouldSit = sittingCount < sittables.size();
@@ -415,7 +415,7 @@ public class PetGUIListener implements Listener {
                 }
                 break;
 
-            // NEW: Batch Mutual Non-Aggression toggle
+
             case "batch_toggle_protection":
                 long protectedCount = petDataList.stream().filter(PetData::isProtectedFromPlayers).count();
                 boolean makeProtected = protectedCount < petDataList.size();
@@ -586,7 +586,7 @@ public class PetGUIListener implements Listener {
                 guiManager.openPetMenu(player, petUUID);
                 break;
 
-            // NEW: Mutual Non-Aggression toggle (single pet)
+
             case "toggle_mutual_protection":
                 boolean nowProtected = !petData.isProtectedFromPlayers();
                 petData.setProtectedFromPlayers(nowProtected);

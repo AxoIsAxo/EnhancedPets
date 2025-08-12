@@ -30,11 +30,11 @@ public class PlayerConnectionListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
-        // purge ephemeral maps/state
+
         plugin.getPetGUIListener().forgetPlayer(player.getUniqueId());
         plugin.getPetListener().forgetPlayer(player.getUniqueId());
 
-        // unload pet data (async save inside)
+
         petManager.unloadPetsForPlayer(player.getUniqueId());
     }
 }
