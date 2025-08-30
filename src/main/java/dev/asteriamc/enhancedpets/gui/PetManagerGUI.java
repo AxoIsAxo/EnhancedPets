@@ -5,6 +5,7 @@ import dev.asteriamc.enhancedpets.data.BehaviorMode;
 import dev.asteriamc.enhancedpets.data.PetData;
 import dev.asteriamc.enhancedpets.manager.PetManager;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
@@ -431,10 +432,35 @@ public class PetManagerGUI {
                 return;
             }
 
+            Entity petEntity = Bukkit.getEntity(petUUID);
+
             List<String> headerLore = new ArrayList<>();
             headerLore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + petData.getEntityType().name());
-            headerLore.add(ChatColor.GRAY + "Mode: " + ChatColor.AQUA + petData.getMode().name());
+            headerLore.add(ChatColor.GRAY + "Mode: " + ChatColor.WHITE + petData.getMode().name()); // Changed color for consistency
+
+            // Health Info (copied from createPetItem)
+            if (petEntity instanceof LivingEntity livingEntity && petEntity.isValid()) {
+                double health = livingEntity.getHealth();
+                double maxHealth = livingEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+                headerLore.add(ChatColor.RED + "Health: " + ChatColor.WHITE + String.format("%.1f", health) + " / " + String.format("%.1f", maxHealth));
+            } else {
+                headerLore.add(ChatColor.GRAY + "Health: Unknown (Unloaded)");
+            }
+
+            // Protection Info (already there, just ensuring consistency)
             headerLore.add(ChatColor.GRAY + "Protection: " + (protectionEnabled ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled"));
+
+            // Friendly Count (copied from createPetItem)
+            int friendlyCount = petData.getFriendlyPlayers().size();
+            if (friendlyCount > 0) {
+                headerLore.add("" + ChatColor.GREEN + friendlyCount + " Friendly Player" + (friendlyCount == 1 ? "" : "s"));
+            }
+
+
+            if (petEntity instanceof Ageable ageable && !ageable.isAdult()) {
+                headerLore.add(ChatColor.LIGHT_PURPLE + "Baby");
+            }
+
             headerLore.add("");
             headerLore.add(isFavorite ? ChatColor.YELLOW + "Click to remove from favorites" : ChatColor.GREEN + "Click to mark as favorite");
 
@@ -466,7 +492,7 @@ public class PetManagerGUI {
             gui.setItem(13, this.createModeButton(Material.IRON_SWORD, "Set Neutral", BehaviorMode.NEUTRAL, petData));
             gui.setItem(15, this.createModeButton(Material.DIAMOND_SWORD, "Set Aggressive", BehaviorMode.AGGRESSIVE, petData));
 
-            Entity petEntity = Bukkit.getEntity(petUUID);
+
             boolean canSit = petEntity instanceof Sittable;
 
             if (canSit) {
@@ -749,6 +775,48 @@ public class PetManagerGUI {
         return item;
     }
 
+    public void openBatchConfirmRemoveDeadMenu(Player player, EntityType petType, int deadPetCount) {
+        String typeName = petType.name().toLowerCase().replace('_', ' ');
+        String title = ChatColor.DARK_RED + "Confirm Remove: Dead " + typeName + "s";
+        Inventory gui = Bukkit.createInventory(player, 27, title);
+
+        ItemStack info = createItem(
+                Material.SKELETON_SKULL,
+                ChatColor.YELLOW + "Remove " + deadPetCount + " Dead Pet Record(s)",
+                Arrays.asList(
+                        ChatColor.GRAY + "Pet Type: " + ChatColor.WHITE + typeName,
+                        "",
+                        ChatColor.DARK_RED + "⚠ WARNING ⚠",
+                        ChatColor.RED + "This action is permanent and cannot be undone."
+                )
+        );
+        gui.setItem(13, info);
+
+        
+        ItemStack cancel = new ItemStack(Material.LIME_WOOL);
+        ItemMeta cancelMeta = cancel.getItemMeta();
+        cancelMeta.setDisplayName(ChatColor.GREEN + "Cancel");
+        cancelMeta.setLore(Collections.singletonList(ChatColor.GRAY + "Keep the pet records."));
+        cancelMeta.getPersistentDataContainer().set(BatchActionsGUI.BATCH_ACTION_KEY, PersistentDataType.STRING, "open_pet_select");
+        cancelMeta.getPersistentDataContainer().set(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING, petType.name());
+        cancel.setItemMeta(cancelMeta);
+        gui.setItem(15, cancel);
+
+
+        
+        ItemStack confirm = new ItemStack(Material.RED_WOOL);
+        ItemMeta confirmMeta = confirm.getItemMeta();
+        confirmMeta.setDisplayName(ChatColor.DARK_RED + "Confirm Removal");
+        confirmMeta.setLore(Collections.singletonList(ChatColor.RED + "Click to permanently remove these records."));
+        confirmMeta.getPersistentDataContainer().set(BatchActionsGUI.BATCH_ACTION_KEY, PersistentDataType.STRING, "batch_confirm_remove_dead");
+        confirmMeta.getPersistentDataContainer().set(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING, petType.name());
+        confirm.setItemMeta(confirmMeta);
+        gui.setItem(11, confirm);
+
+        player.openInventory(gui);
+    }
+
+
     public ItemStack createPetItem(PetData petData) {
         Entity petEntity = Bukkit.getEntity(petData.getPetUUID());
         if (petData.isDead()) {
@@ -771,6 +839,15 @@ public class PetManagerGUI {
         List<String> lore = new java.util.ArrayList<>();
         lore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + petData.getEntityType().name());
         lore.add(ChatColor.GRAY + "Mode: " + ChatColor.WHITE + petData.getMode().name());
+
+        if (petEntity instanceof LivingEntity livingEntity && petEntity.isValid()) {
+            double health = livingEntity.getHealth();
+            double maxHealth = livingEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+            lore.add(ChatColor.RED + "Health: " + ChatColor.WHITE + String.format("%.1f", health) + " / " + String.format("%.1f", maxHealth));
+        } else {
+            lore.add(ChatColor.GRAY + "Health: Unknown (Unloaded)");
+        }
+
         lore.add(ChatColor.GRAY + "Protection: " + (petData.isProtectedFromPlayers() ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled"));
         int friendlyCount = petData.getFriendlyPlayers().size();
         if (friendlyCount > 0) {

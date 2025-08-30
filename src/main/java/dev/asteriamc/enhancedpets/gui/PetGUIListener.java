@@ -56,9 +56,29 @@ public class PetGUIListener implements Listener {
         boolean isPetGui = title.startsWith(ChatColor.DARK_AQUA.toString())
                 || title.startsWith(ChatColor.DARK_RED + "Confirm Free:")
                 || title.startsWith(ChatColor.GREEN + "Confirm Revival")
+                || title.startsWith(ChatColor.DARK_RED + "Confirm Remove:") // For batch dead pet removal
                 || title.startsWith(ChatColor.RED + "Confirm Removal");
 
         if (!isPetGui) return;
+
+        if (title.equals(PetManagerGUI.MAIN_MENU_TITLE) && event.isShiftClick() && event.isRightClick()) {
+            ItemStack clickedItem = event.getCurrentItem();
+            if (clickedItem != null && clickedItem.getType() == Material.SKELETON_SKULL) {
+                event.setCancelled(true);
+                PersistentDataContainer data = clickedItem.getItemMeta().getPersistentDataContainer();
+                String petUUIDString = data.get(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING);
+                if (petUUIDString != null) {
+                    UUID petUUID = UUID.fromString(petUUIDString);
+                    PetData petData = petManager.getPetData(petUUID);
+                    if (petData != null && petData.isDead()) {
+                        petManager.freePetCompletely(petUUID);
+                        player.sendMessage(ChatColor.GREEN + "Removed dead pet record for " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.GREEN + ".");
+                        guiManager.openMainMenu(player); 
+                        return; 
+                    }
+                }
+            }
+        }
 
         if (title.startsWith(ChatColor.GREEN + "Confirm Revival") || title.startsWith(ChatColor.RED + "Confirm Removal")) {
             event.setCancelled(true);
@@ -164,6 +184,34 @@ public class PetGUIListener implements Listener {
                     player.sendMessage(ChatColor.RED + "You must select at least one pet to manage.");
                 } else {
                     guiManager.openBatchManagementMenu(player, selectedPets);
+                }
+                break;
+            case "batch_remove_dead":
+                if (petType != null) {
+                    List<PetData> deadPets = petManager.getPetsOwnedBy(player.getUniqueId()).stream()
+                            .filter(p -> p.getEntityType() == petType && p.isDead())
+                            .toList();
+
+                    if (deadPets.isEmpty()) {
+                        player.sendMessage(ChatColor.YELLOW + "No dead pets of this type found.");
+                    } else {
+                        
+                        guiManager.openBatchConfirmRemoveDeadMenu(player, petType, deadPets.size());
+                    }
+                }
+                break;
+            case "batch_confirm_remove_dead":
+                if (petType != null) {
+                    List<PetData> deadPets = petManager.getPetsOwnedBy(player.getUniqueId()).stream()
+                            .filter(p -> p.getEntityType() == petType && p.isDead())
+                            .toList();
+
+                    if (!deadPets.isEmpty()) {
+                        deadPets.forEach(p -> petManager.freePetCompletely(p.getPetUUID()));
+                        player.sendMessage(ChatColor.GREEN + "Successfully removed " + deadPets.size() + " dead pet record(s).");
+                    }
+                    
+                    batchActionsGUI.openPetSelectionMenu(player, petType, 0);
                 }
                 break;
             case "open_pet_select":
