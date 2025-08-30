@@ -50,6 +50,9 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
   - Upon enabling this, pets won't attack players (even in aggressive mode)
   - In return players cant hurt said pets (Through direct attacks)
   - peace treaty goes hard! use this feature irresponsibly... unless dog army
+- 🎨 **Pet Display Customization (NEW!)**
+  - **Custom Icons:** Set any item in your hand as your pet's display icon in the GUI! (Shift-click to reset).
+  - **Name Colors:** Pick a unique `ChatColor` for each pet's display name in the GUI! (Shift-click to reset).
 - 🧺 Batch Actions
     - Select a type (e.g., Wolves) → pick pets → do things at scale:
     - Set modes, toggle favorites, sit/stand, teleport, calm, manage friendlies, transfer, or free
@@ -125,20 +128,35 @@ Quick Tip
 Default config.yml
 
 ```yml
+# Configuration for EnhancedPets
+
 # Should cats actively attack any nearby hostile mob?
 cats-attack-hostiles: false
 
 # How should dogs react to creepers?
-# NEUTRAL: Vanilla behavior (ignore unless owner is attacked by a creeper).
-# ATTACK: Dogs will actively target creepers more readily. (Behavior depends on mode.)
-# FLEE: Dogs won’t target creepers (they’ll cancel targeting attempts).
-dog-creeper-behavior: NEUTRAL # NEUTRAL, ATTACK, or FLEE
+# NEUTRAL: Vanilla behavior (ignore unless owner is attacked by creeper).
+# ATTACK: Dogs will actively target and attack creepers.
+# FLEE: Dogs will try to run away from nearby creepers and won't attack them.
+dog-creeper-behavior: NEUTRAL # Can be NEUTRAL, ATTACK, or FLEE
 
-# Legacy ocelot taming behavior (reserved/experimental).
-ocelot-taming-legacy-style: false
+# Re-enable pre-1.14 Ocelot taming?
+# If true, right-clicking an untamed adult Ocelot with raw Cod or Salmon
+# will consume the fish and transform the Ocelot into a tamed Cat.
+ocelot-taming-legacy-style: false # Default to false to maintain vanilla behavior
 
-# Shift-double right-click your OWN pet to open the GUI?
+# NEW: Shift double right-click any pet you own to open its GUI?
+# If true, right-clicking within a window of 250ms on your OWN pet will open the GUI/
 shift-doubleclick-pet-gui: true
+
+# Allow players riding the custom "Happy Ghast" pet to shoot fireballs?
+# If true, players can left-click while riding their ghast to shoot a small fireball.
+happy-ghast-fireball: true
+
+#Require advanced logs? want to check if there's a bug?
+#Enable this to receive tons of helpful messages from the plugin in the server console
+debug: false
+
+#END OF CONFIGURATION
 ```
 
 Notes

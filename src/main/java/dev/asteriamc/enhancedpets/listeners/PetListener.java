@@ -364,6 +364,9 @@ public class PetListener implements Listener {
     public void onPlayerAnimation(PlayerAnimationEvent event) {
         if (event.getAnimationType() != PlayerAnimationType.ARM_SWING) return;
         Player player = event.getPlayer();
+        if (!plugin.getConfigManager().isHappyGhastFireballEnabled()) {
+        return;
+        }
         Entity vehicle = player.getVehicle();
         if (vehicle == null || !vehicle.getType().name().equalsIgnoreCase("HAPPY_GHAST")) return;
         PetData petData = petManager.getPetData(vehicle.getUniqueId());
