@@ -122,6 +122,9 @@ public class BatchActionsGUI {
         gui.setItem(48, createSelectionButton(Material.RED_STAINED_GLASS_PANE, ChatColor.RED + "Select None", "select_none", petType));
         gui.setItem(50, createSelectionButton(Material.LIME_STAINED_GLASS_PANE, ChatColor.GREEN + "Select All", "select_all", petType));
 
+        if (petsOfType.stream().anyMatch(PetData::isDead)) {
+            gui.setItem(51, createSelectionButton(Material.SKELETON_SKULL, ChatColor.DARK_RED + "Remove All Dead Pets", "batch_remove_dead", petType));
+        }
         if ((page + 1) < totalPages) {
             gui.setItem(52, createNavButton(Material.ARROW, ChatColor.GREEN + "Next Page", "batch_select_page", petType, page + 1));
         }

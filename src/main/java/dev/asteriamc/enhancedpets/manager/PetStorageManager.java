@@ -141,7 +141,7 @@ public class PetStorageManager {
             return;
         }
 
-        plugin.getLogger().info("Old pet data found in config.yml. Starting one-time migration...");
+        plugin.debugLog("Old pet data found in config.yml. Starting one-time migration...");
         int migratedCount = 0;
         Map<UUID, List<PetData>> petsByOwner = new HashMap<>();
 
@@ -168,8 +168,8 @@ public class PetStorageManager {
         oldConfig.set("pet-data", null);
         try {
             oldConfig.save(configFile);
-            plugin.getLogger().info("Successfully migrated " + migratedCount + " pets to the new JSON format.");
-            plugin.getLogger().info("Old data has been removed from config.yml.");
+            plugin.debugLog("Successfully migrated " + migratedCount + " pets to the new JSON format.");
+            plugin.debugLog("Old data has been removed from config.yml.");
         } catch (IOException e) {
             plugin.getLogger().log(Level.SEVERE, "Could not save config.yml after migration. Please remove the 'pet-data' section manually!", e);
         }

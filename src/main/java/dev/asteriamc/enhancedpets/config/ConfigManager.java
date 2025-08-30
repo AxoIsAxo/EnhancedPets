@@ -10,6 +10,8 @@ public class ConfigManager {
     private String dogCreeperBehavior;
     private boolean ocelotTamingLegacyStyle;
     private boolean shiftdoubleclickgui;
+    private boolean debug;
+
 
     public ConfigManager(Enhancedpets plugin) {
         this.plugin = plugin;
@@ -23,6 +25,7 @@ public class ConfigManager {
         this.dogCreeperBehavior = this.config.getString("dog-creeper-behavior", "NEUTRAL").toUpperCase();
         this.ocelotTamingLegacyStyle = this.config.getBoolean("ocelot-taming-legacy-style", false);
         this.shiftdoubleclickgui = this.config.getBoolean("shift-doubleclick-pet-gui", true);
+        this.debug = this.config.getBoolean("debug", false);
         if (!this.dogCreeperBehavior.equals("NEUTRAL") && !this.dogCreeperBehavior.equals("ATTACK") && !this.dogCreeperBehavior.equals("FLEE")) {
             this.plugin.getLogger().warning("Invalid value for 'dog-creeper-behavior' in config.yml. Defaulting to NEUTRAL.");
             this.dogCreeperBehavior = "NEUTRAL";
@@ -48,4 +51,9 @@ public class ConfigManager {
     public FileConfiguration getConfig() {
         return this.config;
     }
+
+    public boolean isDebug() {
+        return this.debug;
+    }
+
 }

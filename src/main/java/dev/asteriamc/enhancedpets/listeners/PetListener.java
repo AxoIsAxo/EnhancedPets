@@ -79,7 +79,7 @@ public class PetListener implements Listener {
             UUID petUUID = entity.getUniqueId();
             PetData data = this.petManager.getPetData(petUUID);
             String name = data != null ? data.getDisplayName() : "Unknown Pet";
-            this.plugin.getLogger().info("Managed pet " + name + " (UUID: " + petUUID + ") died. Marking as dead.");
+            this.plugin.debugLog("Managed pet " + name + " (UUID: " + petUUID + ") died. Marking as dead.");
             this.petManager.unregisterPet(livingEntity);
         } else if (entity instanceof Tameable t && t.isTamed() && t.getOwnerUniqueId() != null && entity instanceof LivingEntity le) {
             UUID ownerUUID = t.getOwnerUniqueId();
@@ -169,7 +169,7 @@ public class PetListener implements Listener {
                                             && babyToCheck.getOwnerUniqueId() != null
                                             && !this.petManager.isManagedPet(babyToCheck.getUniqueId())) {
 
-                                        this.plugin.getLogger().info("Registering newly bred pet " + babyToCheck.getType() + " (UUID: " + babyToCheck.getUniqueId() + ")");
+                                        this.plugin.debugLog("Registering newly bred pet " + babyToCheck.getType() + " (UUID: " + babyToCheck.getUniqueId() + ")");
                                         this.petManager.registerPet(babyToCheck);
                                     }
                                 }
@@ -201,7 +201,7 @@ public class PetListener implements Listener {
                     petData.setDisplayName(newName);
                     petManager.updatePetData(petData);
 
-                    plugin.getLogger().info("Detected name tag rename for pet " + petUUID + ". Synced name to '" + newName + "'.");
+                    plugin.debugLog("Detected name tag rename for pet " + petUUID + ". Synced name to '" + newName + "'.");
 
 
                 }
