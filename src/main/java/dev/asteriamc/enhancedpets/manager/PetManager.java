@@ -470,6 +470,8 @@ public class PetManager {
         newData.setGrowthPaused(oldData.isGrowthPaused());
         newData.setPausedAgeTicks(oldData.getPausedAgeTicks());
         newData.setProtectedFromPlayers(oldData.isProtectedFromPlayers());
+        newData.setDisplayColor(oldData.getDisplayColor());
+        newData.setCustomIconMaterial(oldData.getCustomIconMaterial());
 
 
         applyMetadata(newPetEntity, oldData);

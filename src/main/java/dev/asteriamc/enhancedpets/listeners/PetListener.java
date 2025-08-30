@@ -103,26 +103,22 @@ public class PetListener implements Listener {
                 PetData data = this.petManager.getPetData(pet.getUniqueId());
                 if (data != null) {
                     if (!pet.isValid()) {
-
                         this.plugin.getLogger().fine("Managed pet " + data.getDisplayName() + " became invalid after unleash. Keeping record.");
                     } else {
                         UUID currentOwner = pet.getOwnerUniqueId();
                         if (currentOwner == null || !currentOwner.equals(data.getOwnerUUID())) {
                             this.plugin.getLogger().warning("Pet " + data.getDisplayName() + " owner mismatch on unleash. Restoring owner if possible.");
-
                             Player owner = Bukkit.getPlayer(data.getOwnerUUID());
                             if (owner != null) {
                                 pet.setOwner(owner);
                                 pet.setTamed(true);
                             }
-
                         }
                     }
                 }
             }, 1L);
         }
     }
-
 
     @EventHandler(
             priority = EventPriority.MONITOR,
@@ -150,10 +146,8 @@ public class PetListener implements Listener {
             ignoreCancelled = true
     )
     public void onEntityBreed(EntityBreedEvent event) {
-
         if (event.getEntity() instanceof Tameable babyPet) {
             UUID babyUUID = babyPet.getUniqueId();
-
 
             this.plugin
                     .getServer()
@@ -161,14 +155,10 @@ public class PetListener implements Listener {
                     .runTaskLater(
                             this.plugin,
                             () -> {
-
                                 if (this.plugin.getServer().getEntity(babyUUID) instanceof Tameable babyToCheck && babyToCheck.isValid()) {
-
-
                                     if (babyToCheck.isTamed()
                                             && babyToCheck.getOwnerUniqueId() != null
                                             && !this.petManager.isManagedPet(babyToCheck.getUniqueId())) {
-
                                         this.plugin.debugLog("Registering newly bred pet " + babyToCheck.getType() + " (UUID: " + babyToCheck.getUniqueId() + ")");
                                         this.petManager.registerPet(babyToCheck);
                                     }
@@ -181,29 +171,20 @@ public class PetListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPetRenameWithNameTag(PlayerInteractEntityEvent event) {
-
         ItemStack itemInHand = event.getPlayer().getInventory().getItem(event.getHand());
-
 
         if (itemInHand != null && itemInHand.getType() == Material.NAME_TAG && itemInHand.hasItemMeta() && itemInHand.getItemMeta().hasDisplayName()) {
             Entity clickedEntity = event.getRightClicked();
 
             if (clickedEntity instanceof Tameable && petManager.isManagedPet(clickedEntity.getUniqueId())) {
-
                 UUID petUUID = clickedEntity.getUniqueId();
                 PetData petData = petManager.getPetData(petUUID);
 
                 if (petData != null) {
-
                     String newName = ChatColor.stripColor(itemInHand.getItemMeta().getDisplayName());
-
-
                     petData.setDisplayName(newName);
                     petManager.updatePetData(petData);
-
                     plugin.debugLog("Detected name tag rename for pet " + petUUID + ". Synced name to '" + newName + "'.");
-
-
                 }
             }
         }
@@ -221,6 +202,16 @@ public class PetListener implements Listener {
                     if (petData != null) {
                         LivingEntity target = event.getTarget();
                         if (target != null) {
+                            // Block targeting own pets or friendly owner's pets (feature 1 + 2)
+                            if (plugin.getPetManager().isManagedPet(target.getUniqueId())) {
+                                PetData tpd = plugin.getPetManager().getPetData(target.getUniqueId());
+                                if (tpd != null && (tpd.getOwnerUUID().equals(petData.getOwnerUUID()) || petData.isFriendlyPlayer(tpd.getOwnerUUID()))) {
+                                    event.setTarget(null);
+                                    event.setCancelled(true);
+                                    return;
+                                }
+                            }
+
                             if (petData.getMode() == BehaviorMode.PASSIVE) {
                                 event.setTarget(null);
                                 event.setCancelled(true);
@@ -228,7 +219,6 @@ public class PetListener implements Listener {
                                 event.setTarget(null);
                                 event.setCancelled(true);
                             } else if (target instanceof Player && petData.isProtectedFromPlayers()) {
-
                                 event.setTarget(null);
                                 event.setCancelled(true);
                             } else if (pet instanceof Wolf && target instanceof Creeper && this.plugin.getConfigManager().getDogCreeperBehavior().equals("FLEE")) {
@@ -236,7 +226,7 @@ public class PetListener implements Listener {
                                 event.setCancelled(true);
                             } else {
                                 if (pet instanceof Cat && this.plugin.getConfigManager().isCatsAttackHostiles() && target instanceof Monster) {
-
+                                    // intentionally allowed: cats may attack hostiles if configured
                                 }
                             }
                         }
@@ -254,36 +244,45 @@ public class PetListener implements Listener {
         Entity damager = event.getDamager();
         Entity victim = event.getEntity();
 
-
+        // Damager is a managed pet
         if (this.petManager.isManagedPet(event.getDamager().getUniqueId())) {
             PetData petData = this.petManager.getPetData(event.getDamager().getUniqueId());
             if (petData == null) return;
 
+            // 1) Passive pets can't damage
             if (petData.getMode() == BehaviorMode.PASSIVE) {
                 event.setCancelled(true);
                 return;
             }
 
+            // 2) Do not damage own or friendly players' pets (feature 1 + 2)
+            if (plugin.getPetManager().isManagedPet(victim.getUniqueId())) {
+                PetData vpd = plugin.getPetManager().getPetData(victim.getUniqueId());
+                if (vpd != null && (vpd.getOwnerUUID().equals(petData.getOwnerUUID()) || petData.isFriendlyPlayer(vpd.getOwnerUUID()))) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
 
+            // 3) Don't damage friendly players directly
             if (petData.isFriendlyPlayer(victim.getUniqueId())) {
                 event.setCancelled(true);
                 return;
             }
 
-
+            // 4) Respect "mutual non-aggression" against players
             if (victim instanceof Player && petData.isProtectedFromPlayers()) {
                 event.setCancelled(true);
                 return;
             }
         }
 
-
+        // Victim is a managed pet with "mutual non-aggression" enabled vs players
         if (victim instanceof Tameable victimPet && this.petManager.isManagedPet(victimPet.getUniqueId())) {
             PetData victimData = this.petManager.getPetData(victimPet.getUniqueId());
             if (victimData == null) return;
 
             if (victimData.isProtectedFromPlayers()) {
-
                 if (damager instanceof Player) {
                     event.setCancelled(true);
                     return;
@@ -297,7 +296,6 @@ public class PetListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent e) {
-
         Player player = e.getPlayer();
         Entity target = e.getRightClicked();
         ItemStack itemInHand = player.getInventory().getItem(e.getHand());
@@ -329,12 +327,10 @@ public class PetListener implements Listener {
         if (!pet.isTamed()) return;
         if (!pet.getOwnerUniqueId().equals(p.getUniqueId())) return;
 
-
         e.setCancelled(true);
 
         UUID uuid = p.getUniqueId();
         PendingClick prev = pending.get(uuid);
-
 
         if (prev != null && !prev.isExpired() && prev.entity.equals(targetEntity)) {
             pending.remove(uuid);
@@ -344,14 +340,12 @@ public class PetListener implements Listener {
             return;
         }
 
-
         boolean sitting = (targetEntity instanceof Sittable s) && s.isSitting();
         pending.put(uuid, new PendingClick(targetEntity, sitting));
 
         plugin.getServer().getScheduler().runTaskLater(plugin, task -> {
             PendingClick pc = pending.remove(uuid);
             if (pc == null || pc.isExpired()) return;
-
 
             if (pc.entity.isValid() && pc.entity instanceof Sittable s) {
                 s.setSitting(!pc.wasSitting);
