@@ -227,3 +227,4 @@ public class BatchActionsGUI {
         return formatted.toString().trim();
     }
 }
+

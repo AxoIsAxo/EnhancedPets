@@ -37,6 +37,7 @@ public final class Enhancedpets extends JavaPlugin {
         return instance;
     }
 
+
     public void onEnable() {
         instance = this;
         this.getLogger().info("EnhancedPets is enabling...");

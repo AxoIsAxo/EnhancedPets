@@ -261,7 +261,9 @@ public class PetGUIListener implements Listener {
 
         if (petUUID != null && "pet_header".equals(action)) {
             PetData petData = petManager.getPetData(petUUID);
-            if (petData == null) { /* ... error handling ... */ return; }
+            if (petData == null) { /* ... error handling ... */
+                return;
+            }
 
             if (event.isRightClick()) {
                 // Right-click logic for favorite (remains the same)

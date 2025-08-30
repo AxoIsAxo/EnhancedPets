@@ -38,3 +38,4 @@ public class PlayerConnectionListener implements Listener {
         petManager.unloadPetsForPlayer(player.getUniqueId());
     }
 }
+

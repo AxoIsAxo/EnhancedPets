@@ -923,7 +923,8 @@ public class PetManagerGUI {
                     lore.add(ChatColor.GRAY + "Pet attacks nearby hostiles");
                     lore.add(ChatColor.GRAY + "proactively (if possible).");
                 }
-                default -> {}
+                default -> {
+                }
             }
 
             if (isActive) {

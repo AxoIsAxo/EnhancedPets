@@ -14,7 +14,6 @@ public class ConfigManager {
     private boolean debug;
 
 
-
     public ConfigManager(Enhancedpets plugin) {
         this.plugin = plugin;
     }
@@ -60,7 +59,7 @@ public class ConfigManager {
     }
 
     public boolean isHappyGhastFireballEnabled() {
-                return this.happyGhastFireball;
-            }
+        return this.happyGhastFireball;
+    }
 
 }
