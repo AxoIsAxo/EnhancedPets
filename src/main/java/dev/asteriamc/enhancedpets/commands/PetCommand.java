@@ -8,6 +8,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.bukkit.Bukkit; 
+import org.bukkit.OfflinePlayer;
 
 public class PetCommand implements CommandExecutor {
     private final Enhancedpets plugin;
@@ -19,6 +21,33 @@ public class PetCommand implements CommandExecutor {
     }
 
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (command.getName().equalsIgnoreCase("petadmin")) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+                return true;
+            }
+            if (!player.hasPermission("enhancedpets.admin")) {
+                player.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                return true;
+            }
+            if (args.length != 1) {
+                player.sendMessage(ChatColor.RED + "Usage: /" + label + " <player>");
+                return true;
+            }
+            OfflinePlayer target = Bukkit.getOfflinePlayer(args[0]);
+            if (!target.isOnline() && !target.hasPlayedBefore()) {
+                player.sendMessage(ChatColor.RED + "Player '" + ChatColor.YELLOW + args[0] + ChatColor.RED + "' does not exist.");
+                return true;
+            }
+            
+            if (!plugin.getPetManager().isOwnerLoaded(target.getUniqueId())) {
+                plugin.getPetManager().loadPetsForPlayer(target.getUniqueId());
+            }
+            guiManager.setViewerOwnerOverride(player.getUniqueId(), target.getUniqueId());
+            Bukkit.getScheduler().runTaskLater(plugin, () -> guiManager.openMainMenu(player), 3L);
+            return true;
+        }
+
         if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
             if (!sender.hasPermission("enhancedpets.reload")) {
                 sender.sendMessage(ChatColor.RED + "You do not have permission to reload this plugin.");
@@ -33,6 +62,7 @@ public class PetCommand implements CommandExecutor {
                     player.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
                     return true;
                 } else {
+                    this.guiManager.clearViewerOwnerOverride(player.getUniqueId());
                     this.guiManager.openMainMenu(player);
                     return true;
                 }

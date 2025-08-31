@@ -20,10 +20,10 @@ public class PetData {
     private Map<String, Object> metadata = new HashMap<>();
     private boolean protectedFromPlayers = false;
 
-    // NEW: optional per-pet UI customizations (persisted)
-    // displayColor is a ChatColor enum name string (e.g., "RED", "AQUA"); null => default AQUA
+    
+    
     private String displayColor = null;
-    // customIconMaterial is a Material enum name string (e.g., "BONE", "GHAST_SPAWN_EGG"); null => default type-based icon
+    
     private String customIconMaterial = null;
 
     public PetData(UUID petUUID, UUID ownerUUID, EntityType entityType, String displayName) {
@@ -61,7 +61,7 @@ public class PetData {
             @SuppressWarnings("unchecked")
             Map<String, Object> metadata = (Map<String, Object>) map.get("metadata");
 
-            // NEW optional fields
+            
             String displayColor = (String) map.getOrDefault("displayColor", null);
             String customIconMaterial = (String) map.getOrDefault("customIconMaterial", null);
 
@@ -135,7 +135,7 @@ public class PetData {
         if (this.metadata != null && !this.metadata.isEmpty()) {
             map.put("metadata", this.metadata);
         }
-        // NEW: include customization only if set (backwards compatible)
+        
         if (this.displayColor != null) {
             map.put("displayColor", this.displayColor);
         }
@@ -233,7 +233,7 @@ public class PetData {
         this.pausedAgeTicks = pausedAgeTicks;
     }
 
-    // NEW getters/setters
+    
     public String getDisplayColor() {
         return displayColor;
     }

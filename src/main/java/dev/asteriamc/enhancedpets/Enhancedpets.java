@@ -50,6 +50,8 @@ public final class Enhancedpets extends JavaPlugin {
         this.loadConfigurationAndData();
         PetCommand petCommandExecutor = new PetCommand(this, this.guiManager);
         Objects.requireNonNull(this.getCommand("pets")).setExecutor(petCommandExecutor);
+        Objects.requireNonNull(this.getCommand("petadmin")).setExecutor(petCommandExecutor); 
+
 
 
         this.petListener = new PetListener(this);

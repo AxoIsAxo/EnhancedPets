@@ -25,12 +25,13 @@ public class PetManagerGUI {
     public static final String PET_MENU_TITLE_PREFIX = ChatColor.DARK_AQUA + "Manage Pet: ";
     public static final String FRIENDLY_MENU_TITLE_PREFIX = ChatColor.DARK_AQUA + "Friendly Players: ";
     public static final NamespacedKey PAGE_KEY = new NamespacedKey(Enhancedpets.getInstance(), "gui_page");
-    // NEW: color picker key
+    
     public static final NamespacedKey COLOR_KEY = new NamespacedKey(Enhancedpets.getInstance(), "display_color");
 
     private final Enhancedpets plugin;
     private final PetManager petManager;
     private final BatchActionsGUI batchActionsGUI;
+    private final Map<UUID, UUID> viewerOwnerOverride = new java.util.concurrent.ConcurrentHashMap<>();
 
     public PetManagerGUI(Enhancedpets plugin) {
         this.plugin = plugin;
@@ -59,8 +60,24 @@ public class PetManagerGUI {
         openMainMenu(player, 0);
     }
 
+    public void setViewerOwnerOverride(UUID viewer, UUID owner) { 
+        if (viewer != null && owner != null) viewerOwnerOverride.put(viewer, owner);
+    }
+    public void clearViewerOwnerOverride(UUID viewer) { 
+        if (viewer != null) viewerOwnerOverride.remove(viewer);
+    }
+    public UUID getViewerOwnerOverride(UUID viewer) { 
+        return viewerOwnerOverride.get(viewer);
+    }
+    public UUID getEffectiveOwner(Player viewer) { 
+        UUID o = getViewerOwnerOverride(viewer.getUniqueId());
+        return o != null ? o : viewer.getUniqueId();
+    }
+
+
     public void openMainMenu(Player player, int page) {
-        List<PetData> pets = this.petManager.getPetsOwnedBy(player.getUniqueId());
+        UUID effectiveOwner = getEffectiveOwner(player); 
+        List<PetData> pets = this.petManager.getPetsOwnedBy(effectiveOwner);
 
         boolean didUpdate = false;
         for (PetData petData : pets) {
@@ -107,8 +124,10 @@ public class PetManagerGUI {
                     gui.setItem(i, this.createPetItem(pets.get(i)));
                 }
 
-                gui.setItem(invSize - 8, createActionButton(Material.COMPASS, ChatColor.AQUA + "Scan for My Pets", "scan_for_pets", null,
-                        Arrays.asList(ChatColor.GRAY + "Scans loaded areas for your unregistered pets.", "", ChatColor.YELLOW + "Click to scan and sync.")));
+                if (effectiveOwner.equals(player.getUniqueId())) {
+                    gui.setItem(invSize - 8, createActionButton(Material.COMPASS, ChatColor.AQUA + "Scan for My Pets", "scan_for_pets", null,
+                            Arrays.asList(ChatColor.GRAY + "Scans loaded areas for your unregistered pets.", "", ChatColor.YELLOW + "Click to scan and sync.")));
+                }
                 gui.setItem(invSize - 5, this.createItem(Material.PAPER, ChatColor.AQUA + "Page 1 / 1", Collections.singletonList(ChatColor.GRAY + "Total Pets: " + totalPets)));
                 gui.setItem(invSize - 2, createActionButton(Material.HOPPER, ChatColor.GOLD + "Batch Actions", "batch_actions", null,
                         Collections.singletonList(ChatColor.GRAY + "Manage multiple pets at once.")));
@@ -134,12 +153,14 @@ public class PetManagerGUI {
             if (endIndex < totalPets) {
                 gui.setItem(invSize - 1, this.createNavigationButton(Material.ARROW, ChatColor.GREEN + "Next Page", "main_page", page + 1, null));
             }
-            gui.setItem(invSize - 2, createActionButton(Material.HOPPER, ChatColor.GOLD + "Batch Actions", "batch_actions", null,
-                    Collections.singletonList(ChatColor.GRAY + "Manage multiple pets at once.")));
-            gui.setItem(invSize - 8, createActionButton(Material.COMPASS, ChatColor.AQUA + "Scan for My Pets", "scan_for_pets", null,
-                    Arrays.asList(ChatColor.GRAY + "Scans loaded areas for your unregistered pets.", "", ChatColor.YELLOW + "Click to scan and sync.")));
+            if (effectiveOwner.equals(player.getUniqueId())) {
+                gui.setItem(invSize - 8, createActionButton(Material.COMPASS, ChatColor.AQUA + "Scan for My Pets", "scan_for_pets", null,
+                        Arrays.asList(ChatColor.GRAY + "Scans loaded areas for your unregistered pets.", "", ChatColor.YELLOW + "Click to scan and sync.")));
+            }
             gui.setItem(invSize - 5, this.createItem(Material.PAPER, ChatColor.AQUA + "Page " + (page + 1) + " / " + totalPages,
                     Collections.singletonList(ChatColor.GRAY + "Total Pets: " + totalPets)));
+            gui.setItem(invSize - 2, createActionButton(Material.HOPPER, ChatColor.GOLD + "Batch Actions", "batch_actions", null,
+                    Collections.singletonList(ChatColor.GRAY + "Manage multiple pets at once.")));
 
             player.openInventory(gui);
         }
@@ -346,7 +367,7 @@ public class PetManagerGUI {
         String title = ChatColor.DARK_AQUA + "Transfer " + selectedPetUUIDs.size() + " Pets";
 
         List<Player> eligiblePlayers = Bukkit.getOnlinePlayers().stream()
-                .filter(p -> !p.getUniqueId().equals(player.getUniqueId()))
+                .filter(p -> !p.getUniqueId().equals(getEffectiveOwner(player)))
                 .map(p -> (Player) p)
                 .sorted(Comparator.comparing(Player::getName))
                 .toList();
@@ -442,10 +463,10 @@ public class PetManagerGUI {
             headerLore.add(ChatColor.LIGHT_PURPLE + "Baby");
         }
         headerLore.add("");
-        headerLore.add(ChatColor.YELLOW + "Left-click: Customize Display"); // <-- CHANGED
+        headerLore.add(ChatColor.YELLOW + "Left-click: Customize Display"); 
         headerLore.add(ChatColor.YELLOW + "Right-click: Toggle Favorite");
 
-        // HEADER item: left-click quick edit, right-click favorite toggle
+        
         ItemStack header = new ItemStack(headerIcon);
         ItemMeta hMeta = header.getItemMeta();
         String favoriteStar = isFavorite ? ChatColor.GOLD + "★ " : "";
@@ -457,7 +478,7 @@ public class PetManagerGUI {
         header.setItemMeta(hMeta);
         gui.setItem(4, header);
 
-        // Growth pause (if baby)
+        
         Entity petEnt = Bukkit.getEntity(petUUID);
         if (petEnt instanceof Ageable a && !a.isAdult()) {
             boolean paused = petData.isGrowthPaused();
@@ -517,7 +538,10 @@ public class PetManagerGUI {
                 ChatColor.GREEN + "Rename Pet",
                 "rename_pet_prompt",
                 petData.getPetUUID(),
-                Collections.singletonList(ChatColor.GRAY + "Change your pet's name via chat.")
+                Arrays.asList(
+                        ChatColor.GRAY + "Left-click: Change your pet's name via chat.",
+                        ChatColor.GRAY + "Shift-click: Reset to default name."
+                )
         ));
 
         gui.setItem(31, this.createActionButton(
@@ -555,7 +579,7 @@ public class PetManagerGUI {
                 protLore
         ));
 
-        // NEW: Display customization buttons
+        
 
 
         gui.setItem(49, this.createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Pet List", "back_to_main", null, null));
@@ -571,7 +595,7 @@ public class PetManagerGUI {
         player.openInventory(gui);
     }
 
-    // --- METHOD WAS MISSING ---
+    
     public void openConfirmFreeMenu(Player player, UUID petUUID) {
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
@@ -622,7 +646,7 @@ public class PetManagerGUI {
         player.openInventory(gui);
     }
 
-    // --- METHOD WAS MISSING ---
+    
     public void openTransferMenu(Player player, UUID petUUID) {
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
@@ -637,7 +661,7 @@ public class PetManagerGUI {
         }
 
         List<Player> eligiblePlayers = Bukkit.getOnlinePlayers().stream()
-                .filter(p -> !p.getUniqueId().equals(player.getUniqueId()))
+                .filter(p -> !p.getUniqueId().equals(getEffectiveOwner(player)))
                 .sorted(Comparator.comparing(Player::getName))
                 .collect(Collectors.toList());
 
@@ -670,7 +694,7 @@ public class PetManagerGUI {
         player.openInventory(gui);
     }
 
-    // --- METHOD WAS MISSING ---
+    
     public void openFriendlyPlayerMenu(Player player, UUID petUUID, int page) {
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
@@ -726,7 +750,7 @@ public class PetManagerGUI {
     }
 
 
-    // NEW: Color picker GUI
+    
     public void openColorPicker(Player player, UUID petUUID) {
         PetData petData = petManager.getPetData(petUUID);
         if (petData == null) {
@@ -739,7 +763,7 @@ public class PetManagerGUI {
 
         Inventory gui = Bukkit.createInventory(player, 27, title);
 
-        // Map dyes to ChatColor
+        
         LinkedHashMap<Material, ChatColor> choices = new LinkedHashMap<>();
         choices.put(Material.WHITE_DYE, ChatColor.WHITE);
         choices.put(Material.ORANGE_DYE, ChatColor.GOLD);
@@ -760,7 +784,7 @@ public class PetManagerGUI {
 
         int i = 0;
         for (Map.Entry<Material, ChatColor> entry : choices.entrySet()) {
-            if (i >= 26) break; // Leave last slot for back button
+            if (i >= 26) break; 
             Material mat = entry.getKey();
             ChatColor color = entry.getValue();
             ItemStack item = new ItemStack(mat);
@@ -774,7 +798,7 @@ public class PetManagerGUI {
             gui.setItem(i++, item);
         }
 
-        // Back
+        
         gui.setItem(26, createActionButton(Material.ARROW, ChatColor.YELLOW + "Back", "back_to_pet", petUUID, null));
 
         player.openInventory(gui);
@@ -995,7 +1019,7 @@ public class PetManagerGUI {
         return item;
     }
 
-    // NEW: resolve display color safely
+    
     private ChatColor getNameColor(PetData data) {
         String c = data.getDisplayColor();
         if (c == null || c.isEmpty()) return ChatColor.AQUA;
@@ -1006,7 +1030,7 @@ public class PetManagerGUI {
         }
     }
 
-    // NEW: resolve icon: custom override first, else type-based
+    
     private Material getDisplayMaterialForPet(PetData data) {
         if (data.getCustomIconMaterial() != null) {
             try {
@@ -1022,7 +1046,7 @@ public class PetManagerGUI {
             case WOLF -> Material.WOLF_SPAWN_EGG;
             case CAT -> Material.CAT_SPAWN_EGG;
             case PARROT -> Material.PARROT_SPAWN_EGG;
-            // NEW: equines/llamas use correct eggs instead of name tags
+            
             case HORSE -> Material.HORSE_SPAWN_EGG;
             case DONKEY -> Material.DONKEY_SPAWN_EGG;
             case MULE -> Material.MULE_SPAWN_EGG;
@@ -1046,14 +1070,14 @@ public class PetManagerGUI {
 
         Inventory gui = Bukkit.createInventory(player, 45, title);
 
-        // Info item in the middle
+        
         gui.setItem(4, createItem(
                 getDisplayMaterialForPet(petData),
                 getNameColor(petData) + petData.getDisplayName(),
                 Collections.singletonList(ChatColor.GRAY + "Select an option below.")
         ));
 
-        // Set Icon button
+        
         gui.setItem(20, createActionButton(
                 Material.ITEM_FRAME,
                 ChatColor.AQUA + "Set Display Icon",
@@ -1066,7 +1090,7 @@ public class PetManagerGUI {
                 )
         ));
 
-        // Edit Color button
+        
         gui.setItem(24, createActionButton(
                 Material.WHITE_DYE,
                 ChatColor.AQUA + "Edit Name Color",
@@ -1078,7 +1102,7 @@ public class PetManagerGUI {
                 )
         ));
 
-        // Back button
+        
         gui.setItem(44, createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Pet Management", "back_to_pet", petUUID, null));
 
         player.openInventory(gui);

@@ -56,13 +56,13 @@ public class PetTargetingTask extends BukkitRunnable {
                 if (!(nearby instanceof LivingEntity target)) continue;
                 if (target.equals(petCreature) || target.isDead() || !target.isValid()) continue;
 
-                // DO NOT target owner's own pets (managed or tameable owned by same owner)
+                
                 if (plugin.getPetManager().isManagedPet(target.getUniqueId())) {
                     PetData tpd = plugin.getPetManager().getPetData(target.getUniqueId());
                     if (tpd != null) {
-                        // 1) same owner => skip
+                        
                         if (tpd.getOwnerUUID().equals(petData.getOwnerUUID())) continue;
-                        // 2) target's owner is friendly => skip
+                        
                         if (petData.isFriendlyPlayer(tpd.getOwnerUUID())) continue;
                     }
                 } else if (target instanceof Tameable nearbyTameable && nearbyTameable.isTamed()
@@ -70,11 +70,11 @@ public class PetTargetingTask extends BukkitRunnable {
                     continue;
                 }
 
-                // Ignore owner/friendlies/players as already implemented
+                
                 if (target.getUniqueId().equals(petData.getOwnerUUID())) continue;
                 if (petData.isFriendlyPlayer(target.getUniqueId())) continue;
 
-                // Respect protection from players
+                
                 if (target instanceof Player && petData.isProtectedFromPlayers()) continue;
 
                 if (target instanceof Player p && p.getGameMode() == GameMode.SPECTATOR) continue;

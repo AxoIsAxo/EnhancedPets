@@ -202,7 +202,7 @@ public class PetListener implements Listener {
                     if (petData != null) {
                         LivingEntity target = event.getTarget();
                         if (target != null) {
-                            // Block targeting own pets or friendly owner's pets (feature 1 + 2)
+                            
                             if (plugin.getPetManager().isManagedPet(target.getUniqueId())) {
                                 PetData tpd = plugin.getPetManager().getPetData(target.getUniqueId());
                                 if (tpd != null && (tpd.getOwnerUUID().equals(petData.getOwnerUUID()) || petData.isFriendlyPlayer(tpd.getOwnerUUID()))) {
@@ -226,7 +226,7 @@ public class PetListener implements Listener {
                                 event.setCancelled(true);
                             } else {
                                 if (pet instanceof Cat && this.plugin.getConfigManager().isCatsAttackHostiles() && target instanceof Monster) {
-                                    // intentionally allowed: cats may attack hostiles if configured
+                                    
                                 }
                             }
                         }
@@ -244,18 +244,18 @@ public class PetListener implements Listener {
         Entity damager = event.getDamager();
         Entity victim = event.getEntity();
 
-        // Damager is a managed pet
+        
         if (this.petManager.isManagedPet(event.getDamager().getUniqueId())) {
             PetData petData = this.petManager.getPetData(event.getDamager().getUniqueId());
             if (petData == null) return;
 
-            // 1) Passive pets can't damage
+            
             if (petData.getMode() == BehaviorMode.PASSIVE) {
                 event.setCancelled(true);
                 return;
             }
 
-            // 2) Do not damage own or friendly players' pets (feature 1 + 2)
+            
             if (plugin.getPetManager().isManagedPet(victim.getUniqueId())) {
                 PetData vpd = plugin.getPetManager().getPetData(victim.getUniqueId());
                 if (vpd != null && (vpd.getOwnerUUID().equals(petData.getOwnerUUID()) || petData.isFriendlyPlayer(vpd.getOwnerUUID()))) {
@@ -264,20 +264,20 @@ public class PetListener implements Listener {
                 }
             }
 
-            // 3) Don't damage friendly players directly
+            
             if (petData.isFriendlyPlayer(victim.getUniqueId())) {
                 event.setCancelled(true);
                 return;
             }
 
-            // 4) Respect "mutual non-aggression" against players
+            
             if (victim instanceof Player && petData.isProtectedFromPlayers()) {
                 event.setCancelled(true);
                 return;
             }
         }
 
-        // Victim is a managed pet with "mutual non-aggression" enabled vs players
+        
         if (victim instanceof Tameable victimPet && this.petManager.isManagedPet(victimPet.getUniqueId())) {
             PetData victimData = this.petManager.getPetData(victimPet.getUniqueId());
             if (victimData == null) return;
@@ -325,7 +325,10 @@ public class PetListener implements Listener {
         Entity targetEntity = e.getRightClicked();
         if (!(targetEntity instanceof Tameable pet)) return;
         if (!pet.isTamed()) return;
-        if (!pet.getOwnerUniqueId().equals(p.getUniqueId())) return;
+
+        boolean isOwner = pet.getOwnerUniqueId() != null && pet.getOwnerUniqueId().equals(p.getUniqueId());
+        boolean adminOverride = !isOwner && p.hasPermission("enhancedpets.admin"); 
+        if (!isOwner && !adminOverride) return; 
 
         e.setCancelled(true);
 
@@ -334,21 +337,27 @@ public class PetListener implements Listener {
 
         if (prev != null && !prev.isExpired() && prev.entity.equals(targetEntity)) {
             pending.remove(uuid);
-            plugin.getServer().getScheduler().runTask(plugin, () ->
-                    plugin.getGuiManager().openPetMenu(p, targetEntity.getUniqueId())
-            );
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (adminOverride) { 
+                    plugin.getGuiManager().setViewerOwnerOverride(p.getUniqueId(), pet.getOwnerUniqueId());
+                }
+                plugin.getGuiManager().openPetMenu(p, targetEntity.getUniqueId());
+            });
             return;
         }
 
         boolean sitting = (targetEntity instanceof Sittable s) && s.isSitting();
-        pending.put(uuid, new PendingClick(targetEntity, sitting));
+        pending.put(uuid, new PendingClick(targetEntity, sitting, adminOverride)); 
 
         plugin.getServer().getScheduler().runTaskLater(plugin, task -> {
             PendingClick pc = pending.remove(uuid);
             if (pc == null || pc.isExpired()) return;
 
             if (pc.entity.isValid() && pc.entity instanceof Sittable s) {
-                s.setSitting(!pc.wasSitting);
+                
+                if (!pc.adminOverride) {
+                    s.setSitting(!pc.wasSitting);
+                }
             }
         }, 5L);
     }
@@ -389,14 +398,16 @@ public class PetListener implements Listener {
         fireball.setIsIncendiary(true);
     }
 
-    private static final class PendingClick {
+    private static final class PendingClick { 
         final Entity entity;
         final boolean wasSitting;
+        final boolean adminOverride; 
         final long expiry;
 
-        PendingClick(Entity e, boolean sitting) {
+        PendingClick(Entity e, boolean sitting, boolean adminOverride) { 
             this.entity = e;
             this.wasSitting = sitting;
+            this.adminOverride = adminOverride; 
             this.expiry = System.currentTimeMillis() + 250L;
         }
 
@@ -404,4 +415,5 @@ public class PetListener implements Listener {
             return System.currentTimeMillis() > expiry;
         }
     }
+
 }

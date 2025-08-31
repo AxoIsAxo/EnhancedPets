@@ -40,7 +40,8 @@ public class BatchActionsGUI {
     }
 
     public void openPetTypeSelectionMenu(Player player) {
-        List<PetData> allPets = petManager.getPetsOwnedBy(player.getUniqueId());
+        UUID owner = mainGui.getEffectiveOwner(player); 
+        List<PetData> allPets = petManager.getPetsOwnedBy(owner); 
         List<EntityType> petTypes = allPets.stream()
                 .map(PetData::getEntityType)
                 .distinct()
@@ -75,7 +76,8 @@ public class BatchActionsGUI {
         playerSelections.putIfAbsent(player.getUniqueId(), new HashSet<>());
         Set<UUID> selectedPets = playerSelections.get(player.getUniqueId());
 
-        List<PetData> petsOfType = petManager.getPetsOwnedBy(player.getUniqueId()).stream()
+        UUID owner = mainGui.getEffectiveOwner(player); 
+        List<PetData> petsOfType = petManager.getPetsOwnedBy(owner).stream()
                 .filter(p -> p.getEntityType() == petType)
                 .sorted(Comparator.comparing(PetData::isFavorite).reversed()
                         .thenComparing((p1, p2) -> {

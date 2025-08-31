@@ -60,7 +60,7 @@ public class PetGUIListener implements Listener {
 
         if (!isPetGui) return;
 
-        // Special hidden shift-right click dead cleanup in main menu
+        
         if (title.equals(PetManagerGUI.MAIN_MENU_TITLE) && event.isShiftClick() && event.isRightClick()) {
             ItemStack clickedItem = event.getCurrentItem();
             if (clickedItem != null && clickedItem.getType() == Material.SKELETON_SKULL) {
@@ -94,7 +94,7 @@ public class PetGUIListener implements Listener {
             return;
         }
 
-        // If bottom inventory, block shift-move only
+        
         if (event.getClickedInventory() != event.getView().getTopInventory()) {
             if (event.isShiftClick()) event.setCancelled(true);
             return;
@@ -161,7 +161,8 @@ public class PetGUIListener implements Listener {
             }
             case "select_all", "select_none" -> {
                 if (petType != null) {
-                    List<UUID> petsOfType = petManager.getPetsOwnedBy(player.getUniqueId()).stream()
+                    UUID owner = guiManager.getEffectiveOwner(player);
+                    List<UUID> petsOfType = petManager.getPetsOwnedBy(owner).stream()
                             .filter(p -> p.getEntityType() == petType)
                             .map(PetData::getPetUUID)
                             .toList();
@@ -182,7 +183,9 @@ public class PetGUIListener implements Listener {
             }
             case "batch_remove_dead" -> {
                 if (petType != null) {
-                    List<PetData> deadPets = petManager.getPetsOwnedBy(player.getUniqueId()).stream()
+                    UUID owner = guiManager.getEffectiveOwner(player);
+                    List<PetData> deadPets = petManager.getPetsOwnedBy(owner).stream()
+
                             .filter(p -> p.getEntityType() == petType && p.isDead())
                             .toList();
                     if (deadPets.isEmpty()) {
@@ -194,7 +197,8 @@ public class PetGUIListener implements Listener {
             }
             case "batch_confirm_remove_dead" -> {
                 if (petType != null) {
-                    List<PetData> deadPets = petManager.getPetsOwnedBy(player.getUniqueId()).stream()
+                    UUID owner = guiManager.getEffectiveOwner(player);
+                    List<PetData> deadPets = petManager.getPetsOwnedBy(owner).stream()
                             .filter(p -> p.getEntityType() == petType && p.isDead())
                             .toList();
                     if (!deadPets.isEmpty()) {
@@ -243,8 +247,14 @@ public class PetGUIListener implements Listener {
                 }
                 return;
             }
-            case "scan_for_pets" -> {
+            case "scan_for_pets" -> { 
                 player.closeInventory();
+                UUID override = plugin.getGuiManager().getViewerOwnerOverride(player.getUniqueId());
+                if (override != null && !override.equals(player.getUniqueId())) {
+                    player.sendMessage(ChatColor.RED + "Scan is only available for your own pets while viewing as another player.");
+                    guiManager.openMainMenu(player);
+                    return;
+                }
                 player.sendMessage(ChatColor.YELLOW + "Scanning for your unregistered pets...");
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     int foundCount = petManager.scanAndRegisterPetsForOwner(player);
@@ -266,7 +276,7 @@ public class PetGUIListener implements Listener {
             }
 
             if (event.isRightClick()) {
-                // Right-click logic for favorite (remains the same)
+                
                 petData.setFavorite(!petData.isFavorite());
                 petManager.updatePetData(petData);
                 player.sendMessage(petData.isFavorite()
@@ -275,7 +285,7 @@ public class PetGUIListener implements Listener {
                 guiManager.openPetMenu(player, petUUID);
                 return;
             } else if (event.isLeftClick()) {
-                // NEW: Left-click now opens the dedicated customization menu
+                
                 guiManager.openCustomizationMenu(player, petUUID);
                 return;
             }
@@ -511,13 +521,27 @@ public class PetGUIListener implements Listener {
                 if (friendlyPage != null) guiManager.openFriendlyPlayerMenu(player, petUUID, friendlyPage);
             }
             case "rename_pet_prompt" -> {
-                awaitingRenameInput.put(player.getUniqueId(), petUUID);
-                player.closeInventory();
-                player.sendMessage(ChatColor.GOLD + "Enter a new name for " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.GOLD + " in chat.");
-                player.sendMessage(ChatColor.GRAY + "Allowed characters: A-Z, a-z, 0-9, _, -");
-                player.sendMessage(ChatColor.GRAY + "Any other character (e.g., a space) will reset the name.");
-                player.sendMessage(ChatColor.GRAY + "Type 'cancel' to abort.");
+                if (event.isShiftClick()) {
+                    String oldName = petData.getDisplayName();
+                    String newDefaultName = petManager.assignNewDefaultName(petData);
+                    petData.setDisplayName(newDefaultName);
+                    Entity petEntity = Bukkit.getEntity(petUUID);
+                    if (petEntity != null) {
+                        petEntity.setCustomName(null);
+                    }
+                    petManager.updatePetData(petData);
+                    player.sendMessage(ChatColor.YELLOW + "Reset name of " + ChatColor.AQUA + oldName + ChatColor.YELLOW + " to " + ChatColor.AQUA + newDefaultName + ChatColor.YELLOW + ".");
+                    guiManager.openPetMenu(player, petUUID);
+                } else {
+                    awaitingRenameInput.put(player.getUniqueId(), petUUID);
+                    player.closeInventory();
+                    player.sendMessage(ChatColor.GOLD + "Enter a new name for " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.GOLD + " in chat.");
+                    player.sendMessage(ChatColor.GRAY + "Allowed characters: A-Z, a-z, 0-9, _, -");
+                    player.sendMessage(ChatColor.GRAY + "Using other characters will cancel the rename.");
+                    player.sendMessage(ChatColor.GRAY + "Type 'cancel' to abort.");
+                }
             }
+
             case "open_transfer" -> guiManager.openTransferMenu(player, petUUID);
             case "transfer_to_player" -> {
                 String targetUUIDString = data.get(PetManagerGUI.TARGET_PLAYER_UUID_KEY, PersistentDataType.STRING);
@@ -602,7 +626,7 @@ public class PetGUIListener implements Listener {
             }
             case "cancel_confirm" -> guiManager.openPetMenu(player, petUUID);
 
-            // NEW: per-pet display customization
+            
             case "set_display_icon" -> {
                 if (event.isShiftClick()) {
                     petData.setCustomIconMaterial(null);
@@ -618,17 +642,17 @@ public class PetGUIListener implements Listener {
                         player.sendMessage(ChatColor.GREEN + "Set icon for " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.GREEN + " to " + ChatColor.YELLOW + hand.getType().name() + ChatColor.GREEN + ".");
                     }
                 }
-                // Return to the main pet menu after the action for a smoother flow
+                
                 guiManager.openPetMenu(player, petUUID);
             }
 
-            // --- AND REPLACE THIS CASE ---
+            
             case "set_display_color" -> {
                 if (event.isShiftClick()) {
                     petData.setDisplayColor(null);
                     petManager.updatePetData(petData);
                     player.sendMessage(ChatColor.YELLOW + "Reset color for " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.YELLOW + " to default.");
-                    // Return to the main pet menu after the action
+                    
                     guiManager.openPetMenu(player, petUUID);
                 } else {
                     guiManager.openColorPicker(player, petUUID);

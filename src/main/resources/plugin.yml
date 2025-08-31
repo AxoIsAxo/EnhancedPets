@@ -13,6 +13,11 @@ commands:
     usage: /<command> [reload]
     permission: enhancedpets.use
     aliases: [pet, mypets, ep]
+  petadmin:
+    description: Open another player's pet GUI (admin).
+    usage: /<command> <player>
+    permission: enhancedpets.admin
+    aliases: [ petsadmin, epadmin ]
 permissions:
   enhancedpets.use:
     description: Allows using the /pets command GUI to manage owned pets.

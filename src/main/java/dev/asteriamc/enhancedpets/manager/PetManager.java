@@ -482,11 +482,9 @@ public class PetManager {
 
         newPetEntity.setCustomName(ChatColor.translateAlternateColorCodes('&', newData.getDisplayName()));
         if (newPetEntity instanceof Tameable t) {
-            Player owner = Bukkit.getPlayer(newData.getOwnerUUID());
-            if (owner != null) {
-                t.setOwner(owner);
-                t.setTamed(true);
-            }
+            OfflinePlayer owner = Bukkit.getOfflinePlayer(newData.getOwnerUUID());
+            t.setOwner(owner);
+            t.setTamed(true);
         }
         queueOwnerSave(newData.getOwnerUUID());
     }
