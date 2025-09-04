@@ -317,6 +317,11 @@ public class PetListener implements Listener {
             return;
         }
         if (!plugin.getConfigManager().isShiftDoubleClickGUI()) return;
+        ItemStack item = e.getHand() == EquipmentSlot.HAND
+                ? player.getInventory().getItemInMainHand()
+                : player.getInventory().getItemInOffHand();
+
+        if (item.getType() != Material.AIR) return;
         if (e.getHand() != EquipmentSlot.HAND) return;
 
         Player p = e.getPlayer();
