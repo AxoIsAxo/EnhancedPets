@@ -687,7 +687,7 @@ public class PetGUIListener implements Listener {
 
     private void openConfirmMenu(Player player, UUID petUUID, boolean isRevive) {
         Inventory gui = Bukkit.createInventory(player, 27, (isRevive ? ChatColor.GREEN + "Confirm Revival" : ChatColor.RED + "Confirm Removal"));
-        ItemStack confirm = new ItemStack(isRevive ? Material.NETHER_STAR : Material.BARRIER);
+        ItemStack confirm = new ItemStack(isRevive ? this.plugin.getConfigManager().getReviveItem() : Material.BARRIER);
         ItemMeta meta = confirm.getItemMeta();
         meta.setDisplayName(isRevive ? ChatColor.GREEN + "Confirm Revival" : ChatColor.RED + "Confirm Removal");
         meta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING, isRevive ? "do_revive_pet" : "do_remove_pet");
