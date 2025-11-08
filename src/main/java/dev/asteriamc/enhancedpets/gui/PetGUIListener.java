@@ -608,8 +608,9 @@ public class PetGUIListener implements Listener {
                     return;
                 }
                 ItemStack hand = player.getInventory().getItemInMainHand();
-                if (hand.getType() != Material.NETHER_STAR) {
-                    player.sendMessage(ChatColor.RED + "You need a Nether Star in your main hand to revive this pet.");
+                Material reviveItem = this.plugin.getConfigManager().getReviveItem();
+                if (hand.getType() != reviveItem) {
+                    player.sendMessage(ChatColor.RED + "You need a '" + reviveItem.name() + "' in your main hand to revive this pet.");
                     guiManager.openPetMenu(player, petData.getPetUUID());
                     return;
                 }

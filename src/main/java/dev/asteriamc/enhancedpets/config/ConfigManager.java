@@ -1,9 +1,14 @@
 package dev.asteriamc.enhancedpets.config;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
+
+import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
 public class ConfigManager {
+	
+	private static final Material DEFAULT_REVIVE_ITEM = Material.NETHER_STAR;
+	
     private final Enhancedpets plugin;
     private FileConfiguration config;
     private boolean catsAttackHostiles;
@@ -11,6 +16,7 @@ public class ConfigManager {
     private boolean ocelotTamingLegacyStyle;
     private boolean shiftdoubleclickgui;
     private boolean happyGhastFireball;
+    private Material reviveItem = DEFAULT_REVIVE_ITEM;
     private boolean debug;
 
 
@@ -27,6 +33,15 @@ public class ConfigManager {
         this.ocelotTamingLegacyStyle = this.config.getBoolean("ocelot-taming-legacy-style", false);
         this.shiftdoubleclickgui = this.config.getBoolean("shift-doubleclick-pet-gui", true);
         this.happyGhastFireball = this.config.getBoolean("happy-ghast-fireball", true);
+        
+        String reviveItemString = this.config.getString("revive-item", DEFAULT_REVIVE_ITEM.name());
+        for (Material material : Material.values()) {
+        	if (material.name().equalsIgnoreCase(reviveItemString)) {
+        		this.reviveItem = material;
+        		break;
+        	}
+        }
+        
         this.debug = this.config.getBoolean("debug", false);
         if (!this.dogCreeperBehavior.equals("NEUTRAL") && !this.dogCreeperBehavior.equals("ATTACK") && !this.dogCreeperBehavior.equals("FLEE")) {
             this.plugin.getLogger().warning("Invalid value for 'dog-creeper-behavior' in config.yml. Defaulting to NEUTRAL.");
@@ -60,6 +75,10 @@ public class ConfigManager {
 
     public boolean isHappyGhastFireballEnabled() {
         return this.happyGhastFireball;
+    }
+    
+    public Material getReviveItem() {
+    	return this.reviveItem;
     }
 
 }
