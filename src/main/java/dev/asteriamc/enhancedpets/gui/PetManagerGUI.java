@@ -424,12 +424,13 @@ public class PetManagerGUI {
             ));
             skull.setItemMeta(meta);
             gui.setItem(13, skull);
+            Material reviveItem = this.plugin.getConfigManager().getReviveItem();
             gui.setItem(11, this.createActionButton(
-                    Material.NETHER_STAR,
+            		reviveItem,
                     ChatColor.GREEN + "Revive Pet",
                     "confirm_revive_pet",
                     petUUID,
-                    List.of(ChatColor.GRAY + "Revive this pet with a Nether Star.")
+                    List.of(ChatColor.GRAY + "Revive this pet with a '" + reviveItem.name() + "'.")
             ));
             gui.setItem(15, this.createActionButton(
                     Material.BARRIER,
