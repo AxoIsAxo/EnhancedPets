@@ -56,7 +56,8 @@ public class PetListener implements Listener {
     public void onEntityTame(EntityTameEvent event) {
         if (event.getEntity() instanceof Tameable pet && event.getOwner() instanceof Player) {
             this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
-                if (pet.isValid() && pet.isTamed() && pet.getOwnerUniqueId() != null && !this.petManager.isManagedPet(pet.getUniqueId())) {
+                AnimalTamer owner = pet.getOwner();
+                if (owner != null && pet.isValid() && pet.isTamed() && !this.petManager.isManagedPet(pet.getUniqueId())) {
                     this.petManager.registerPet(pet);
                 }
             }, 1L);
@@ -105,7 +106,10 @@ public class PetListener implements Listener {
                     if (!pet.isValid()) {
                         this.plugin.getLogger().fine("Managed pet " + data.getDisplayName() + " became invalid after unleash. Keeping record.");
                     } else {
-                        UUID currentOwner = pet.getOwnerUniqueId();
+                        // NEW: replace getOwnerUniqueId()
+                        AnimalTamer ownerTamer = pet.getOwner();
+                        UUID currentOwner = ownerTamer != null ? ownerTamer.getUniqueId() : null;
+                        
                         if (currentOwner == null || !currentOwner.equals(data.getOwnerUUID())) {
                             this.plugin.getLogger().warning("Pet " + data.getDisplayName() + " owner mismatch on unleash. Restoring owner if possible.");
                             Player owner = Bukkit.getPlayer(data.getOwnerUUID());
@@ -127,13 +131,13 @@ public class PetListener implements Listener {
     public void onChunkLoad(ChunkLoadEvent event) {
         Chunk chunk = event.getChunk();
 
-        for (Entity entity : chunk.getEntities()) {
-            if (entity instanceof Tameable pet && pet.isTamed() && pet.getOwnerUniqueId() != null && !this.petManager.isManagedPet(pet.getUniqueId())) {
+        for (Entity entity : chunk.getEntities()) { 
+            if (entity instanceof Tameable pet && pet.isTamed() && pet.getOwner() != null && !this.petManager.isManagedPet(pet.getUniqueId())) {
                 this.plugin
                         .getLogger()
                         .log(Level.FINE, "Found unmanaged tamed pet {0} ({1}) in loaded chunk. Registering...", new Object[]{pet.getType(), pet.getUniqueId()});
                 this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
-                    if (pet.isValid() && pet.isTamed() && pet.getOwnerUniqueId() != null && !this.petManager.isManagedPet(pet.getUniqueId())) {
+                    if (pet.isValid() && pet.isTamed() && pet.getOwner() != null && !this.petManager.isManagedPet(pet.getUniqueId())) {
                         this.petManager.registerPet(pet);
                     }
                 }, 1L);
@@ -331,7 +335,10 @@ public class PetListener implements Listener {
         if (!(targetEntity instanceof Tameable pet)) return;
         if (!pet.isTamed()) return;
 
-        boolean isOwner = pet.getOwnerUniqueId() != null && pet.getOwnerUniqueId().equals(p.getUniqueId());
+        AnimalTamer ownerTamer = pet.getOwner();
+        UUID ownerUUID = ownerTamer != null ? ownerTamer.getUniqueId() : null;
+        
+        boolean isOwner = ownerUUID != null && ownerUUID.equals(p.getUniqueId());
         boolean adminOverride = !isOwner && p.hasPermission("enhancedpets.admin"); 
         if (!isOwner && !adminOverride) return; 
 
@@ -344,7 +351,7 @@ public class PetListener implements Listener {
             pending.remove(uuid);
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (adminOverride) { 
-                    plugin.getGuiManager().setViewerOwnerOverride(p.getUniqueId(), pet.getOwnerUniqueId());
+                    plugin.getGuiManager().setViewerOwnerOverride(p.getUniqueId(), ownerUUID);
                 }
                 plugin.getGuiManager().openPetMenu(p, targetEntity.getUniqueId());
             });
@@ -421,4 +428,9 @@ public class PetListener implements Listener {
         }
     }
 
+
 }
+
+
+
+
