@@ -53,10 +53,12 @@ public class PetListener implements Listener {
             priority = EventPriority.MONITOR,
             ignoreCancelled = true
     )
+    }
     public void onEntityTame(EntityTameEvent event) {
         if (event.getEntity() instanceof Tameable pet && event.getOwner() instanceof Player) {
             this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
-                if (pet.isValid() && pet.isTamed() && pet.getOwnerUniqueId() != null && !this.petManager.isManagedPet(pet.getUniqueId())) {
+                AnimalTamer owner = pet.getOwner();
+                if (owner != null && pet.isValid() && pet.isTamed() && !this.petManager.isManagedPet(pet.getUniqueId())) {
                     this.petManager.registerPet(pet);
                 }
             }, 1L);
@@ -420,5 +422,6 @@ public class PetListener implements Listener {
             return System.currentTimeMillis() > expiry;
         }
     }
+
 
 }
