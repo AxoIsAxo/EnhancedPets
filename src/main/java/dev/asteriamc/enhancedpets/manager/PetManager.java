@@ -68,13 +68,19 @@ public class PetManager {
     }
 
     public PetData registerPet(Tameable pet) {
-        if (!pet.isValid() || pet.getOwnerUniqueId() == null) {
+        if (!pet.isValid()) {
             this.plugin.getLogger().log(Level.WARNING, "Attempted to register an invalid or ownerless pet: {0}", pet.getUniqueId());
             return null;
         }
 
+        AnimalTamer owner = pet.getOwner();
+        if (owner == null) {
+            this.plugin.getLogger().log(Level.WARNING, "Attempted to register a pet without an owner: {0}", pet.getUniqueId());
+            return null;
+        }
+
         UUID petUUID = pet.getUniqueId();
-        UUID ownerUUID = pet.getOwnerUniqueId();
+        UUID ownerUUID = owner.getUniqueId();
 
 
         if (this.petDataMap.containsKey(petUUID)) {
@@ -132,7 +138,7 @@ public class PetManager {
             for (Chunk chunk : world.getLoadedChunks()) {
                 for (Entity entity : chunk.getEntities()) {
                     if (entity instanceof Tameable pet) {
-                        if (pet.isTamed() && ownerUUID.equals(pet.getOwnerUniqueId()) && !isManagedPet(pet.getUniqueId())) {
+                        if (pet.isTamed() && ownerUUID.equals(tamer.getUniqueId()) && !isManagedPet(pet.getUniqueId())) {
                             registerPet(pet);
                             newPetsFound++;
                         }
@@ -1006,3 +1012,4 @@ public class PetManager {
 
 
 }
+
