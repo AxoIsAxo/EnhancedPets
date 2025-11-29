@@ -53,7 +53,6 @@ public class PetListener implements Listener {
             priority = EventPriority.MONITOR,
             ignoreCancelled = true
     )
-    }
     public void onEntityTame(EntityTameEvent event) {
         if (event.getEntity() instanceof Tameable pet && event.getOwner() instanceof Player) {
             this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
@@ -425,3 +424,4 @@ public class PetListener implements Listener {
 
 
 }
+
