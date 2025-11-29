@@ -138,6 +138,7 @@ public class PetManager {
             for (Chunk chunk : world.getLoadedChunks()) {
                 for (Entity entity : chunk.getEntities()) {
                     if (entity instanceof Tameable pet) {
+                        AnimalTamer tamer = pet.getOwner();
                         if (pet.isTamed() && ownerUUID.equals(tamer.getUniqueId()) && !isManagedPet(pet.getUniqueId())) {
                             registerPet(pet);
                             newPetsFound++;
@@ -1012,4 +1013,5 @@ public class PetManager {
 
 
 }
+
 
