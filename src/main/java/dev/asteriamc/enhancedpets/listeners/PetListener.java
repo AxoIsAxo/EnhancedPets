@@ -335,7 +335,10 @@ public class PetListener implements Listener {
         if (!(targetEntity instanceof Tameable pet)) return;
         if (!pet.isTamed()) return;
 
-        boolean isOwner = pet.getOwner() != null && pet.getOwner().equals(p.getUniqueId());
+        AnimalTamer ownerTamer = pet.getOwner();
+        UUID ownerUUID = ownerTamer != null ? ownerTamer.getUniqueId() : null;
+        
+        boolean isOwner = ownerUUID != null && ownerUUID.equals(p.getUniqueId());
         boolean adminOverride = !isOwner && p.hasPermission("enhancedpets.admin"); 
         if (!isOwner && !adminOverride) return; 
 
@@ -348,7 +351,7 @@ public class PetListener implements Listener {
             pending.remove(uuid);
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (adminOverride) { 
-                    plugin.getGuiManager().setViewerOwnerOverride(p.getUniqueId(), pet.getOwner());
+                    plugin.getGuiManager().setViewerOwnerOverride(p.getUniqueId(), ownerUUID);
                 }
                 plugin.getGuiManager().openPetMenu(p, targetEntity.getUniqueId());
             });
@@ -427,6 +430,7 @@ public class PetListener implements Listener {
 
 
 }
+
 
 
 
