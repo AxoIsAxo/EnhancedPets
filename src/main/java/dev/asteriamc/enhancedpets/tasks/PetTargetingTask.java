@@ -17,7 +17,6 @@ public class PetTargetingTask extends BukkitRunnable {
     private final double verticalScanRadius;
     private int rrIndex = 0;
 
-
     public PetTargetingTask(Enhancedpets plugin, PetManager petManager) {
         this.plugin = plugin;
         this.petManager = petManager;
@@ -57,15 +56,28 @@ public class PetTargetingTask extends BukkitRunnable {
                 if (!(nearby instanceof LivingEntity target)) continue;
                 if (target.equals(petCreature) || target.isDead() || !target.isValid()) continue;
 
+                
+                if (plugin.getPetManager().isManagedPet(target.getUniqueId())) {
+                    PetData tpd = plugin.getPetManager().getPetData(target.getUniqueId());
+                    if (tpd != null) {
+                        
+                        if (tpd.getOwnerUUID().equals(petData.getOwnerUUID())) continue;
+                        
+                        if (petData.isFriendlyPlayer(tpd.getOwnerUUID())) continue;
+                    }
+                } else if (target instanceof Tameable nearbyTameable && nearbyTameable.isTamed()
+                        && petData.getOwnerUUID().equals(nearbyTameable.getOwnerUniqueId())) {
+                    continue;
+                }
 
+                
                 if (target.getUniqueId().equals(petData.getOwnerUUID())) continue;
                 if (petData.isFriendlyPlayer(target.getUniqueId())) continue;
-                if (target instanceof Tameable nearbyTameable && nearbyTameable.isTamed()
-                        && petData.getOwnerUUID().equals(nearbyTameable.getOwnerUniqueId())) continue;
 
+                
+                if (target instanceof Player && petData.isProtectedFromPlayers()) continue;
 
                 if (target instanceof Player p && p.getGameMode() == GameMode.SPECTATOR) continue;
-                if (target instanceof Player && petData.isProtectedFromPlayers()) continue;
 
                 if (!petCreature.hasLineOfSight(target)) continue;
 

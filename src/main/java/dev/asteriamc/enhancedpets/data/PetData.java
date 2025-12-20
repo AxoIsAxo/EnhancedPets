@@ -20,6 +20,12 @@ public class PetData {
     private Map<String, Object> metadata = new HashMap<>();
     private boolean protectedFromPlayers = false;
 
+    
+    
+    private String displayColor = null;
+    
+    private String customIconMaterial = null;
+
     public PetData(UUID petUUID, UUID ownerUUID, EntityType entityType, String displayName) {
         this.petUUID = petUUID;
         this.ownerUUID = ownerUUID;
@@ -55,6 +61,10 @@ public class PetData {
             @SuppressWarnings("unchecked")
             Map<String, Object> metadata = (Map<String, Object>) map.get("metadata");
 
+            
+            String displayColor = (String) map.getOrDefault("displayColor", null);
+            String customIconMaterial = (String) map.getOrDefault("customIconMaterial", null);
+
             Set<UUID> friendlies = new HashSet<>();
             Object friendliesObj = map.get("friendlyPlayers");
             if (friendliesObj instanceof List<?> list) {
@@ -79,6 +89,8 @@ public class PetData {
             data.setPausedAgeTicks(pausedAgeTicks);
             data.setDead(dead);
             data.setProtectedFromPlayers(protectedFromPlayers);
+            data.setDisplayColor(displayColor);
+            data.setCustomIconMaterial(customIconMaterial);
             if (metadata != null) {
                 data.setMetadata(metadata);
             }
@@ -122,6 +134,13 @@ public class PetData {
         map.put("protectedFromPlayers", this.protectedFromPlayers);
         if (this.metadata != null && !this.metadata.isEmpty()) {
             map.put("metadata", this.metadata);
+        }
+        
+        if (this.displayColor != null) {
+            map.put("displayColor", this.displayColor);
+        }
+        if (this.customIconMaterial != null) {
+            map.put("customIconMaterial", this.customIconMaterial);
         }
         return map;
     }
@@ -210,8 +229,24 @@ public class PetData {
         return this.pausedAgeTicks;
     }
 
-
     public void setPausedAgeTicks(int pausedAgeTicks) {
         this.pausedAgeTicks = pausedAgeTicks;
+    }
+
+    
+    public String getDisplayColor() {
+        return displayColor;
+    }
+
+    public void setDisplayColor(String displayColor) {
+        this.displayColor = (displayColor != null && !displayColor.isEmpty()) ? displayColor : null;
+    }
+
+    public String getCustomIconMaterial() {
+        return customIconMaterial;
+    }
+
+    public void setCustomIconMaterial(String customIconMaterial) {
+        this.customIconMaterial = (customIconMaterial != null && !customIconMaterial.isEmpty()) ? customIconMaterial : null;
     }
 }

@@ -18,4 +18,15 @@ ocelot-taming-legacy-style: false # Default to false to maintain vanilla behavio
 # If true, right-clicking within a window of 250ms on your OWN pet will open the GUI/
 shift-doubleclick-pet-gui: true
 
+# Allow players riding the custom "Happy Ghast" pet to shoot fireballs?
+# If true, players can left-click while riding their ghast to shoot a small fireball.
+happy-ghast-fireball: true
+
+# Setup the item for reviving a pet.
+revive-item: NETHER_STAR
+
+#Require advanced logs? want to check if there's a bug?
+#Enable this to receive tons of helpful messages from the plugin in the server console
+debug: false
+
 #END OF CONFIGURATION

@@ -37,6 +37,7 @@ public final class Enhancedpets extends JavaPlugin {
         return instance;
     }
 
+
     public void onEnable() {
         instance = this;
         this.getLogger().info("EnhancedPets is enabling...");
@@ -49,6 +50,8 @@ public final class Enhancedpets extends JavaPlugin {
         this.loadConfigurationAndData();
         PetCommand petCommandExecutor = new PetCommand(this, this.guiManager);
         Objects.requireNonNull(this.getCommand("pets")).setExecutor(petCommandExecutor);
+        Objects.requireNonNull(this.getCommand("petadmin")).setExecutor(petCommandExecutor); 
+
 
 
         this.petListener = new PetListener(this);
@@ -65,7 +68,7 @@ public final class Enhancedpets extends JavaPlugin {
 
         this.startTargetingTask();
         this.startAutosaveTask();
-        this.getLogger().info("EnhancedPets has been enabled successfully!");
+        Enhancedpets.getInstance().debugLog("EnhancedPets has been enabled successfully!");
     }
 
     public PetListener getPetListener() {
@@ -84,7 +87,7 @@ public final class Enhancedpets extends JavaPlugin {
             this.petManager.saveAllCachedDataImmediate();
         }
 
-        this.getLogger().info("EnhancedPets has been disabled.");
+        Enhancedpets.getInstance().debugLog("EnhancedPets has been disabled.");
     }
 
     private void startAutosaveTask() {
@@ -148,7 +151,7 @@ public final class Enhancedpets extends JavaPlugin {
             growthGuardTask = new GrowthGuardTask(this).runTaskTimer(this, 20L, 20L);
             this.targetingTaskRunnable = new PetTargetingTask(this, this.petManager);
             this.targetingTask = this.targetingTaskRunnable.runTaskTimer(this, delayTicks, periodTicks);
-            this.getLogger().log(Level.INFO, "Scheduled Aggressive Pet Targeting Task (runs every {0} seconds).", periodTicks / 20.0);
+            Enhancedpets.getInstance().debugLog("Scheduled Aggressive Pet Targeting Task (runs every 1 second).");
         }
     }
 
@@ -156,11 +159,18 @@ public final class Enhancedpets extends JavaPlugin {
     public void stopTargetingTask() {
         if (this.targetingTask != null && !this.targetingTask.isCancelled()) {
             this.targetingTask.cancel();
-            this.getLogger().info("Cancelled Aggressive Pet Targeting Task.");
+            Enhancedpets.getInstance().debugLog("Cancelled Aggressive Pet Targeting Task.");
             this.targetingTask = null;
             this.targetingTaskRunnable = null;
         }
     }
+
+    public void debugLog(String message) {
+        if (this.configManager != null && this.configManager.isDebug()) {
+            getLogger().info("[DEBUG] " + message);
+        }
+    }
+
 
     public ConfigManager getConfigManager() {
         return this.configManager;

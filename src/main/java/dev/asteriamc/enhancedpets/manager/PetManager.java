@@ -68,13 +68,19 @@ public class PetManager {
     }
 
     public PetData registerPet(Tameable pet) {
-        if (!pet.isValid() || pet.getOwnerUniqueId() == null) {
+        if (!pet.isValid()) {
             this.plugin.getLogger().log(Level.WARNING, "Attempted to register an invalid or ownerless pet: {0}", pet.getUniqueId());
             return null;
         }
 
+        AnimalTamer owner = pet.getOwner();
+        if (owner == null) {
+            this.plugin.getLogger().log(Level.WARNING, "Attempted to register a pet without an owner: {0}", pet.getUniqueId());
+            return null;
+        }
+
         UUID petUUID = pet.getUniqueId();
-        UUID ownerUUID = pet.getOwnerUniqueId();
+        UUID ownerUUID = owner.getUniqueId();
 
 
         if (this.petDataMap.containsKey(petUUID)) {
@@ -90,7 +96,7 @@ public class PetManager {
                     .findFirst();
 
             if (existingData.isPresent()) {
-                plugin.getLogger().info("Found existing persistent data for offline owner's pet " + petUUID + ". Loading it into cache.");
+                plugin.debugLog("Found existing persistent data for offline owner's pet " + petUUID + ". Loading it into cache.");
                 PetData data = existingData.get();
                 this.petDataMap.put(petUUID, data);
 
@@ -119,7 +125,7 @@ public class PetManager {
         PetData data = new PetData(petUUID, ownerUUID, pet.getType(), finalName);
         this.petDataMap.put(petUUID, data);
         String ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
-        this.plugin.getLogger().info("Registered new pet: " + finalName + " (Owner: " + ownerName + ")");
+        this.plugin.debugLog("Registered new pet: " + finalName + " (Owner: " + ownerName + ")");
         queueOwnerSave(data.getOwnerUUID());
         return data;
     }
@@ -132,7 +138,8 @@ public class PetManager {
             for (Chunk chunk : world.getLoadedChunks()) {
                 for (Entity entity : chunk.getEntities()) {
                     if (entity instanceof Tameable pet) {
-                        if (pet.isTamed() && ownerUUID.equals(pet.getOwnerUniqueId()) && !isManagedPet(pet.getUniqueId())) {
+                        AnimalTamer tamer = pet.getOwner();
+                        if (pet.isTamed() && ownerUUID.equals(tamer.getUniqueId()) && !isManagedPet(pet.getUniqueId())) {
                             registerPet(pet);
                             newPetsFound++;
                         }
@@ -251,7 +258,7 @@ public class PetManager {
         }
 
         data.setMetadata(metadata);
-        plugin.getLogger().info("Captured metadata for dead pet: " + data.getDisplayName());
+        plugin.debugLog("Captured metadata for dead pet: " + data.getDisplayName());
     }
 
 
@@ -402,7 +409,7 @@ public class PetManager {
             if (v instanceof Boolean bv) s.setSitting(bv);
         }
 
-        plugin.getLogger().info("Applied comprehensive metadata to revived pet: " + petData.getDisplayName());
+        plugin.debugLog("Applied comprehensive metadata to revived pet: " + petData.getDisplayName());
     }
 
 
@@ -470,6 +477,8 @@ public class PetManager {
         newData.setGrowthPaused(oldData.isGrowthPaused());
         newData.setPausedAgeTicks(oldData.getPausedAgeTicks());
         newData.setProtectedFromPlayers(oldData.isProtectedFromPlayers());
+        newData.setDisplayColor(oldData.getDisplayColor());
+        newData.setCustomIconMaterial(oldData.getCustomIconMaterial());
 
 
         applyMetadata(newPetEntity, oldData);
@@ -480,11 +489,9 @@ public class PetManager {
 
         newPetEntity.setCustomName(ChatColor.translateAlternateColorCodes('&', newData.getDisplayName()));
         if (newPetEntity instanceof Tameable t) {
-            Player owner = Bukkit.getPlayer(newData.getOwnerUUID());
-            if (owner != null) {
-                t.setOwner(owner);
-                t.setTamed(true);
-            }
+            OfflinePlayer owner = Bukkit.getOfflinePlayer(newData.getOwnerUUID());
+            t.setOwner(owner);
+            t.setTamed(true);
         }
         queueOwnerSave(newData.getOwnerUUID());
     }
@@ -533,7 +540,7 @@ public class PetManager {
         if (data != null) {
             data.setDead(true);
             captureMetadata(data, petEntity);
-            this.plugin.getLogger().info("Marking pet as dead: " + data.getDisplayName() + " (UUID: " + petUUID + ")");
+            this.plugin.debugLog("Marking pet as dead: " + data.getDisplayName() + " (UUID: " + petUUID + ")");
             queueOwnerSave(data.getOwnerUUID());
         }
     }
@@ -542,7 +549,7 @@ public class PetManager {
         PetData data = this.petDataMap.get(petUUID);
         if (data != null) {
             data.setDead(true);
-            this.plugin.getLogger().info("Marking pet as dead: " + data.getDisplayName() + " (UUID: " + petUUID + ")");
+            this.plugin.debugLog("Marking pet as dead: " + data.getDisplayName() + " (UUID: " + petUUID + ")");
             queueOwnerSave(data.getOwnerUUID());
         }
     }
@@ -557,6 +564,7 @@ public class PetManager {
                 if (entity instanceof Tameable t && t.isTamed()) {
                     t.setOwner(null);
                     t.setTamed(false);
+
                     String name = removedData.getDisplayName();
                     int id = -1;
                     int idx = name.lastIndexOf('#');
@@ -573,12 +581,9 @@ public class PetManager {
 
             });
 
-            plugin.getLogger().info("Completely removing pet: " + removedData.getDisplayName() + " (UUID: " + petUUID + ")");
+            plugin.debugLog("Completely removing pet: " + removedData.getDisplayName() + " (UUID: " + petUUID + ")");
 
-
-            unloadPetsForPlayer(removedData.getOwnerUUID());
-            loadPetsForPlayer(removedData.getOwnerUUID());
-
+            queueOwnerSave(removedData.getOwnerUUID());
         }
     }
 
@@ -711,7 +716,7 @@ public class PetManager {
                 storageManager.savePets(owner, new java.util.ArrayList<>(merged.values()));
             }
         });
-        plugin.getLogger().info("Saved all cached pet data (merge-safe) for " + petsByOwner.size() + " players (immediate).");
+        plugin.debugLog("Saved all cached pet data (merge-safe) for " + petsByOwner.size() + " players (immediate).");
     }
 
     public void saveAllCachedData() {
@@ -737,7 +742,7 @@ public class PetManager {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 loadedPets.forEach(pet -> petDataMap.put(pet.getPetUUID(), pet));
                 loadedOwners.add(ownerUUID);
-                plugin.getLogger().info("Loaded " + loadedPets.size() + " pets for " + ownerUUID);
+                plugin.debugLog("Loaded " + loadedPets.size() + " pets for " + ownerUUID);
             });
         });
     }
@@ -745,12 +750,10 @@ public class PetManager {
     public void unloadPetsForPlayer(UUID ownerUUID) {
         cancelPendingOwnerSave(ownerUUID);
         List<PetData> petsToSave = getPetsOwnedBy(ownerUUID);
-        if (!petsToSave.isEmpty()) {
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> storageManager.savePets(ownerUUID, petsToSave));
-        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> storageManager.savePets(ownerUUID, petsToSave));
         petsToSave.forEach(pet -> petDataMap.remove(pet.getPetUUID()));
         loadedOwners.remove(ownerUUID);
-        plugin.getLogger().info("Unloaded " + petsToSave.size() + " pets for " + ownerUUID);
+        plugin.debugLog("Unloaded " + petsToSave.size() + " pets for " + ownerUUID);
     }
 
     public PetData registerNonTameablePet(Entity entity, UUID ownerUUID, String displayName) {
@@ -766,7 +769,7 @@ public class PetManager {
             PetData data = new PetData(petUUID, ownerUUID, entity.getType(), finalName);
             this.petDataMap.put(petUUID, data);
             String ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
-            this.plugin.getLogger().info("Registered new non-tameable pet: " + finalName + " (Owner: " + ownerName + ")");
+            this.plugin.debugLog("Registered new non-tameable pet: " + finalName + " (Owner: " + ownerName + ")");
 
             queueOwnerSave(ownerUUID);
             return data;
@@ -1010,3 +1013,5 @@ public class PetManager {
 
 
 }
+
+

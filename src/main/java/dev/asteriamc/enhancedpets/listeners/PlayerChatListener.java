@@ -91,15 +91,7 @@ public class PlayerChatListener implements Listener {
                 this.petManager.updatePetData(petData);
                 player.sendMessage(ChatColor.GREEN + "Renamed " + ChatColor.AQUA + oldName + ChatColor.GREEN + " to " + ChatColor.AQUA + input + ChatColor.GREEN + ".");
             } else {
-                String oldName = petData.getDisplayName();
-                String newDefaultName = this.petManager.assignNewDefaultName(petData);
-                petData.setDisplayName(newDefaultName);
-                Entity petEntity = Bukkit.getEntity(petContextUUID);
-                if (petEntity instanceof LivingEntity) {
-                    petEntity.setCustomName(null);
-                }
-                this.petManager.updatePetData(petData);
-                player.sendMessage(ChatColor.YELLOW + "Invalid name characters used. Reset name of " + ChatColor.AQUA + oldName + ChatColor.YELLOW + " to " + ChatColor.AQUA + newDefaultName + ChatColor.YELLOW + ".");
+                player.sendMessage(ChatColor.RED + "Invalid name characters used. Name was not changed.");
             }
             this.guiManager.openPetMenu(player, petContextUUID);
         });
@@ -187,3 +179,4 @@ public class PlayerChatListener implements Listener {
         });
     }
 }
+

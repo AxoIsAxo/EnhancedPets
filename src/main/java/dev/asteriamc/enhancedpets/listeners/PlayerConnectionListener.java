@@ -33,8 +33,8 @@ public class PlayerConnectionListener implements Listener {
 
         plugin.getPetGUIListener().forgetPlayer(player.getUniqueId());
         plugin.getPetListener().forgetPlayer(player.getUniqueId());
-
-
+        plugin.getGuiManager().clearViewerOwnerOverride(player.getUniqueId());
         petManager.unloadPetsForPlayer(player.getUniqueId());
     }
 }
+
