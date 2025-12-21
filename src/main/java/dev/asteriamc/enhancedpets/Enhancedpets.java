@@ -37,7 +37,6 @@ public final class Enhancedpets extends JavaPlugin {
         return instance;
     }
 
-
     public void onEnable() {
         instance = this;
         this.getLogger().info("EnhancedPets is enabling...");
@@ -50,19 +49,21 @@ public final class Enhancedpets extends JavaPlugin {
         this.loadConfigurationAndData();
         PetCommand petCommandExecutor = new PetCommand(this, this.guiManager);
         Objects.requireNonNull(this.getCommand("pets")).setExecutor(petCommandExecutor);
-        Objects.requireNonNull(this.getCommand("petadmin")).setExecutor(petCommandExecutor); 
-
-
+        Objects.requireNonNull(this.getCommand("pets")).setTabCompleter(petCommandExecutor);
+        Objects.requireNonNull(this.getCommand("petadmin")).setExecutor(petCommandExecutor);
+        Objects.requireNonNull(this.getCommand("petadmin")).setTabCompleter(petCommandExecutor);
 
         this.petListener = new PetListener(this);
 
         Bukkit.getPluginManager().registerEvents(this.petListener, this);
         Bukkit.getPluginManager().registerEvents(this.petGUIListener, this);
-        Bukkit.getPluginManager().registerEvents(new PlayerChatListener(this, this.petManager, this.guiManager, this.petGUIListener), this);
+        Bukkit.getPluginManager().registerEvents(
+                new PlayerChatListener(this, this.petManager, this.guiManager, this.petGUIListener), this);
         Bukkit.getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
 
         if (!Bukkit.getOnlinePlayers().isEmpty()) {
-            getLogger().info("Reload detected. Loading pet data for " + Bukkit.getOnlinePlayers().size() + " online players...");
+            getLogger().info(
+                    "Reload detected. Loading pet data for " + Bukkit.getOnlinePlayers().size() + " online players...");
             Bukkit.getOnlinePlayers().forEach(player -> petManager.loadPetsForPlayer(player.getUniqueId()));
         }
 
@@ -100,8 +101,7 @@ public final class Enhancedpets extends JavaPlugin {
                         petManager.saveAllCachedData();
                     }
                 },
-                periodTicks, periodTicks
-        );
+                periodTicks, periodTicks);
         getLogger().info("Autosave scheduled every 2 minutes.");
     }
 
@@ -130,7 +130,8 @@ public final class Enhancedpets extends JavaPlugin {
             sender.sendMessage(ChatColor.GREEN + "Configuration reloaded successfully.");
             sender.sendMessage(ChatColor.GRAY + "(Pet data is now stored in JSON files and was not reloaded.)");
         } catch (Exception var6) {
-            sender.sendMessage(ChatColor.RED + "An error occurred while reloading the configuration. Check console logs!");
+            sender.sendMessage(
+                    ChatColor.RED + "An error occurred while reloading the configuration. Check console logs!");
             this.getLogger().log(Level.SEVERE, "Error during EnhancedPets configuration reload:", var6);
         } finally {
             this.startTargetingTask();
@@ -155,7 +156,6 @@ public final class Enhancedpets extends JavaPlugin {
         }
     }
 
-
     public void stopTargetingTask() {
         if (this.targetingTask != null && !this.targetingTask.isCancelled()) {
             this.targetingTask.cancel();
@@ -170,7 +170,6 @@ public final class Enhancedpets extends JavaPlugin {
             getLogger().info("[DEBUG] " + message);
         }
     }
-
 
     public ConfigManager getConfigManager() {
         return this.configManager;

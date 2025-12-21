@@ -5,6 +5,9 @@ import org.bukkit.entity.EntityType;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import org.bukkit.Location;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
 
 public class PetData {
     private final UUID petUUID;
@@ -20,10 +23,19 @@ public class PetData {
     private Map<String, Object> metadata = new HashMap<>();
     private boolean protectedFromPlayers = false;
 
-    
-    
+    // Station Feature
+    private Location stationLocation;
+    private double stationRadius = 10.0;
+    private Set<String> stationTargetTypes = new HashSet<>(); // e.g. "PLAYER", "MOB"
+
+    // Target Feature
+    private UUID explicitTargetUUID;
+
+    // Storage Feature
+    private boolean stored = false;
+
     private String displayColor = null;
-    
+
     private String customIconMaterial = null;
 
     public PetData(UUID petUUID, UUID ownerUUID, EntityType entityType, String displayName) {
@@ -46,7 +58,8 @@ public class PetData {
             } catch (Exception ex) {
                 type = EntityType.HORSE;
                 if (Enhancedpets.getInstance() != null) {
-                    Enhancedpets.getInstance().getLogger().warning("Unknown entity type for pet " + petUUID + ". Defaulting to HORSE.");
+                    Enhancedpets.getInstance().getLogger()
+                            .warning("Unknown entity type for pet " + petUUID + ". Defaulting to HORSE.");
                 }
             }
 
@@ -61,7 +74,6 @@ public class PetData {
             @SuppressWarnings("unchecked")
             Map<String, Object> metadata = (Map<String, Object>) map.get("metadata");
 
-            
             String displayColor = (String) map.getOrDefault("displayColor", null);
             String customIconMaterial = (String) map.getOrDefault("customIconMaterial", null);
 
@@ -74,7 +86,8 @@ public class PetData {
                             friendlies.add(UUID.fromString(s));
                         } catch (IllegalArgumentException ex) {
                             if (Enhancedpets.getInstance() != null) {
-                                Enhancedpets.getInstance().getLogger().warning("Invalid friendly player UUID '" + s + "' for pet " + petUUID);
+                                Enhancedpets.getInstance().getLogger()
+                                        .warning("Invalid friendly player UUID '" + s + "' for pet " + petUUID);
                             }
                         }
                     }
@@ -88,16 +101,49 @@ public class PetData {
             data.setGrowthPaused(growthPaused);
             data.setPausedAgeTicks(pausedAgeTicks);
             data.setDead(dead);
+            data.setStored((boolean) map.getOrDefault("stored", false));
             data.setProtectedFromPlayers(protectedFromPlayers);
             data.setDisplayColor(displayColor);
             data.setCustomIconMaterial(customIconMaterial);
             if (metadata != null) {
                 data.setMetadata(metadata);
             }
+
+            // Station Deserialization
+            if (map.containsKey("stationLocation")) {
+                Map<String, Object> locMap = (Map<String, Object>) map.get("stationLocation");
+                try {
+                    String wName = (String) locMap.get("world");
+                    double x = ((Number) locMap.get("x")).doubleValue();
+                    double y = ((Number) locMap.get("y")).doubleValue();
+                    double z = ((Number) locMap.get("z")).doubleValue();
+                    World w = Bukkit.getWorld(wName);
+                    if (w != null) {
+                        data.setStationLocation(new Location(w, x, y, z));
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            if (map.containsKey("stationRadius")) {
+                data.setStationRadius(((Number) map.get("stationRadius")).doubleValue());
+            }
+            if (map.containsKey("stationTargetTypes")) {
+                data.setStationTargetTypes(new HashSet<>((List<String>) map.get("stationTargetTypes")));
+            }
+
+            // Target Deserialization
+            if (map.containsKey("explicitTargetUUID")) {
+                try {
+                    data.setExplicitTargetUUID(UUID.fromString((String) map.get("explicitTargetUUID")));
+                } catch (Exception ignored) {
+                }
+            }
+
             return data;
         } catch (Exception var9) {
             if (Enhancedpets.getInstance() != null) {
-                Enhancedpets.getInstance().getLogger().severe("Error deserializing pet data for UUID " + petUUID + ": " + var9.getMessage());
+                Enhancedpets.getInstance().getLogger()
+                        .severe("Error deserializing pet data for UUID " + petUUID + ": " + var9.getMessage());
             }
             var9.printStackTrace();
             return null;
@@ -131,17 +177,36 @@ public class PetData {
         map.put("growthPaused", this.growthPaused);
         map.put("pausedAgeTicks", this.pausedAgeTicks);
         map.put("dead", this.dead);
+        map.put("stored", this.stored);
         map.put("protectedFromPlayers", this.protectedFromPlayers);
         if (this.metadata != null && !this.metadata.isEmpty()) {
             map.put("metadata", this.metadata);
         }
-        
+
         if (this.displayColor != null) {
             map.put("displayColor", this.displayColor);
         }
         if (this.customIconMaterial != null) {
             map.put("customIconMaterial", this.customIconMaterial);
         }
+
+        // Station Serialization
+        if (this.stationLocation != null) {
+            Map<String, Object> locMap = new HashMap<>();
+            locMap.put("world", this.stationLocation.getWorld().getName());
+            locMap.put("x", this.stationLocation.getX());
+            locMap.put("y", this.stationLocation.getY());
+            locMap.put("z", this.stationLocation.getZ());
+            map.put("stationLocation", locMap);
+        }
+        map.put("stationRadius", this.stationRadius);
+        map.put("stationTargetTypes", new ArrayList<>(this.stationTargetTypes));
+
+        // Target Serialization
+        if (this.explicitTargetUUID != null) {
+            map.put("explicitTargetUUID", this.explicitTargetUUID.toString());
+        }
+
         return map;
     }
 
@@ -179,6 +244,14 @@ public class PetData {
 
     public void setDead(boolean dead) {
         this.dead = dead;
+    }
+
+    public boolean isStored() {
+        return stored;
+    }
+
+    public void setStored(boolean stored) {
+        this.stored = stored;
     }
 
     public String getDisplayName() {
@@ -233,7 +306,6 @@ public class PetData {
         this.pausedAgeTicks = pausedAgeTicks;
     }
 
-    
     public String getDisplayColor() {
         return displayColor;
     }
@@ -247,6 +319,39 @@ public class PetData {
     }
 
     public void setCustomIconMaterial(String customIconMaterial) {
-        this.customIconMaterial = (customIconMaterial != null && !customIconMaterial.isEmpty()) ? customIconMaterial : null;
+        this.customIconMaterial = (customIconMaterial != null && !customIconMaterial.isEmpty()) ? customIconMaterial
+                : null;
+    }
+
+    public Location getStationLocation() {
+        return stationLocation;
+    }
+
+    public void setStationLocation(Location stationLocation) {
+        this.stationLocation = stationLocation;
+    }
+
+    public double getStationRadius() {
+        return stationRadius;
+    }
+
+    public void setStationRadius(double stationRadius) {
+        this.stationRadius = stationRadius;
+    }
+
+    public Set<String> getStationTargetTypes() {
+        return stationTargetTypes;
+    }
+
+    public void setStationTargetTypes(Set<String> stationTargetTypes) {
+        this.stationTargetTypes = stationTargetTypes != null ? stationTargetTypes : new HashSet<>();
+    }
+
+    public UUID getExplicitTargetUUID() {
+        return explicitTargetUUID;
+    }
+
+    public void setExplicitTargetUUID(UUID explicitTargetUUID) {
+        this.explicitTargetUUID = explicitTargetUUID;
     }
 }

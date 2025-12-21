@@ -41,7 +41,8 @@ public class PetManager {
     }
 
     private void cancelPendingOwnerSave(UUID ownerUUID) {
-        if (ownerUUID == null) return;
+        if (ownerUUID == null)
+            return;
         BukkitTask existing = pendingOwnerSaves.remove(ownerUUID);
         if (existing != null && !existing.isCancelled()) {
             existing.cancel();
@@ -50,7 +51,8 @@ public class PetManager {
 
     public void cancelAllPendingOwnerSaves() {
         for (BukkitTask task : pendingOwnerSaves.values()) {
-            if (task != null && !task.isCancelled()) task.cancel();
+            if (task != null && !task.isCancelled())
+                task.cancel();
         }
         pendingOwnerSaves.clear();
     }
@@ -69,37 +71,36 @@ public class PetManager {
 
     public PetData registerPet(Tameable pet) {
         if (!pet.isValid() || pet.getOwnerUniqueId() == null) {
-            this.plugin.getLogger().log(Level.WARNING, "Attempted to register an invalid or ownerless pet: {0}", pet.getUniqueId());
+            this.plugin.getLogger().log(Level.WARNING, "Attempted to register an invalid or ownerless pet: {0}",
+                    pet.getUniqueId());
             return null;
         }
 
         UUID petUUID = pet.getUniqueId();
         UUID ownerUUID = pet.getOwnerUniqueId();
 
-
         if (this.petDataMap.containsKey(petUUID)) {
             return this.petDataMap.get(petUUID);
         }
 
-
         if (!isOwnerLoaded(ownerUUID)) {
-            plugin.getLogger().fine("Registering a pet for an offline owner (" + ownerUUID + "). Checking persistent storage first...");
+            plugin.getLogger().fine(
+                    "Registering a pet for an offline owner (" + ownerUUID + "). Checking persistent storage first...");
             List<PetData> offlinePets = storageManager.loadPets(ownerUUID);
             Optional<PetData> existingData = offlinePets.stream()
                     .filter(p -> p.getPetUUID().equals(petUUID))
                     .findFirst();
 
             if (existingData.isPresent()) {
-                plugin.debugLog("Found existing persistent data for offline owner's pet " + petUUID + ". Loading it into cache.");
+                plugin.debugLog("Found existing persistent data for offline owner's pet " + petUUID
+                        + ". Loading it into cache.");
                 PetData data = existingData.get();
                 this.petDataMap.put(petUUID, data);
 
                 return data;
             }
 
-
         }
-
 
         int id = -1;
         if (pet.getPersistentDataContainer().has(PET_ID_KEY, PersistentDataType.INTEGER)) {
@@ -108,7 +109,8 @@ public class PetManager {
         }
         String customName = pet.getCustomName();
         String finalName;
-        if (customName != null && !customName.isEmpty() && !customName.equalsIgnoreCase(pet.getType().name().replace('_', ' '))) {
+        if (customName != null && !customName.isEmpty()
+                && !customName.equalsIgnoreCase(pet.getType().name().replace('_', ' '))) {
             finalName = ChatColor.stripColor(customName);
         } else if (id != -1) {
             finalName = this.formatEntityType(pet.getType()) + " #" + id;
@@ -132,7 +134,8 @@ public class PetManager {
             for (Chunk chunk : world.getLoadedChunks()) {
                 for (Entity entity : chunk.getEntities()) {
                     if (entity instanceof Tameable pet) {
-                        if (pet.isTamed() && ownerUUID.equals(pet.getOwnerUniqueId()) && !isManagedPet(pet.getUniqueId())) {
+                        if (pet.isTamed() && ownerUUID.equals(pet.getOwnerUniqueId())
+                                && !isManagedPet(pet.getUniqueId())) {
                             registerPet(pet);
                             newPetsFound++;
                         }
@@ -150,7 +153,8 @@ public class PetManager {
     }
 
     public void captureMetadata(PetData data, LivingEntity petEntity) {
-        if (data == null || petEntity == null) return;
+        if (data == null || petEntity == null)
+            return;
         Map<String, Object> metadata = new HashMap<>();
 
         if (petEntity instanceof Ageable a) {
@@ -227,6 +231,39 @@ public class PetManager {
             metadata.put("collarColor", c.getCollarColor().name());
         } else if (petEntity instanceof Parrot p) {
             metadata.put("parrotVariant", p.getVariant().name());
+        } else if (petEntity instanceof Axolotl ax) {
+            metadata.put("axolotlVariant", ax.getVariant().name());
+        } else if (petEntity instanceof Rabbit r) {
+            metadata.put("rabbitType", r.getRabbitType().name());
+        } else if (petEntity instanceof Sheep s) {
+            if (s.getColor() != null)
+                metadata.put("sheepColor", s.getColor().name());
+        } else if (petEntity instanceof MushroomCow m) {
+            metadata.put("moocowVariant", m.getVariant().name());
+        } else if (petEntity instanceof Panda p) {
+            metadata.put("pandaMainGene", p.getMainGene().name());
+            metadata.put("pandaHiddenGene", p.getHiddenGene().name());
+        } else if (petEntity instanceof Fox f) {
+            metadata.put("foxType", f.getFoxType().name());
+            metadata.put("isCrouching", f.isCrouching());
+            metadata.put("isSleeping", f.isSleeping());
+        } else if (petEntity instanceof TropicalFish t) {
+            metadata.put("tropPattern", t.getPattern().name());
+            metadata.put("tropBodyColor", t.getBodyColor().name());
+            metadata.put("tropPatternColor", t.getPatternColor().name());
+        } else if (petEntity instanceof MushroomCow m) {
+            metadata.put("moocowVariant", m.getVariant().name());
+        } else if (petEntity instanceof Panda p) {
+            metadata.put("pandaMainGene", p.getMainGene().name());
+            metadata.put("pandaHiddenGene", p.getHiddenGene().name());
+        } else if (petEntity instanceof Fox f) {
+            metadata.put("foxType", f.getFoxType().name());
+            metadata.put("isCrouching", f.isCrouching());
+            metadata.put("isSleeping", f.isSleeping());
+        } else if (petEntity instanceof TropicalFish t) {
+            metadata.put("tropPattern", t.getPattern().name());
+            metadata.put("tropBodyColor", t.getBodyColor().name());
+            metadata.put("tropPatternColor", t.getPatternColor().name());
         }
 
         Collection<PotionEffect> effects = petEntity.getActivePotionEffects();
@@ -254,17 +291,19 @@ public class PetManager {
         plugin.debugLog("Captured metadata for dead pet: " + data.getDisplayName());
     }
 
-
     public void applyMetadata(Entity newPetEntity, PetData petData) {
-        if (newPetEntity == null || petData == null) return;
+        if (newPetEntity == null || petData == null)
+            return;
         Map<String, Object> metadata = petData.getMetadata();
-        if (metadata == null || metadata.isEmpty()) return;
+        if (metadata == null || metadata.isEmpty())
+            return;
 
         if (newPetEntity instanceof Ageable a && metadata.containsKey("isAdult")) {
             Object isAdultObj = metadata.get("isAdult");
             if (isAdultObj instanceof Boolean b && !b) {
                 Integer age = asInt(metadata.get("age"));
-                if (age != null) a.setAge(age);
+                if (age != null)
+                    a.setAge(age);
             }
         }
 
@@ -272,7 +311,8 @@ public class PetManager {
             newPetEntity.setCustomName((String) metadata.get("customName"));
             if (metadata.containsKey("customNameVisible")) {
                 Object v = metadata.get("customNameVisible");
-                if (v instanceof Boolean bv) newPetEntity.setCustomNameVisible(bv);
+                if (v instanceof Boolean bv)
+                    newPetEntity.setCustomNameVisible(bv);
             }
         }
 
@@ -288,7 +328,8 @@ public class PetManager {
 
         if (newPetEntity instanceof AbstractHorse ah) {
             Double jump = asDouble(metadata.get("jumpStrength"));
-            if (jump != null) ah.setJumpStrength(jump);
+            if (jump != null)
+                ah.setJumpStrength(jump);
 
             Double speed = asDouble(metadata.get("movementSpeed"));
             if (speed != null && speed > 0 && ah.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED) != null) {
@@ -296,12 +337,41 @@ public class PetManager {
             }
 
             Integer dom = asInt(metadata.get("domestication"));
-            if (dom != null) ah.setDomestication(dom);
+            if (dom != null)
+                ah.setDomestication(dom);
 
             Integer maxDom = asInt(metadata.get("maxDomestication"));
-            if (maxDom != null) ah.setMaxDomestication(maxDom);
+            if (maxDom != null)
+                ah.setMaxDomestication(maxDom);
 
+            // Chest restoration for Donkey/Mule/Llama
+            if (ah instanceof ChestedHorse ch && metadata.containsKey("hasChest")) {
+                Object v = metadata.get("hasChest");
+                if (v instanceof Boolean bv)
+                    ch.setCarryingChest(bv);
+            }
 
+            // Inventory restoration
+            if (metadata.containsKey("inventory")) {
+                Object invObj = metadata.get("inventory");
+                if (invObj instanceof List<?> list) {
+                    for (Object o : list) {
+                        if (o instanceof Map) {
+                            Map<?, ?> map = (Map<?, ?>) o;
+                            Integer slot = asInt(map.get("slot"));
+                            if (slot != null) {
+                                try {
+                                    @SuppressWarnings("unchecked")
+                                    Map<String, Object> itemMap = (Map<String, Object>) map.get("item");
+                                    ItemStack item = ItemStack.deserialize(itemMap);
+                                    ah.getInventory().setItem(slot, item);
+                                } catch (Exception ignored) {
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if (newPetEntity instanceof Horse h) {
@@ -325,7 +395,8 @@ public class PetManager {
                 }
             }
             Integer strength = asInt(metadata.get("llamaStrength"));
-            if (strength != null) l.setStrength(strength);
+            if (strength != null)
+                l.setStrength(strength);
 
             if (metadata.containsKey("decoration")) {
                 try {
@@ -356,14 +427,16 @@ public class PetManager {
 
             if (metadata.containsKey("isAngry")) {
                 Object v = metadata.get("isAngry");
-                if (v instanceof Boolean bv) w.setAngry(bv);
+                if (v instanceof Boolean bv)
+                    w.setAngry(bv);
             }
         } else if (newPetEntity instanceof Cat c) {
             if (metadata.containsKey("catVariant")) {
                 String raw = String.valueOf(metadata.get("catVariant"));
                 String norm = raw;
                 int colon = norm.indexOf(':');
-                if (colon != -1) norm = norm.substring(colon + 1);
+                if (colon != -1)
+                    norm = norm.substring(colon + 1);
                 norm = norm.trim().toUpperCase(java.util.Locale.ROOT);
                 try {
                     c.setCatType(Cat.Type.valueOf(norm));
@@ -379,12 +452,90 @@ public class PetManager {
             }
             if (metadata.containsKey("isLyingDown")) {
                 Object v = metadata.get("isLyingDown");
-                if (v instanceof Boolean bv) c.setLyingDown(bv);
+                if (v instanceof Boolean bv)
+                    c.setLyingDown(bv);
             }
         } else if (newPetEntity instanceof Parrot p) {
             if (metadata.containsKey("parrotVariant")) {
                 try {
                     p.setVariant(Parrot.Variant.valueOf((String) metadata.get("parrotVariant")));
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (newPetEntity instanceof Axolotl ax) {
+            if (metadata.containsKey("axolotlVariant")) {
+                try {
+                    ax.setVariant(Axolotl.Variant.valueOf((String) metadata.get("axolotlVariant")));
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (newPetEntity instanceof Rabbit r) {
+            if (metadata.containsKey("rabbitType")) {
+                try {
+                    r.setRabbitType(Rabbit.Type.valueOf((String) metadata.get("rabbitType")));
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (newPetEntity instanceof Sheep sh) {
+            if (metadata.containsKey("sheepColor")) {
+                try {
+                    sh.setColor(DyeColor.valueOf((String) metadata.get("sheepColor")));
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (newPetEntity instanceof MushroomCow m) {
+            if (metadata.containsKey("moocowVariant")) {
+                try {
+                    m.setVariant(MushroomCow.Variant.valueOf((String) metadata.get("moocowVariant")));
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (newPetEntity instanceof Panda xp) {
+            if (metadata.containsKey("pandaMainGene")) {
+                try {
+                    xp.setMainGene(Panda.Gene.valueOf((String) metadata.get("pandaMainGene")));
+                } catch (Exception ignored) {
+                }
+            }
+            if (metadata.containsKey("pandaHiddenGene")) {
+                try {
+                    xp.setHiddenGene(Panda.Gene.valueOf((String) metadata.get("pandaHiddenGene")));
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (newPetEntity instanceof Fox fx) {
+            if (metadata.containsKey("foxType")) {
+                try {
+                    fx.setFoxType(Fox.Type.valueOf((String) metadata.get("foxType")));
+                } catch (Exception ignored) {
+                }
+            }
+            if (metadata.containsKey("isCrouching")) {
+                Object v = metadata.get("isCrouching");
+                if (v instanceof Boolean bv)
+                    fx.setCrouching(bv);
+            }
+            if (metadata.containsKey("isSleeping")) {
+                Object v = metadata.get("isSleeping");
+                if (v instanceof Boolean bv)
+                    fx.setSleeping(bv);
+            }
+        } else if (newPetEntity instanceof TropicalFish t) {
+            if (metadata.containsKey("tropPattern")) {
+                try {
+                    t.setPattern(TropicalFish.Pattern.valueOf((String) metadata.get("tropPattern")));
+                } catch (Exception ignored) {
+                }
+            }
+            if (metadata.containsKey("tropBodyColor")) {
+                try {
+                    t.setBodyColor(DyeColor.valueOf((String) metadata.get("tropBodyColor")));
+                } catch (Exception ignored) {
+                }
+            }
+            if (metadata.containsKey("tropPatternColor")) {
+                try {
+                    t.setPatternColor(DyeColor.valueOf((String) metadata.get("tropPatternColor")));
                 } catch (Exception ignored) {
                 }
             }
@@ -399,52 +550,62 @@ public class PetManager {
 
         if (newPetEntity instanceof Sittable s && metadata.containsKey("isSitting")) {
             Object v = metadata.get("isSitting");
-            if (v instanceof Boolean bv) s.setSitting(bv);
+            if (v instanceof Boolean bv)
+                s.setSitting(bv);
         }
 
         plugin.debugLog("Applied comprehensive metadata to revived pet: " + petData.getDisplayName());
     }
 
-
-   /*if (metadata.containsKey("inventory")) {
-   removed stuff that may not ever be used. kept to shits and giggles
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> inventoryData = (List<Map<String, Object>>) metadata.get("inventory");
-            for (Map<String, Object> itemData : inventoryData) {
-               int slot = ((Number) itemData.get("slot")).intValue();
-               @SuppressWarnings("unchecked")
-               Map<String, Object> itemMap = (Map<String, Object>) itemData.get("item");
-               ItemStack item = ItemStack.deserialize(itemMap);
-               ah.getInventory().setItem(slot, item);
-            }
-         }
-
-
-         if (ah instanceof ChestedHorse ch && metadata.containsKey("hasChest")) {
-            ch.setCarryingChest((Boolean) metadata.get("hasChest"));
-         }
-        if (metadata.containsKey("potionEffects") && newPetEntity instanceof LivingEntity le) {
-         @SuppressWarnings("unchecked")
-         List<Map<String, Object>> effectsData = (List<Map<String, Object>>) metadata.get("potionEffects");
-         for (Map<String, Object> effectData : effectsData) {
-            try {
-               PotionEffectType type = PotionEffectType.getByName((String) effectData.get("type"));
-               if (type != null) {
-                  int duration = ((Number) effectData.get("duration")).intValue();
-                  int amplifier = ((Number) effectData.get("amplifier")).intValue();
-                  boolean ambient = (Boolean) effectData.get("ambient");
-                  boolean particles = (Boolean) effectData.get("particles");
-                  boolean icon = (Boolean) effectData.get("icon");
-
-                  PotionEffect effect = new PotionEffect(type, duration, amplifier, ambient, particles, icon);
-                  le.addPotionEffect(effect);
-               }
-            } catch (Exception e) {
-               plugin.getLogger().warning("Failed to apply potion effect: " + e.getMessage());
-            }
-         }
-      }*/
-
+    /*
+     * if (metadata.containsKey("inventory")) {
+     * removed stuff that may not ever be used. kept to shits and giggles
+     * 
+     * @SuppressWarnings("unchecked")
+     * List<Map<String, Object>> inventoryData = (List<Map<String, Object>>)
+     * metadata.get("inventory");
+     * for (Map<String, Object> itemData : inventoryData) {
+     * int slot = ((Number) itemData.get("slot")).intValue();
+     * 
+     * @SuppressWarnings("unchecked")
+     * Map<String, Object> itemMap = (Map<String, Object>) itemData.get("item");
+     * ItemStack item = ItemStack.deserialize(itemMap);
+     * ah.getInventory().setItem(slot, item);
+     * }
+     * }
+     * 
+     * 
+     * if (ah instanceof ChestedHorse ch && metadata.containsKey("hasChest")) {
+     * ch.setCarryingChest((Boolean) metadata.get("hasChest"));
+     * }
+     * if (metadata.containsKey("potionEffects") && newPetEntity instanceof
+     * LivingEntity le) {
+     * 
+     * @SuppressWarnings("unchecked")
+     * List<Map<String, Object>> effectsData = (List<Map<String, Object>>)
+     * metadata.get("potionEffects");
+     * for (Map<String, Object> effectData : effectsData) {
+     * try {
+     * PotionEffectType type = PotionEffectType.getByName((String)
+     * effectData.get("type"));
+     * if (type != null) {
+     * int duration = ((Number) effectData.get("duration")).intValue();
+     * int amplifier = ((Number) effectData.get("amplifier")).intValue();
+     * boolean ambient = (Boolean) effectData.get("ambient");
+     * boolean particles = (Boolean) effectData.get("particles");
+     * boolean icon = (Boolean) effectData.get("icon");
+     * 
+     * PotionEffect effect = new PotionEffect(type, duration, amplifier, ambient,
+     * particles, icon);
+     * le.addPotionEffect(effect);
+     * }
+     * } catch (Exception e) {
+     * plugin.getLogger().warning("Failed to apply potion effect: " +
+     * e.getMessage());
+     * }
+     * }
+     * }
+     */
 
     private boolean executeCommand(String command) {
         try {
@@ -454,16 +615,18 @@ public class PetManager {
         }
     }
 
-    public void revivePet(PetData oldData, LivingEntity newPetEntity) {
-        if (oldData == null || newPetEntity == null) return;
+    public PetData updatePetId(PetData oldData, UUID newId) {
+        if (oldData == null || newId == null)
+            return null;
 
-
+        // Remove old mapping
         this.petDataMap.remove(oldData.getPetUUID());
 
+        // Create new data with new UUID
+        PetData newData = new PetData(newId, oldData.getOwnerUUID(), oldData.getEntityType(),
+                oldData.getDisplayName());
 
-        PetData newData = new PetData(newPetEntity.getUniqueId(), oldData.getOwnerUUID(), oldData.getEntityType(), oldData.getDisplayName());
-
-
+        // Copy all properties
         newData.setMode(oldData.getMode());
         newData.setFriendlyPlayers(oldData.getFriendlyPlayers());
         newData.setFavorite(oldData.isFavorite());
@@ -472,13 +635,37 @@ public class PetManager {
         newData.setProtectedFromPlayers(oldData.isProtectedFromPlayers());
         newData.setDisplayColor(oldData.getDisplayColor());
         newData.setCustomIconMaterial(oldData.getCustomIconMaterial());
+        newData.setMetadata(oldData.getMetadata());
 
+        // Copy Station Data
+        newData.setStationLocation(oldData.getStationLocation());
+        newData.setStationRadius(oldData.getStationRadius());
+        newData.setStationTargetTypes(oldData.getStationTargetTypes());
 
-        applyMetadata(newPetEntity, oldData);
+        // Copy Target Data
+        newData.setExplicitTargetUUID(oldData.getExplicitTargetUUID());
 
+        // Copy Storage Status (though usually this clears on withdraw, but we copy
+        // state faithfully here)
+        newData.setStored(oldData.isStored());
+        newData.setDead(oldData.isDead());
 
+        // Register new mapping
         this.petDataMap.put(newData.getPetUUID(), newData);
 
+        // Queue save
+        queueOwnerSave(newData.getOwnerUUID());
+
+        return newData;
+    }
+
+    public void revivePet(PetData oldData, LivingEntity newPetEntity) {
+        if (oldData == null || newPetEntity == null)
+            return;
+
+        PetData newData = updatePetId(oldData, newPetEntity.getUniqueId());
+
+        applyMetadata(newPetEntity, newData);
 
         newPetEntity.setCustomName(ChatColor.translateAlternateColorCodes('&', newData.getDisplayName()));
         if (newPetEntity instanceof Tameable t) {
@@ -486,12 +673,13 @@ public class PetManager {
             t.setOwner(owner);
             t.setTamed(true);
         }
-        queueOwnerSave(newData.getOwnerUUID());
+        // Save is queued in updatePetId
     }
 
     public void setGrowthPaused(UUID petId, boolean isPaused) {
         PetData petData = getPetData(petId);
-        if (petData == null) return;
+        if (petData == null)
+            return;
 
         Entity entity = Bukkit.getEntity(petId);
         if (entity instanceof Ageable ageable && !ageable.isAdult()) {
@@ -514,11 +702,12 @@ public class PetManager {
 
     public void resetPetAge(UUID petId) {
         PetData petData = getPetData(petId);
-        if (petData == null || petData.isDead()) return;
+        if (petData == null || petData.isDead())
+            return;
 
         Entity entity = Bukkit.getEntity(petId);
-        if (!(entity instanceof Ageable ageable) || ageable.isAdult()) return;
-
+        if (!(entity instanceof Ageable ageable) || ageable.isAdult())
+            return;
 
         ageable.setAge(-24000);
         petData.setPausedAgeTicks(-24000);
@@ -527,7 +716,8 @@ public class PetManager {
     }
 
     public void unregisterPet(LivingEntity petEntity) {
-        if (petEntity == null) return;
+        if (petEntity == null)
+            return;
         UUID petUUID = petEntity.getUniqueId();
         PetData data = this.petDataMap.get(petUUID);
         if (data != null) {
@@ -611,31 +801,33 @@ public class PetManager {
         return loadedOwners.contains(ownerUUID);
     }
 
-
     private void mergeSaveOwner(UUID ownerUUID) {
 
         List<PetData> current = getPetsOwnedBy(ownerUUID);
 
-
         if (current.isEmpty()) {
-            plugin.getLogger().fine("mergeSaveOwner: no in-memory pets for offline owner " + ownerUUID + " — skipping to avoid clobbering.");
+            plugin.getLogger().fine("mergeSaveOwner: no in-memory pets for offline owner " + ownerUUID
+                    + " — skipping to avoid clobbering.");
             return;
         }
-
 
         List<PetData> existing = storageManager.loadPets(ownerUUID);
         java.util.Map<UUID, PetData> merged = new java.util.LinkedHashMap<>();
 
-        for (PetData p : existing) merged.put(p.getPetUUID(), p);
+        for (PetData p : existing)
+            merged.put(p.getPetUUID(), p);
 
-        for (PetData p : current) merged.put(p.getPetUUID(), p);
+        for (PetData p : current)
+            merged.put(p.getPetUUID(), p);
 
         storageManager.savePets(ownerUUID, new java.util.ArrayList<>(merged.values()));
-        plugin.getLogger().fine("mergeSaveOwner: merged (" + current.size() + " in-memory) into (" + existing.size() + " existing) for owner " + ownerUUID);
+        plugin.getLogger().fine("mergeSaveOwner: merged (" + current.size() + " in-memory) into (" + existing.size()
+                + " existing) for owner " + ownerUUID);
     }
 
     public void queueOwnerSave(UUID ownerUUID) {
-        if (ownerUUID == null) return;
+        if (ownerUUID == null)
+            return;
 
         if (!plugin.isEnabled()) {
             List<PetData> pets = getPetsOwnedBy(ownerUUID);
@@ -643,9 +835,9 @@ public class PetManager {
             return;
         }
 
-
         BukkitTask existing = pendingOwnerSaves.remove(ownerUUID);
-        if (existing != null) existing.cancel();
+        if (existing != null)
+            existing.cancel();
 
         pendingOwnerSaves.put(ownerUUID, Bukkit.getScheduler().runTaskLaterAsynchronously(
                 plugin,
@@ -660,8 +852,7 @@ public class PetManager {
                         mergeSaveOwner(ownerUUID);
                     }
                 },
-                40L
-        ));
+                40L));
     }
 
     public void updatePetData(PetData data) {
@@ -703,9 +894,11 @@ public class PetManager {
                 List<PetData> existing = storageManager.loadPets(owner);
                 java.util.Map<UUID, PetData> merged = new java.util.LinkedHashMap<>();
 
-                for (PetData p : existing) merged.put(p.getPetUUID(), p);
+                for (PetData p : existing)
+                    merged.put(p.getPetUUID(), p);
 
-                for (PetData p : list) merged.put(p.getPetUUID(), p);
+                for (PetData p : list)
+                    merged.put(p.getPetUUID(), p);
                 storageManager.savePets(owner, new java.util.ArrayList<>(merged.values()));
             }
         });
@@ -722,7 +915,6 @@ public class PetManager {
                 .collect(java.util.stream.Collectors.toSet());
         owners.forEach(this::queueOwnerSave);
     }
-
 
     public String assignNewDefaultName(PetData petData) {
         return assignNewDefaultName(petData.getEntityType());
@@ -751,14 +943,16 @@ public class PetManager {
 
     public PetData registerNonTameablePet(Entity entity, UUID ownerUUID, String displayName) {
         if (entity == null || !entity.isValid() || ownerUUID == null) {
-            this.plugin.getLogger().log(Level.WARNING, "Attempted to register an invalid non-tameable pet entity: {0}", entity != null ? entity.getUniqueId() : "null");
+            this.plugin.getLogger().log(Level.WARNING, "Attempted to register an invalid non-tameable pet entity: {0}",
+                    entity != null ? entity.getUniqueId() : "null");
             return null;
         }
         UUID petUUID = entity.getUniqueId();
         if (this.petDataMap.containsKey(petUUID)) {
             return this.petDataMap.get(petUUID);
         } else {
-            String finalName = displayName != null && !displayName.isEmpty() ? ChatColor.stripColor(displayName) : this.assignNewDefaultName(entity.getType());
+            String finalName = displayName != null && !displayName.isEmpty() ? ChatColor.stripColor(displayName)
+                    : this.assignNewDefaultName(entity.getType());
             PetData data = new PetData(petUUID, ownerUUID, entity.getType(), finalName);
             this.petDataMap.put(petUUID, data);
             String ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
@@ -768,11 +962,12 @@ public class PetManager {
             return data;
         }
 
-
     }
 
-    public void markPetDeadOffline(UUID ownerUUID, UUID petUUID, EntityType type, String displayName, Map<String, Object> metadata) {
-        if (ownerUUID == null || petUUID == null) return;
+    public void markPetDeadOffline(UUID ownerUUID, UUID petUUID, EntityType type, String displayName,
+            Map<String, Object> metadata) {
+        if (ownerUUID == null || petUUID == null)
+            return;
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             List<PetData> pets = storageManager.loadPets(ownerUUID);
             boolean found = false;
@@ -782,8 +977,10 @@ public class PetManager {
                     if (metadata != null && !metadata.isEmpty()) {
                         p.setMetadata(new java.util.HashMap<>(metadata));
                     }
-                    if (p.getEntityType() == null) p.setEntityType(type);
-                    if (p.getDisplayName() == null || p.getDisplayName().isEmpty() || "Unknown Pet".equalsIgnoreCase(p.getDisplayName())) {
+                    if (p.getEntityType() == null)
+                        p.setEntityType(type);
+                    if (p.getDisplayName() == null || p.getDisplayName().isEmpty()
+                            || "Unknown Pet".equalsIgnoreCase(p.getDisplayName())) {
                         p.setDisplayName(displayName != null ? displayName : "Unknown Pet");
                     }
                     found = true;
@@ -791,7 +988,8 @@ public class PetManager {
                 }
             }
             if (!found) {
-                PetData newData = new PetData(petUUID, ownerUUID, type, displayName != null ? displayName : "Unknown Pet");
+                PetData newData = new PetData(petUUID, ownerUUID, type,
+                        displayName != null ? displayName : "Unknown Pet");
                 newData.setDead(true);
                 if (metadata != null && !metadata.isEmpty()) {
                     newData.setMetadata(new java.util.HashMap<>(metadata));
@@ -802,19 +1000,19 @@ public class PetManager {
         });
     }
 
-
     public void removePetRecord(UUID petUUID) {
-        if (petUUID == null) return;
+        if (petUUID == null)
+            return;
         PetData removed = this.petDataMap.remove(petUUID);
         UUID ownerUUID = removed != null ? removed.getOwnerUUID() : null;
-        if (ownerUUID == null) return;
+        if (ownerUUID == null)
+            return;
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             List<PetData> pets = storageManager.loadPets(ownerUUID);
             pets.removeIf(p -> p.getPetUUID().equals(petUUID));
             storageManager.savePets(ownerUUID, pets);
         });
     }
-
 
     private static class CommandOutputCapture implements CommandSender {
         private final StringBuilder output = new StringBuilder();
@@ -834,7 +1032,6 @@ public class PetManager {
         public String getOutput() {
             return output.toString();
         }
-
 
         @Override
         public String getName() {
@@ -876,7 +1073,8 @@ public class PetManager {
         }
 
         @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(org.bukkit.plugin.Plugin plugin, String name, boolean value) {
+        public org.bukkit.permissions.PermissionAttachment addAttachment(org.bukkit.plugin.Plugin plugin, String name,
+                boolean value) {
             return null;
         }
 
@@ -886,7 +1084,8 @@ public class PetManager {
         }
 
         @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(org.bukkit.plugin.Plugin plugin, String name, boolean value, int ticks) {
+        public org.bukkit.permissions.PermissionAttachment addAttachment(org.bukkit.plugin.Plugin plugin, String name,
+                boolean value, int ticks) {
             return null;
         }
 
@@ -949,10 +1148,8 @@ public class PetManager {
                 variantClass = get.getReturnType();
                 set = wolfClass.getMethod("setVariant", variantClass);
 
-
                 Method getRegistry = Bukkit.class.getMethod("getRegistry", Class.class);
                 registry = getRegistry.invoke(null, variantClass);
-
 
                 Class<?> registryClass = Class.forName("org.bukkit.Registry");
                 registryGet = registryClass.getMethod("get", NamespacedKey.class);
@@ -968,12 +1165,13 @@ public class PetManager {
         }
 
         static String getVariantName(Wolf wolf) {
-            if (GET_VARIANT == null) return null;
+            if (GET_VARIANT == null)
+                return null;
             try {
 
                 Object variant = GET_VARIANT.invoke(wolf);
-                if (variant == null) return null;
-
+                if (variant == null)
+                    return null;
 
                 Method getKey = variant.getClass().getMethod("getKey");
                 Object namespacedKey = getKey.invoke(variant);
@@ -985,16 +1183,17 @@ public class PetManager {
         }
 
         static boolean setVariant(Wolf wolf, String nameOrKey) {
-            if (SET_VARIANT == null || WOLF_VARIANT_REGISTRY == null || nameOrKey == null) return false;
+            if (SET_VARIANT == null || WOLF_VARIANT_REGISTRY == null || nameOrKey == null)
+                return false;
             try {
 
                 NamespacedKey key = NamespacedKey.fromString(nameOrKey.toLowerCase(Locale.ROOT));
-                if (key == null) return false;
-
+                if (key == null)
+                    return false;
 
                 Object variantToSet = REGISTRY_GET_METHOD.invoke(WOLF_VARIANT_REGISTRY, key);
-                if (variantToSet == null) return false;
-
+                if (variantToSet == null)
+                    return false;
 
                 SET_VARIANT.invoke(wolf, variantToSet);
                 return true;
@@ -1003,6 +1202,5 @@ public class PetManager {
             }
         }
     }
-
 
 }
