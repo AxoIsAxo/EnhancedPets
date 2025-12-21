@@ -22,6 +22,9 @@ shift-doubleclick-pet-gui: true
 # If true, players can left-click while riding their ghast to shoot a small fireball.
 happy-ghast-fireball: true
 
+# Setup the item for reviving a pet.
+revive-item: NETHER_STAR
+
 #Require advanced logs? want to check if there's a bug?
 #Enable this to receive tons of helpful messages from the plugin in the server console
 debug: false
