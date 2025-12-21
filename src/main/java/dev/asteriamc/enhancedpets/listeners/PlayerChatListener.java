@@ -74,7 +74,7 @@ public class PlayerChatListener implements Listener {
 
     private void handleRenameInput(Player player, String input, UUID petContextUUID) {
         if (input.equalsIgnoreCase("cancel")) {
-            player.sendMessage(ChatColor.YELLOW + "Cancelled pet rename.");
+            plugin.getLanguageManager().sendMessage(player, "chat.rename_cancel");
             this.plugin.getServer().getScheduler().runTask(this.plugin,
                     () -> this.guiManager.openPetMenu(player, petContextUUID));
             return;
@@ -83,7 +83,7 @@ public class PlayerChatListener implements Listener {
         this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
             PetData petData = this.petManager.getPetData(petContextUUID);
             if (petData == null) {
-                player.sendMessage(ChatColor.RED + "Error: Pet does not exist anymore.");
+                plugin.getLanguageManager().sendMessage(player, "chat.rename_error");
                 this.guiManager.openMainMenu(player);
                 return;
             }
@@ -96,10 +96,10 @@ public class PlayerChatListener implements Listener {
                     petEntity.setCustomName(ChatColor.translateAlternateColorCodes('&', input));
                 }
                 this.petManager.updatePetData(petData);
-                player.sendMessage(ChatColor.GREEN + "Renamed " + ChatColor.AQUA + oldName + ChatColor.GREEN + " to "
-                        + ChatColor.AQUA + input + ChatColor.GREEN + ".");
+                plugin.getLanguageManager().sendReplacements(player, "chat.rename_success", "old", oldName, "new",
+                        input);
             } else {
-                player.sendMessage(ChatColor.RED + "Invalid name characters used. Name was not changed.");
+                plugin.getLanguageManager().sendMessage(player, "chat.rename_invalid");
             }
             this.guiManager.openPetMenu(player, petContextUUID);
         });
@@ -107,7 +107,7 @@ public class PlayerChatListener implements Listener {
 
     private void handleSingleFriendlyInput(Player player, String input, UUID petContextUUID) {
         if (input.equalsIgnoreCase("cancel")) {
-            player.sendMessage(ChatColor.YELLOW + "Cancelled adding friendly player.");
+            plugin.getLanguageManager().sendMessage(player, "chat.friendly_cancel");
 
             this.plugin.getServer().getScheduler().runTask(this.plugin,
                     () -> this.guiManager.openFriendlyPlayerMenu(player, petContextUUID, 0));
@@ -117,31 +117,30 @@ public class PlayerChatListener implements Listener {
         this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
             PetData petData = this.petManager.getPetData(petContextUUID);
             if (petData == null) {
-                player.sendMessage(ChatColor.RED + "Error: Pet data lost while waiting for input.");
+                plugin.getLanguageManager().sendMessage(player, "chat.data_lost");
                 this.guiManager.openMainMenu(player);
                 return;
             }
 
             OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(input);
             if (!targetPlayer.hasPlayedBefore() && !targetPlayer.isOnline()) {
-                player.sendMessage(
-                        ChatColor.RED + "Player '" + ChatColor.YELLOW + input + ChatColor.RED + "' not found.");
+                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", input);
                 this.guiListener.getAwaitingFriendlyInputMap().put(player.getUniqueId(), petContextUUID);
-                player.sendMessage(ChatColor.GOLD + "Please try again, or type 'cancel'.");
+                plugin.getLanguageManager().sendMessage(player, "chat.try_again");
                 return;
             }
 
             UUID targetUUID = targetPlayer.getUniqueId();
             String targetName = targetPlayer.getName() != null ? targetPlayer.getName() : input;
             if (targetUUID.equals(petData.getOwnerUUID())) {
-                player.sendMessage(ChatColor.YELLOW + "The owner is always friendly towards their pet.");
+                plugin.getLanguageManager().sendMessage(player, "chat.friendly_owner");
             } else if (petData.isFriendlyPlayer(targetUUID)) {
-                player.sendMessage(ChatColor.YELLOW + targetName + " is already on the friendly list.");
+                plugin.getLanguageManager().sendReplacements(player, "chat.friendly_already", "player", targetName);
             } else {
                 petData.addFriendlyPlayer(targetUUID);
                 this.petManager.updatePetData(petData);
-                player.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + targetName + ChatColor.GREEN + " to "
-                        + ChatColor.AQUA + petData.getDisplayName() + "'s friendly list.");
+                plugin.getLanguageManager().sendReplacements(player, "chat.friendly_success", "player", targetName,
+                        "pet", petData.getDisplayName());
             }
 
             this.guiManager.openFriendlyPlayerMenu(player, petContextUUID, 0);
@@ -151,12 +150,12 @@ public class PlayerChatListener implements Listener {
     private void handleBatchFriendlyInput(Player player, String input) {
         Set<UUID> selectedPets = this.guiManager.getBatchActionsGUI().getPlayerSelections().get(player.getUniqueId());
         if (selectedPets == null || selectedPets.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "Error: Pet selection lost.");
+            plugin.getLanguageManager().sendMessage(player, "gui.selection_lost");
             return;
         }
 
         if (input.equalsIgnoreCase("cancel")) {
-            player.sendMessage(ChatColor.YELLOW + "Cancelled adding friendly player.");
+            plugin.getLanguageManager().sendMessage(player, "chat.friendly_cancel");
             this.plugin.getServer().getScheduler().runTask(this.plugin,
                     () -> this.guiManager.openBatchFriendlyPlayerMenu(player, selectedPets, 0));
             return;
@@ -165,10 +164,9 @@ public class PlayerChatListener implements Listener {
         this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
             OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(input);
             if (!targetPlayer.hasPlayedBefore() && !targetPlayer.isOnline()) {
-                player.sendMessage(
-                        ChatColor.RED + "Player '" + ChatColor.YELLOW + input + ChatColor.RED + "' not found.");
+                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", input);
                 this.guiListener.getAwaitingBatchFriendlyInputMap().put(player.getUniqueId(), true);
-                player.sendMessage(ChatColor.GOLD + "Please try again, or type 'cancel'.");
+                plugin.getLanguageManager().sendMessage(player, "chat.try_again");
                 return;
             }
 
@@ -188,18 +186,15 @@ public class PlayerChatListener implements Listener {
                     .filter(java.util.Objects::nonNull)
                     .collect(java.util.stream.Collectors.toList());
             this.petManager.saveAllPetData(toSave);
-            player.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + targetName + ChatColor.GREEN + " to "
-                    + addCount + " pets' friendly lists.");
-            this.guiManager.openBatchFriendlyPlayerMenu(player, selectedPets, 0);
-            player.sendMessage(ChatColor.GREEN + "Added " + ChatColor.YELLOW + targetName + ChatColor.GREEN + " to "
-                    + addCount + " pets' friendly lists.");
+            plugin.getLanguageManager().sendReplacements(player, "chat.friendly_batch_success", "player", targetName,
+                    "count", String.valueOf(addCount));
             this.guiManager.openBatchFriendlyPlayerMenu(player, selectedPets, 0);
         });
     }
 
     private void handleTargetInput(Player player, String input, UUID petContextUUID) {
         if (input.equalsIgnoreCase("cancel")) {
-            player.sendMessage(ChatColor.YELLOW + "Cancelled setting target.");
+            plugin.getLanguageManager().sendMessage(player, "chat.target_cancel");
             plugin.getServer().getScheduler().runTask(plugin,
                     () -> this.guiManager.openPetMenu(player, petContextUUID));
             return;
@@ -208,16 +203,15 @@ public class PlayerChatListener implements Listener {
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             PetData petData = this.petManager.getPetData(petContextUUID);
             if (petData == null) {
-                player.sendMessage(ChatColor.RED + "Error: Pet data lost.");
+                plugin.getLanguageManager().sendMessage(player, "chat.data_lost");
                 return;
             }
 
             OfflinePlayer target = Bukkit.getOfflinePlayer(input);
             if (!target.hasPlayedBefore() && !target.isOnline()) {
-                player.sendMessage(
-                        ChatColor.RED + "Player '" + ChatColor.YELLOW + input + ChatColor.RED + "' not found.");
+                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", input);
                 guiListener.getAwaitingTargetInputMap().put(player.getUniqueId(), petContextUUID);
-                player.sendMessage(ChatColor.GOLD + "Please try again, or type 'cancel'.");
+                plugin.getLanguageManager().sendMessage(player, "chat.try_again");
                 return;
             }
 
@@ -225,8 +219,8 @@ public class PlayerChatListener implements Listener {
             petData.setStationLocation(null); // Clear station if targeting
             petManager.updatePetData(petData);
 
-            player.sendMessage(ChatColor.GREEN + "Set target for " + ChatColor.AQUA + petData.getDisplayName()
-                    + ChatColor.GREEN + " to " + ChatColor.YELLOW + target.getName());
+            plugin.getLanguageManager().sendReplacements(player, "chat.target_set", "pet", petData.getDisplayName(),
+                    "target", target.getName());
             this.guiManager.openPetMenu(player, petContextUUID);
         });
     }

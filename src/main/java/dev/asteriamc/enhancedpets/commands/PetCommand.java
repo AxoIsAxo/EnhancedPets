@@ -62,21 +62,21 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
             @NotNull String[] args) {
         if (command.getName().equalsIgnoreCase("petadmin")) {
             if (!(sender instanceof Player player)) {
-                sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+                plugin.getLanguageManager().sendMessage(sender, "command.only_players");
                 return true;
             }
             if (!player.hasPermission("enhancedpets.admin")) {
-                player.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                player.sendMessage(
+                        ChatColor.RED + "✖ " + ChatColor.GRAY + "You do not have permission to use this command.");
                 return true;
             }
             if (args.length != 1) {
-                player.sendMessage(ChatColor.RED + "Usage: /" + label + " <player>");
+                plugin.getLanguageManager().sendMessage(player, "command.petadmin_usage");
                 return true;
             }
             OfflinePlayer target = Bukkit.getOfflinePlayer(args[0]);
             if (!target.isOnline() && !target.hasPlayedBefore()) {
-                player.sendMessage(
-                        ChatColor.RED + "Player '" + ChatColor.YELLOW + args[0] + ChatColor.RED + "' does not exist.");
+                plugin.getLanguageManager().sendReplacements(player, "command.petadmin_not_found", "player", args[0]);
                 return true;
             }
 
@@ -91,7 +91,7 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
         if (args.length >= 1) {
             if (args[0].equalsIgnoreCase("reload")) {
                 if (!sender.hasPermission("enhancedpets.reload")) {
-                    sender.sendMessage(ChatColor.RED + "You do not have permission to reload this plugin.");
+                    plugin.getLanguageManager().sendMessage(sender, "command.reload_no_perm");
                     return true;
                 } else {
                     this.plugin.reloadPluginConfig(sender);
@@ -101,7 +101,8 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
 
             if (sender instanceof Player player) {
                 if (!player.hasPermission("enhancedpets.use")) {
-                    player.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                    player.sendMessage(
+                            ChatColor.RED + "✖ " + ChatColor.GRAY + "You do not have permission to use this command.");
                     return true;
                 }
 
@@ -113,7 +114,7 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                         try {
                             radius = Double.parseDouble(args[1]);
                         } catch (NumberFormatException e) {
-                            player.sendMessage(ChatColor.RED + "Invalid radius.");
+                            plugin.getLanguageManager().sendMessage(player, "command.station_invalid_radius");
                             return true;
                         }
                     }
@@ -135,8 +136,8 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                         plugin.getPetManager().updatePetData(pet);
                         count++;
                     }
-                    player.sendMessage(ChatColor.GREEN + "Stationed " + count + " pets at your location (Radius: "
-                            + radius + ").");
+                    plugin.getLanguageManager().sendReplacements(player, "command.station_success", "count",
+                            String.valueOf(count), "radius", String.valueOf(radius));
                     return true;
                 }
 
@@ -148,7 +149,8 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                         plugin.getPetManager().updatePetData(pet);
                         count++;
                     }
-                    player.sendMessage(ChatColor.GREEN + "Released " + count + " pets from station.");
+                    plugin.getLanguageManager().sendReplacements(player, "command.unstation_success", "count",
+                            String.valueOf(count));
                     return true;
                 }
 
@@ -156,7 +158,7 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                 if (args[0].equalsIgnoreCase("target")) {
                     // Usage: /pet target <playername> OR /pet target mob
                     if (args.length < 2) {
-                        player.sendMessage(ChatColor.RED + "Usage: /pet target <player|mob>");
+                        plugin.getLanguageManager().sendMessage(player, "command.target_usage");
                         return true;
                     }
 
@@ -169,20 +171,22 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                                 e -> e instanceof org.bukkit.entity.LivingEntity && e != player);
                         if (result != null && result.getHitEntity() != null) {
                             targetUUID = result.getHitEntity().getUniqueId();
-                            player.sendMessage(ChatColor.GREEN + "Target locked: " + result.getHitEntity().getName());
+                            plugin.getLanguageManager().sendReplacements(player, "command.target_locked", "target",
+                                    result.getHitEntity().getName());
                         } else {
-                            player.sendMessage(ChatColor.RED + "No mob found in line of sight.");
+                            plugin.getLanguageManager().sendMessage(player, "command.target_none");
                             return true;
                         }
                     } else {
                         // Assume player name
                         Player targetP = Bukkit.getPlayer(args[1]);
                         if (targetP == null) {
-                            player.sendMessage(ChatColor.RED + "Player not found.");
+                            plugin.getLanguageManager().sendMessage(player, "command.target_player_not_found");
                             return true;
                         }
                         targetUUID = targetP.getUniqueId();
-                        player.sendMessage(ChatColor.GREEN + "Target locked: " + targetP.getName());
+                        plugin.getLanguageManager().sendReplacements(player, "command.target_locked", "target",
+                                targetP.getName());
                     }
 
                     if (targetUUID != null) {
@@ -193,7 +197,8 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                             plugin.getPetManager().updatePetData(pet);
                             count++;
                         }
-                        player.sendMessage(ChatColor.GREEN + "Ordered " + count + " pets to attack target.");
+                        plugin.getLanguageManager().sendReplacements(player, "command.target_success", "count",
+                                String.valueOf(count));
                     }
                     return true;
                 }
@@ -206,7 +211,8 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                         plugin.getPetManager().updatePetData(pet);
                         count++;
                     }
-                    player.sendMessage(ChatColor.GREEN + "Cleared targets for " + count + " pets.");
+                    plugin.getLanguageManager().sendReplacements(player, "command.untarget_success", "count",
+                            String.valueOf(count));
                     return true;
                 }
 

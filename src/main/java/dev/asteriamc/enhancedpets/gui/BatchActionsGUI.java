@@ -22,12 +22,12 @@ public class BatchActionsGUI {
 
     public static final NamespacedKey BATCH_ACTION_KEY = new NamespacedKey(Enhancedpets.getInstance(), "batch_action");
     public static final NamespacedKey PET_TYPE_KEY = new NamespacedKey(Enhancedpets.getInstance(), "pet_type");
-    public static final NamespacedKey PAGE_KEY = new NamespacedKey(Enhancedpets.getInstance(), "gui_page");
+    // Removed duplicate PAGE_KEY - accessing PetManagerGUI.PAGE_KEY directly
+
     private final Enhancedpets plugin;
     private final PetManager petManager;
     private final PetManagerGUI mainGui;
     private final Map<UUID, Set<UUID>> playerSelections = new HashMap<>();
-
 
     public BatchActionsGUI(Enhancedpets plugin, PetManagerGUI mainGui) {
         this.plugin = plugin;
@@ -40,25 +40,28 @@ public class BatchActionsGUI {
     }
 
     public void openPetTypeSelectionMenu(Player player) {
-        UUID owner = mainGui.getEffectiveOwner(player); 
-        List<PetData> allPets = petManager.getPetsOwnedBy(owner); 
+        UUID owner = mainGui.getEffectiveOwner(player);
+        List<PetData> allPets = petManager.getPetsOwnedBy(owner);
         List<EntityType> petTypes = allPets.stream()
                 .map(PetData::getEntityType)
                 .distinct()
                 .sorted(Comparator.comparing(Enum::name))
                 .collect(Collectors.toList());
 
-
         int rows = (int) Math.ceil((double) petTypes.size() / 9.0);
         int invSize = Math.max(18, (rows + 1) * 9);
-        if (petTypes.isEmpty()) invSize = 27;
+        if (petTypes.isEmpty())
+            invSize = 27;
         invSize = Math.min(54, invSize);
 
-        Inventory gui = Bukkit.createInventory(player, invSize, ChatColor.DARK_AQUA + "Batch Actions: Select Type");
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_TYPE_SELECT),
+                invSize,
+                plugin.getLanguageManager().getString("menus.batch_type_title"));
 
         if (petTypes.isEmpty()) {
-            gui.setItem(13, mainGui.createItem(Material.BARRIER, ChatColor.RED + "No Pet Types Found",
-                    Collections.singletonList(ChatColor.GRAY + "You don't have any pets to manage in batch.")));
+            gui.setItem(13,
+                    mainGui.createItem(Material.BARRIER, plugin.getLanguageManager().getString("menus.no_types_found"),
+                            plugin.getLanguageManager().getStringList("menus.no_types_found_lore")));
         } else {
             for (int i = 0; i < petTypes.size(); i++) {
                 EntityType type = petTypes.get(i);
@@ -68,7 +71,9 @@ public class BatchActionsGUI {
             }
         }
 
-        gui.setItem(invSize - 1, mainGui.createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Main Menu", "back_to_main", null, null));
+        gui.setItem(invSize - 1,
+                mainGui.createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.back_main"),
+                        "back_to_main", null, null));
         player.openInventory(gui);
     }
 
@@ -76,7 +81,7 @@ public class BatchActionsGUI {
         playerSelections.putIfAbsent(player.getUniqueId(), new HashSet<>());
         Set<UUID> selectedPets = playerSelections.get(player.getUniqueId());
 
-        UUID owner = mainGui.getEffectiveOwner(player); 
+        UUID owner = mainGui.getEffectiveOwner(player);
         List<PetData> petsOfType = petManager.getPetsOwnedBy(owner).stream()
                 .filter(p -> p.getEntityType() == petType)
                 .sorted(Comparator.comparing(PetData::isFavorite).reversed()
@@ -84,15 +89,12 @@ public class BatchActionsGUI {
                             String name1 = p1.getDisplayName();
                             String name2 = p2.getDisplayName();
 
-
                             Integer id1 = PetManagerGUI.extractPetIdFromName(name1);
                             Integer id2 = PetManagerGUI.extractPetIdFromName(name2);
-
 
                             if (id1 != null && id2 != null) {
                                 return Integer.compare(id1, id2);
                             }
-
 
                             return String.CASE_INSENSITIVE_ORDER.compare(name1, name2);
                         }))
@@ -102,7 +104,10 @@ public class BatchActionsGUI {
         int totalPages = Math.max(1, (int) Math.ceil((double) petsOfType.size() / petsPerPage));
         page = Math.max(0, Math.min(page, totalPages - 1));
 
-        Inventory gui = Bukkit.createInventory(player, 54, ChatColor.DARK_AQUA + "Select " + petType.name() + "s");
+        String niceTitle = formatEntityType(petType);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_PET_SELECT), 54,
+                plugin.getLanguageManager().getStringReplacements("menus.batch_select_title", "type", niceTitle, "s",
+                        "s"));
 
         int startIndex = page * petsPerPage;
         for (int i = 0; i < petsPerPage; i++) {
@@ -114,28 +119,48 @@ public class BatchActionsGUI {
             }
         }
 
-
-        gui.setItem(45, createNavButton(Material.OAK_DOOR, ChatColor.YELLOW + "Back to Type Selection", "open_type_select", petType, -1));
+        gui.setItem(45, createNavButton(Material.OAK_DOOR, plugin.getLanguageManager().getString("menus.back_type"),
+                "open_type_select", petType, -1));
 
         if (page > 0) {
-            gui.setItem(46, createNavButton(Material.ARROW, ChatColor.GREEN + "Previous Page", "batch_select_page", petType, page - 1));
+            gui.setItem(46,
+                    createNavButton(Material.ARROW, plugin.getLanguageManager().getString("menus.prev_page"),
+                            "batch_select_page",
+                            petType, page - 1));
         }
 
-        gui.setItem(48, createSelectionButton(Material.RED_STAINED_GLASS_PANE, ChatColor.RED + "Select None", "select_none", petType));
-        gui.setItem(50, createSelectionButton(Material.LIME_STAINED_GLASS_PANE, ChatColor.GREEN + "Select All", "select_all", petType));
+        gui.setItem(48,
+                createSelectionButton(Material.RED_STAINED_GLASS_PANE,
+                        plugin.getLanguageManager().getString("menus.select_none"),
+                        "select_none", petType));
+        gui.setItem(50,
+                createSelectionButton(Material.LIME_STAINED_GLASS_PANE,
+                        plugin.getLanguageManager().getString("menus.select_all"),
+                        "select_all", petType));
 
         if (petsOfType.stream().anyMatch(PetData::isDead)) {
-            gui.setItem(51, createSelectionButton(Material.SKELETON_SKULL, ChatColor.DARK_RED + "Remove All Dead Pets", "batch_remove_dead", petType));
+            gui.setItem(51,
+                    createSelectionButton(Material.SKELETON_SKULL,
+                            plugin.getLanguageManager().getString("menus.remove_all_dead"),
+                            "batch_remove_dead", petType));
         }
         if ((page + 1) < totalPages) {
-            gui.setItem(52, createNavButton(Material.ARROW, ChatColor.GREEN + "Next Page", "batch_select_page", petType, page + 1));
+            gui.setItem(52,
+                    createNavButton(Material.ARROW, plugin.getLanguageManager().getString("menus.next_page"),
+                            "batch_select_page", petType,
+                            page + 1));
         }
 
         ItemStack nextStepButton = new ItemStack(Material.GREEN_WOOL);
         ItemMeta nextMeta = nextStepButton.getItemMeta();
-        nextMeta.setDisplayName(ChatColor.GREEN + "Next Step ->");
-        nextMeta.setLore(Arrays.asList(ChatColor.GRAY + "Manage " + selectedPets.size() + " selected pet(s).", "", selectedPets.isEmpty() ? ChatColor.RED + "Select at least one pet!" : ChatColor.GREEN + "Click to proceed."));
+        nextMeta.setDisplayName(plugin.getLanguageManager().getString("menus.next_step"));
+        String nextStatus = selectedPets.isEmpty() ? plugin.getLanguageManager().getString("menus.next_step_error")
+                : plugin.getLanguageManager().getString("menus.next_step_success");
+        nextMeta.setLore(plugin.getLanguageManager().getStringListReplacements("menus.next_step_lore",
+                "count", String.valueOf(selectedPets.size()),
+                "status", nextStatus));
         nextMeta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, "open_batch_manage");
+        nextMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         nextStepButton.setItemMeta(nextMeta);
         gui.setItem(53, nextStepButton);
 
@@ -152,11 +177,8 @@ public class BatchActionsGUI {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(ChatColor.YELLOW + formatEntityType(type));
-            meta.setLore(Arrays.asList(
-                    ChatColor.GRAY + "You have " + count + " of this pet type.",
-                    "",
-                    ChatColor.GREEN + "Click to select which ones to manage."
-            ));
+            meta.setLore(plugin.getLanguageManager().getStringListReplacements("menus.type_lore", "count",
+                    String.valueOf(count)));
             meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, "select_pet_type");
             meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, type.name());
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
@@ -170,21 +192,23 @@ public class BatchActionsGUI {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            String displayName = (petData.isFavorite() ? ChatColor.GOLD + "★ " : "") + ChatColor.AQUA + petData.getDisplayName();
+            String displayName = (petData.isFavorite() ? ChatColor.GOLD + "★ " : "") + ChatColor.AQUA
+                    + petData.getDisplayName();
             meta.setDisplayName(displayName);
 
-            List<String> lore = new ArrayList<>();
-            lore.add(ChatColor.GRAY + "Status: " + (isSelected ? ChatColor.GREEN + "Selected" : ChatColor.RED + "Not Selected"));
-            lore.add("");
-            lore.add(ChatColor.YELLOW + "Click to toggle selection.");
+            List<String> lore = plugin.getLanguageManager().getStringListReplacements("menus.pet_selection_lore",
+                    "status", (isSelected ? plugin.getLanguageManager().getString("menus.status_selected")
+                            : plugin.getLanguageManager().getString("menus.status_not_selected")));
             meta.setLore(lore);
 
-
-            meta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING, petData.getPetUUID().toString());
+            meta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING,
+                    petData.getPetUUID().toString());
             meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, "toggle_pet_selection");
-            meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, petData.getEntityType().name());
+            meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING,
+                    petData.getEntityType().name());
 
-            meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, currentPage);
+            meta.getPersistentDataContainer().set(PetManagerGUI.PAGE_KEY, PersistentDataType.INTEGER, currentPage);
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 
             item.setItemMeta(meta);
         }
@@ -200,8 +224,9 @@ public class BatchActionsGUI {
             meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, petType.name());
         }
         if (page != -1) {
-            meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, page);
+            meta.getPersistentDataContainer().set(PetManagerGUI.PAGE_KEY, PersistentDataType.INTEGER, page);
         }
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(meta);
         return item;
     }
@@ -212,10 +237,10 @@ public class BatchActionsGUI {
         meta.setDisplayName(name);
         meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, action);
         meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, petType.name());
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(meta);
         return item;
     }
-
 
     private String formatEntityType(EntityType type) {
         String name = type.name().toLowerCase().replace('_', ' ');
@@ -229,4 +254,3 @@ public class BatchActionsGUI {
         return formatted.toString().trim();
     }
 }
-

@@ -83,6 +83,51 @@ public class PetManager {
             return this.petDataMap.get(petUUID);
         }
 
+        // 1. Ghost Busting: Check specifically for "Dead" pets that match this live one
+        // (Name & Type)
+        // This handles cases where UUIDs changed (e.g. old versions) but it's logically
+        // the same pet.
+        List<PetData> ownerPets = getPetsOwnedBy(ownerUUID);
+        String liveName = null;
+        if (pet.getCustomName() != null) {
+            liveName = ChatColor.stripColor(pet.getCustomName());
+        }
+        for (PetData ex : ownerPets) {
+            // Must be dead to be a candidate for resurrection
+            if (!ex.isDead())
+                continue;
+            // Must be same type
+            if (ex.getEntityType() != pet.getType())
+                continue;
+
+            // Name Matching
+            String exName = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', ex.getDisplayName()));
+            boolean match = false;
+
+            if (liveName != null) {
+                // If live pet has a custom name, strict match
+                if (liveName.equalsIgnoreCase(exName)) {
+                    match = true;
+                }
+            } else {
+                // If live pet has NO name, we rely only on the fact that the dead pet
+                // also had a default-looking name? Or we skip to avoid false positives.
+                // However, users migrating from old versions often have unnamed pets.
+                // We'll skip for now to be safe against overwriting named dead pets with
+                // generic ones.
+                // UNLESS the dead pet name is also generic.
+                // But parsing "Wolf #4" is hard.
+                continue;
+            }
+
+            if (match) {
+                plugin.getLogger()
+                        .info("Found ghost pet record '" + ex.getDisplayName() + "' for live entity. Re-linking...");
+                revivePet(ex, pet); // Updates UUID, clears Dead flag, copies data
+                return getPetData(pet.getUniqueId());
+            }
+        }
+
         if (!isOwnerLoaded(ownerUUID)) {
             plugin.getLogger().fine(
                     "Registering a pet for an offline owner (" + ownerUUID + "). Checking persistent storage first...");
@@ -134,8 +179,20 @@ public class PetManager {
             for (Chunk chunk : world.getLoadedChunks()) {
                 for (Entity entity : chunk.getEntities()) {
                     if (entity instanceof Tameable pet) {
-                        if (pet.isTamed() && ownerUUID.equals(pet.getOwnerUniqueId())
-                                && !isManagedPet(pet.getUniqueId())) {
+                        if (pet.isTamed() && ownerUUID.equals(pet.getOwnerUniqueId())) {
+                            // Case 1: Already managed, but might be marked dead erroneously
+                            if (isManagedPet(pet.getUniqueId())) {
+                                PetData existing = getPetData(pet.getUniqueId());
+                                if (existing != null && existing.isDead()) {
+                                    existing.setDead(false);
+                                    plugin.debugLog("Corrected state for " + existing.getDisplayName()
+                                            + ": marked DEAD but found ALIVE.");
+                                    queueOwnerSave(ownerUUID);
+                                }
+                                continue;
+                            }
+
+                            // Case 2: Not managed. Register it.
                             registerPet(pet);
                             newPetsFound++;
                         }
@@ -144,7 +201,6 @@ public class PetManager {
             }
         }
         if (newPetsFound > 0) {
-
             List<PetData> petsToSave = getPetsOwnedBy(ownerUUID);
             storageManager.savePets(ownerUUID, petsToSave);
         }
@@ -644,11 +700,12 @@ public class PetManager {
 
         // Copy Target Data
         newData.setExplicitTargetUUID(oldData.getExplicitTargetUUID());
+        newData.setAggressiveTargetTypes(new HashSet<>(oldData.getAggressiveTargetTypes()));
 
         // Copy Storage Status (though usually this clears on withdraw, but we copy
         // state faithfully here)
         newData.setStored(oldData.isStored());
-        newData.setDead(oldData.isDead());
+        newData.setDead(false); // Revived pets are alive by definition
 
         // Register new mapping
         this.petDataMap.put(newData.getPetUUID(), newData);
@@ -673,6 +730,12 @@ public class PetManager {
             t.setOwner(owner);
             t.setTamed(true);
         }
+
+        // Visuals
+        newPetEntity.getWorld().spawnParticle(Particle.TOTEM, newPetEntity.getLocation().add(0, 1, 0), 20, 0.5, 0.5,
+                0.5, 0.1);
+        newPetEntity.getWorld().playSound(newPetEntity.getLocation(), Sound.ITEM_TOTEM_USE, 1.0f, 1.0f);
+
         // Save is queued in updatePetId
     }
 

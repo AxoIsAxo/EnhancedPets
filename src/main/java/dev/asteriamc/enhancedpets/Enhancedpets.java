@@ -7,6 +7,7 @@ import dev.asteriamc.enhancedpets.gui.PetManagerGUI;
 import dev.asteriamc.enhancedpets.listeners.PetListener;
 import dev.asteriamc.enhancedpets.listeners.PlayerChatListener;
 import dev.asteriamc.enhancedpets.listeners.PlayerConnectionListener;
+import dev.asteriamc.enhancedpets.manager.LanguageManager;
 import dev.asteriamc.enhancedpets.manager.PetManager;
 import dev.asteriamc.enhancedpets.manager.PetStorageManager;
 import dev.asteriamc.enhancedpets.tasks.GrowthGuardTask;
@@ -43,6 +44,7 @@ public final class Enhancedpets extends JavaPlugin {
         this.storageManager = new PetStorageManager(this);
         this.storageManager.migrateFromConfig();
         this.configManager = new ConfigManager(this);
+        this.languageManager = new LanguageManager(this);
         this.petManager = new PetManager(this);
         this.guiManager = new PetManagerGUI(this);
         this.petGUIListener = new PetGUIListener(this, this.guiManager);
@@ -127,6 +129,7 @@ public final class Enhancedpets extends JavaPlugin {
 
         try {
             this.configManager.loadConfig();
+            this.languageManager.load();
             sender.sendMessage(ChatColor.GREEN + "Configuration reloaded successfully.");
             sender.sendMessage(ChatColor.GRAY + "(Pet data is now stored in JSON files and was not reloaded.)");
         } catch (Exception var6) {
@@ -169,6 +172,12 @@ public final class Enhancedpets extends JavaPlugin {
         if (this.configManager != null && this.configManager.isDebug()) {
             getLogger().info("[DEBUG] " + message);
         }
+    }
+
+    private LanguageManager languageManager;
+
+    public LanguageManager getLanguageManager() {
+        return this.languageManager;
     }
 
     public ConfigManager getConfigManager() {

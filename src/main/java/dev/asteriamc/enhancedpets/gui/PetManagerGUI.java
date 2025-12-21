@@ -22,9 +22,9 @@ public class PetManagerGUI {
     public static final NamespacedKey ACTION_KEY = new NamespacedKey(Enhancedpets.getInstance(), "gui_action");
     public static final NamespacedKey TARGET_PLAYER_UUID_KEY = new NamespacedKey(Enhancedpets.getInstance(),
             "target_player_uuid");
-    public static final String MAIN_MENU_TITLE = ChatColor.DARK_AQUA + "Your Enhanced Pets";
-    public static final String PET_MENU_TITLE_PREFIX = ChatColor.DARK_AQUA + "Manage Pet: ";
-    public static final String FRIENDLY_MENU_TITLE_PREFIX = ChatColor.DARK_AQUA + "Friendly Players: ";
+    public static final String MAIN_MENU_TITLE = "menus.main_title";
+    public static final String PET_MENU_TITLE_PREFIX = "menus.pet_title_prefix"; // Unused now
+    public static final String FRIENDLY_MENU_TITLE_PREFIX = "menus.friendly_title_prefix"; // Unused now
     public static final NamespacedKey PAGE_KEY = new NamespacedKey(Enhancedpets.getInstance(), "gui_page");
 
     public static final NamespacedKey COLOR_KEY = new NamespacedKey(Enhancedpets.getInstance(), "display_color");
@@ -119,11 +119,14 @@ public class PetManagerGUI {
             int rows = (int) Math.ceil((double) totalPets / 9.0);
             int invSize = Math.max(27, (rows + 1) * 9);
 
-            Inventory gui = Bukkit.createInventory(player, invSize, MAIN_MENU_TITLE);
+            Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.MAIN_MENU),
+                    invSize,
+                    plugin.getLanguageManager().getString(MAIN_MENU_TITLE));
 
             if (pets.isEmpty()) {
-                gui.setItem(13, this.createItem(Material.BARRIER, ChatColor.RED + "No Pets Found",
-                        Collections.singletonList(ChatColor.GRAY + "Tame some wolves or cats!")));
+                gui.setItem(13,
+                        this.createItem(Material.BARRIER, plugin.getLanguageManager().getString("menus.no_pets_name"),
+                                plugin.getLanguageManager().getStringList("menus.no_pets_lore")));
             } else {
                 for (int i = 0; i < pets.size(); i++) {
                     gui.setItem(i, this.createPetItem(pets.get(i)));
@@ -131,16 +134,22 @@ public class PetManagerGUI {
 
                 if (effectiveOwner.equals(player.getUniqueId())) {
                     gui.setItem(invSize - 8,
-                            createActionButton(Material.COMPASS, ChatColor.AQUA + "Scan for My Pets", "scan_for_pets",
+                            createActionButton(Material.COMPASS,
+                                    plugin.getLanguageManager().getString("menus.scan_button_name"), "scan_for_pets",
                                     null,
-                                    Arrays.asList(ChatColor.GRAY + "Scans loaded areas for your unregistered pets.", "",
-                                            ChatColor.YELLOW + "Click to scan and sync.")));
+                                    plugin.getLanguageManager().getStringList("menus.scan_button_lore")));
                 }
-                gui.setItem(invSize - 5, this.createItem(Material.PAPER, ChatColor.AQUA + "Page 1 / 1",
-                        Collections.singletonList(ChatColor.GRAY + "Total Pets: " + totalPets)));
+                gui.setItem(invSize - 5,
+                        this.createItem(Material.PAPER,
+                                plugin.getLanguageManager().getStringReplacements("menus.page_count_name", "page", "1",
+                                        "total",
+                                        "1"),
+                                plugin.getLanguageManager().getStringListReplacements("menus.page_count_lore", "count",
+                                        String.valueOf(totalPets))));
                 gui.setItem(invSize - 2,
-                        createActionButton(Material.HOPPER, ChatColor.GOLD + "Batch Actions", "batch_actions", null,
-                                Collections.singletonList(ChatColor.GRAY + "Manage multiple pets at once.")));
+                        createActionButton(Material.HOPPER,
+                                plugin.getLanguageManager().getString("menus.batch_button_name"), "batch_actions", null,
+                                plugin.getLanguageManager().getStringList("menus.batch_button_lore")));
             }
             player.openInventory(gui);
         } else {
@@ -148,7 +157,9 @@ public class PetManagerGUI {
             page = Math.max(0, Math.min(page, totalPages - 1));
             int invSize = 54;
 
-            Inventory gui = Bukkit.createInventory(player, invSize, MAIN_MENU_TITLE);
+            Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.MAIN_MENU),
+                    invSize,
+                    plugin.getLanguageManager().getString(MAIN_MENU_TITLE));
             int startIndex = page * petsPerPage;
             int endIndex = Math.min(startIndex + petsPerPage, totalPets);
             List<PetData> petsToShow = pets.subList(startIndex, endIndex);
@@ -158,25 +169,33 @@ public class PetManagerGUI {
             }
 
             if (page > 0) {
-                gui.setItem(invSize - 9, this.createNavigationButton(Material.ARROW, ChatColor.GREEN + "Previous Page",
-                        "main_page", page - 1, null));
+                gui.setItem(invSize - 9,
+                        this.createNavigationButton(Material.ARROW,
+                                plugin.getLanguageManager().getString("menus.prev_page"),
+                                "main_page", page - 1, null));
             }
             if (endIndex < totalPets) {
-                gui.setItem(invSize - 1, this.createNavigationButton(Material.ARROW, ChatColor.GREEN + "Next Page",
-                        "main_page", page + 1, null));
+                gui.setItem(invSize - 1,
+                        this.createNavigationButton(Material.ARROW,
+                                plugin.getLanguageManager().getString("menus.next_page"),
+                                "main_page", page + 1, null));
             }
             if (effectiveOwner.equals(player.getUniqueId())) {
                 gui.setItem(invSize - 8,
-                        createActionButton(Material.COMPASS, ChatColor.AQUA + "Scan for My Pets", "scan_for_pets", null,
-                                Arrays.asList(ChatColor.GRAY + "Scans loaded areas for your unregistered pets.", "",
-                                        ChatColor.YELLOW + "Click to scan and sync.")));
+                        createActionButton(Material.COMPASS,
+                                plugin.getLanguageManager().getString("menus.scan_button_name"), "scan_for_pets", null,
+                                plugin.getLanguageManager().getStringList("menus.scan_button_lore")));
             }
             gui.setItem(invSize - 5,
-                    this.createItem(Material.PAPER, ChatColor.AQUA + "Page " + (page + 1) + " / " + totalPages,
-                            Collections.singletonList(ChatColor.GRAY + "Total Pets: " + totalPets)));
+                    this.createItem(Material.PAPER,
+                            plugin.getLanguageManager().getStringReplacements("menus.page_count_name", "page",
+                                    String.valueOf(page + 1), "total", String.valueOf(totalPages)),
+                            plugin.getLanguageManager().getStringListReplacements("menus.page_count_lore", "count",
+                                    String.valueOf(totalPets))));
             gui.setItem(invSize - 2,
-                    createActionButton(Material.HOPPER, ChatColor.GOLD + "Batch Actions", "batch_actions", null,
-                            Collections.singletonList(ChatColor.GRAY + "Manage multiple pets at once.")));
+                    createActionButton(Material.HOPPER,
+                            plugin.getLanguageManager().getString("menus.batch_button_name"), "batch_actions", null,
+                            plugin.getLanguageManager().getStringList("menus.batch_button_lore")));
 
             player.openInventory(gui);
         }
@@ -184,7 +203,7 @@ public class PetManagerGUI {
 
     public void openBatchManagementMenu(Player player, Set<UUID> selectedPetUUIDs) {
         if (selectedPetUUIDs == null || selectedPetUUIDs.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "You haven't selected any pets to manage.");
+            plugin.getLanguageManager().sendMessage(player, "gui.batch_no_selection");
             this.openMainMenu(player);
             return;
         }
@@ -194,11 +213,12 @@ public class PetManagerGUI {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        String title = ChatColor.DARK_AQUA + "Batch Manage " + selectedPets.size() + " Pets";
-        Inventory gui = Bukkit.createInventory(player, 54, title);
+        String title = plugin.getLanguageManager().getStringReplacements("menus.batch_title", "count",
+                String.valueOf(selectedPets.size()));
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_MANAGE), 54,
+                title);
 
         long favoriteCount = selectedPets.stream().filter(PetData::isFavorite).count();
-        boolean allFavorites = favoriteCount == selectedPets.size();
         boolean anyFavorites = favoriteCount > 0;
 
         BehaviorMode commonMode = selectedPets.stream().map(PetData::getMode).distinct().count() == 1
@@ -219,14 +239,24 @@ public class PetManagerGUI {
         PetData batchData = new PetData(null, player.getUniqueId(), null, "Batch");
         batchData.setMode(commonMode);
 
-        String favoriteDisplayName = (anyFavorites ? ChatColor.GOLD + "★ " : "") + ChatColor.YELLOW + ChatColor.BOLD
-                + "Managing " + selectedPets.size() + " Pets";
+        boolean allMob = selectedPets.stream().allMatch(p -> p.getAggressiveTargetTypes().contains("MOB"));
+        boolean allAnimal = selectedPets.stream().allMatch(p -> p.getAggressiveTargetTypes().contains("ANIMAL"));
+        boolean allPlayer = selectedPets.stream().allMatch(p -> p.getAggressiveTargetTypes().contains("PLAYER"));
+
+        Set<String> batchTypes = new HashSet<>();
+        if (allMob)
+            batchTypes.add("MOB");
+        if (allAnimal)
+            batchTypes.add("ANIMAL");
+        if (allPlayer)
+            batchTypes.add("PLAYER");
+        batchData.setAggressiveTargetTypes(batchTypes);
+
+        String favoriteDisplayName = (anyFavorites ? ChatColor.GOLD + "★ " : "") + plugin.getLanguageManager()
+                .getStringReplacements("menus.managing_header", "count", String.valueOf(selectedPets.size()));
         gui.setItem(4, this.createActionButton(Material.HOPPER, favoriteDisplayName, "batch_toggle_favorite", null,
-                Arrays.asList(
-                        ChatColor.GRAY + "Selected: " + ChatColor.WHITE + selectedPets.size() + " pets",
-                        "",
-                        allFavorites ? ChatColor.YELLOW + "Click to remove all from favorites"
-                                : ChatColor.GREEN + "Click to mark all as favorite")));
+                plugin.getLanguageManager().getStringListReplacements("menus.managing_header_lore", "count",
+                        String.valueOf(selectedPets.size()))));
 
         List<UUID> babyUUIDs = selectedPetUUIDs.stream()
                 .map(Bukkit::getEntity)
@@ -234,6 +264,33 @@ public class PetManagerGUI {
                 .map(Entity::getUniqueId)
                 .toList();
 
+        List<ItemStack> actionItems = new ArrayList<>();
+
+        // 1. Sit (if applicable)
+        if (allCanSit) {
+            String sitStandName = allSitting ? plugin.getLanguageManager().getString("menus.make_stand")
+                    : plugin.getLanguageManager().getString("menus.make_sit");
+            String sitStandStatus = (allSitting ? plugin.getLanguageManager().getString("menus.all_sitting")
+                    : anySitting ? plugin.getLanguageManager().getString("menus.mixed")
+                            : plugin.getLanguageManager().getString("menus.all_standing"));
+            actionItems.add(this.createActionButton(allSitting ? Material.ARMOR_STAND : Material.SADDLE, sitStandName,
+                    "batch_toggle_sit", null,
+                    plugin.getLanguageManager().getStringListReplacements("menus.sit_status_lore", "status",
+                            sitStandStatus)));
+        }
+
+        // 2. Teleport (Always)
+        actionItems.add(this.createActionButton(Material.ENDER_PEARL,
+                plugin.getLanguageManager().getString("menus.teleport_pets"),
+                "batch_teleport", null, plugin.getLanguageManager().getStringList("menus.teleport_pets_lore")));
+
+        // 3. Calm (Always)
+        actionItems.add(
+                this.createActionButton(Material.MILK_BUCKET, plugin.getLanguageManager().getString("menus.calm_pets"),
+                        "batch_calm", null,
+                        plugin.getLanguageManager().getStringList("menus.calm_pets_lore")));
+
+        // 4. Growth (if babies)
         if (!babyUUIDs.isEmpty()) {
             long pausedCount = babyUUIDs.stream()
                     .map(petManager::getPetData)
@@ -244,68 +301,74 @@ public class PetManagerGUI {
 
             String status;
             if (pausedCount == totalBabies) {
-                status = "All Paused";
+                status = plugin.getLanguageManager().getString("menus.all_paused");
             } else if (pausedCount > 0) {
-                status = "Some Paused";
+                status = plugin.getLanguageManager().getString("menus.mixed");
             } else {
-                status = "All Growing";
+                status = plugin.getLanguageManager().getString("menus.all_growing");
             }
 
             Material mat = pausedCount == totalBabies ? Material.GOLDEN_CARROT : Material.CARROT;
-            gui.setItem(26, createActionButton(
+            actionItems.add(createActionButton(
                     mat,
-                    (pausedCount == totalBabies ? ChatColor.GREEN : ChatColor.YELLOW) + "Toggle Growth (Babies)",
+                    plugin.getLanguageManager().getStringReplacements("menus.toggle_growth_baby_name", "color",
+                            (pausedCount == totalBabies ? "&a" : "&e")),
                     "batch_toggle_growth_pause",
                     null,
-                    List.of(
-                            ChatColor.GRAY + "Current: " + status,
-                            ChatColor.GRAY + "Affects selected babies only.",
-                            "",
-                            ChatColor.YELLOW + "Click to toggle all babies")));
+                    plugin.getLanguageManager().getStringListReplacements("menus.toggle_growth_baby_lore", "status",
+                            status)));
         }
 
-        gui.setItem(11, this.createModeButton(Material.FEATHER, "Set Passive", BehaviorMode.PASSIVE, batchData));
-        gui.setItem(13, this.createModeButton(Material.IRON_SWORD, "Set Neutral", BehaviorMode.NEUTRAL, batchData));
+        // Place Action Items Symmetrically
+        int[] actionSlots;
+        if (actionItems.size() == 4)
+            actionSlots = new int[] { 19, 21, 23, 25 };
+        else if (actionItems.size() == 3)
+            actionSlots = new int[] { 20, 22, 24 };
+        else
+            actionSlots = new int[] { 21, 23 }; // Minimum 2 (Teleport, Calm)
+
+        for (int i = 0; i < actionItems.size(); i++) {
+            if (i < actionSlots.length)
+                gui.setItem(actionSlots[i], actionItems.get(i));
+        }
+
+        gui.setItem(11, this.createModeButton(Material.FEATHER,
+                plugin.getLanguageManager().getString("menus.set_passive"), BehaviorMode.PASSIVE, batchData));
+        gui.setItem(13, this.createModeButton(Material.IRON_SWORD,
+                plugin.getLanguageManager().getString("menus.set_neutral"), BehaviorMode.NEUTRAL, batchData));
         gui.setItem(15,
-                this.createModeButton(Material.DIAMOND_SWORD, "Set Aggressive", BehaviorMode.AGGRESSIVE, batchData));
-
-        if (allCanSit) {
-            String sitStandName = allSitting ? ChatColor.GREEN + "Make Pets Stand" : ChatColor.YELLOW + "Make Pets Sit";
-            String sitStandStatus = "Current: " + (allSitting ? "All Sitting" : anySitting ? "Mixed" : "All Standing");
-            gui.setItem(20, this.createActionButton(allSitting ? Material.ARMOR_STAND : Material.SADDLE, sitStandName,
-                    "batch_toggle_sit", null, Collections.singletonList(ChatColor.GRAY + sitStandStatus)));
-        }
-
-        gui.setItem(22, this.createActionButton(Material.ENDER_PEARL, ChatColor.LIGHT_PURPLE + "Teleport Pets to You",
-                "batch_teleport", null, Collections.singletonList(ChatColor.GRAY + "Summons all selected pets.")));
-        gui.setItem(24, this.createActionButton(Material.MILK_BUCKET, ChatColor.AQUA + "Calm Pets", "batch_calm", null,
-                Collections.singletonList(ChatColor.GRAY + "Clears targets for all selected pets.")));
+                this.createModeButton(Material.DIAMOND_SWORD,
+                        plugin.getLanguageManager().getString("menus.set_aggressive"), BehaviorMode.AGGRESSIVE,
+                        batchData));
 
         String protName = allProtected
-                ? ChatColor.YELLOW + "Disable Mutual Non-Aggression"
-                : ChatColor.GREEN + "Enable Mutual Non-Aggression";
-        String protStatus = "Current: " + (allProtected ? "All Protected" : anyProtected ? "Mixed" : "All Unprotected");
-        gui.setItem(28, this.createActionButton(
+                ? plugin.getLanguageManager().getString("menus.disable_protection")
+                : plugin.getLanguageManager().getString("menus.enable_protection");
+        String protStatus = (allProtected ? plugin.getLanguageManager().getString("menus.all_protected")
+                : anyProtected ? plugin.getLanguageManager().getString("menus.mixed")
+                        : plugin.getLanguageManager().getString("menus.all_unprotected"));
+        gui.setItem(29, this.createActionButton(
                 Material.SHIELD,
                 protName,
                 "batch_toggle_protection",
                 null,
-                Arrays.asList(ChatColor.GRAY + protStatus, "", ChatColor.GRAY + "Players cannot damage these pets,",
-                        ChatColor.GRAY + "and they will not attack players.")));
+                plugin.getLanguageManager().getStringListReplacements("menus.protection_lore", "status", protStatus)));
 
-        gui.setItem(30,
-                this.createActionButton(Material.PLAYER_HEAD, ChatColor.GREEN + "Manage Friendly Players",
+        gui.setItem(31,
+                this.createActionButton(Material.PLAYER_HEAD,
+                        plugin.getLanguageManager().getString("menus.manage_friendly"),
                         "batch_manage_friendly", null,
-                        Collections.singletonList(ChatColor.GRAY + "Manage common friendly players.")));
-        gui.setItem(32,
-                this.createActionButton(Material.LEAD, ChatColor.GOLD + "Transfer Pets", "batch_open_transfer", null,
-                        Arrays.asList(ChatColor.GRAY + "Give selected pets to another player",
-                                ChatColor.YELLOW + "⚠ This cannot be undone!")));
+                        plugin.getLanguageManager().getStringList("menus.manage_friendly_lore")));
+        gui.setItem(33,
+                this.createActionButton(Material.LEAD, plugin.getLanguageManager().getString("menus.transfer_pets"),
+                        "batch_open_transfer", null,
+                        plugin.getLanguageManager().getStringList("menus.transfer_pets_lore")));
 
         EntityType type = selectedPets.get(0).getEntityType();
         ItemStack backButton = new ItemStack(Material.ARROW);
         ItemMeta meta = backButton.getItemMeta();
-        meta.setDisplayName(ChatColor.YELLOW + "Back to Pet Selection");
+        meta.setDisplayName(plugin.getLanguageManager().getString("menus.back_selection"));
         meta.getPersistentDataContainer().set(BatchActionsGUI.BATCH_ACTION_KEY, PersistentDataType.STRING,
                 "open_pet_select");
         meta.getPersistentDataContainer().set(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING, type.name());
@@ -313,47 +376,47 @@ public class PetManagerGUI {
         gui.setItem(45, backButton);
 
         gui.setItem(53,
-                this.createActionButton(Material.BARRIER, ChatColor.RED + "Free Selected Pets", "batch_free_pet_prompt",
-                        null, Arrays.asList(ChatColor.DARK_RED + "" + ChatColor.BOLD + "WARNING:",
-                                ChatColor.RED + "This is permanent!")));
+                this.createActionButton(Material.BARRIER, plugin.getLanguageManager().getString("menus.free_selected"),
+                        "batch_free_pet_prompt",
+                        null, plugin.getLanguageManager().getStringList("menus.free_selected_lore")));
 
         player.openInventory(gui);
     }
 
     public void openBatchConfirmFreeMenu(Player player, Set<UUID> selectedPetUUIDs) {
-        String title = ChatColor.DARK_RED + "Confirm Free: " + selectedPetUUIDs.size() + " Pets";
-        Inventory gui = Bukkit.createInventory(player, 27, title);
+        String title = plugin.getLanguageManager().getStringReplacements("menus.confirm_free_title", "count",
+                String.valueOf(selectedPetUUIDs.size()));
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_CONFIRM_FREE),
+                27, title);
 
         gui.setItem(13, this.createItem(
                 Material.HOPPER,
-                ChatColor.YELLOW + "Free " + selectedPetUUIDs.size() + " Pets",
-                Arrays.asList(
-                        ChatColor.DARK_RED + "⚠ WARNING ⚠",
-                        ChatColor.RED + "This action cannot be undone!",
-                        ChatColor.RED + "The selected pets will be permanently freed.")));
+                plugin.getLanguageManager().getStringReplacements("menus.free_info_name", "count",
+                        String.valueOf(selectedPetUUIDs.size())),
+                plugin.getLanguageManager().getStringList("menus.free_info_lore")));
 
         gui.setItem(11, this.createActionButton(
                 Material.LIME_WOOL,
-                ChatColor.GREEN + "Cancel",
+                plugin.getLanguageManager().getString("menus.cancel_free"),
                 "open_batch_manage",
                 null,
-                Collections.singletonList(ChatColor.GRAY + "Keep your pets")));
+                plugin.getLanguageManager().getStringList("menus.cancel_free_lore")));
 
         gui.setItem(15, this.createActionButton(
                 Material.RED_WOOL,
-                ChatColor.DARK_RED + "Confirm Free Pets",
+                plugin.getLanguageManager().getString("menus.confirm_free_btn"),
                 "batch_confirm_free",
                 null,
-                Arrays.asList(
-                        ChatColor.RED + "Click to permanently free these pets",
-                        ChatColor.DARK_RED + "This cannot be undone!")));
+                plugin.getLanguageManager().getStringList("menus.confirm_free_btn_lore")));
 
         player.openInventory(gui);
     }
 
     public void openBatchFriendlyPlayerMenu(Player player, Set<UUID> selectedPetUUIDs, int page) {
-        String title = ChatColor.DARK_AQUA + "Batch Friendly: " + selectedPetUUIDs.size() + " Pets";
-        Inventory gui = Bukkit.createInventory(player, 54, title);
+        String title = plugin.getLanguageManager().getStringReplacements("menus.batch_friendly_title", "count",
+                String.valueOf(selectedPetUUIDs.size()));
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_FRIENDLY), 54,
+                title);
 
         List<PetData> pets = selectedPetUUIDs.stream().map(petManager::getPetData).filter(Objects::nonNull).toList();
         Set<UUID> commonFriendlies = pets.isEmpty() ? new HashSet<>()
@@ -374,30 +437,36 @@ public class PetManagerGUI {
             OfflinePlayer friendly = Bukkit.getOfflinePlayer(friendlyUUID);
             ItemStack head = this.createPlayerHead(friendlyUUID, ChatColor.YELLOW + friendly.getName(),
                     "remove_batch_friendly", null,
-                    Collections.singletonList(ChatColor.RED + "Click to remove from all selected pets"));
+                    plugin.getLanguageManager().getStringList("menus.remove_friendly_lore"));
             gui.setItem(i - startIndex, head);
         }
 
         if (page > 0) {
-            gui.setItem(45, createActionButton(Material.ARROW, ChatColor.GREEN + "Previous Page", "batch_friendly_page",
-                    null, null));
+            gui.setItem(45,
+                    createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.prev_page"),
+                            "batch_friendly_page",
+                            null, null));
         }
         gui.setItem(48,
-                createActionButton(Material.ANVIL, ChatColor.GREEN + "Add Friendly Player", "add_batch_friendly_prompt",
+                createActionButton(Material.ANVIL, plugin.getLanguageManager().getString("menus.add_friendly"),
+                        "add_batch_friendly_prompt",
                         null,
-                        Collections.singletonList(ChatColor.GRAY + "Adds a player as friendly to ALL selected pets.")));
+                        plugin.getLanguageManager().getStringList("menus.add_friendly_lore")));
         if (endIndex < friendlyList.size()) {
-            gui.setItem(50, createActionButton(Material.ARROW, ChatColor.GREEN + "Next Page", "batch_friendly_page",
-                    null, null));
+            gui.setItem(50,
+                    createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.next_page"),
+                            "batch_friendly_page",
+                            null, null));
         }
-        gui.setItem(53, createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Batch Management",
+        gui.setItem(53, createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.back_batch"),
                 "open_batch_manage", null, null));
 
         player.openInventory(gui);
     }
 
     public void openBatchTransferMenu(Player player, Set<UUID> selectedPetUUIDs) {
-        String title = ChatColor.DARK_AQUA + "Transfer " + selectedPetUUIDs.size() + " Pets";
+        String title = plugin.getLanguageManager().getStringReplacements("menus.transfer_title", "count",
+                String.valueOf(selectedPetUUIDs.size()));
 
         List<Player> eligiblePlayers = Bukkit.getOnlinePlayers().stream()
                 .filter(p -> !p.getUniqueId().equals(getEffectiveOwner(player)))
@@ -411,11 +480,13 @@ public class PetManagerGUI {
             invSize = 27;
         invSize = Math.min(54, invSize);
 
-        Inventory gui = Bukkit.createInventory(player, invSize, title);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_TRANSFER),
+                invSize, title);
 
         if (eligiblePlayers.isEmpty()) {
-            gui.setItem(invSize == 27 ? 13 : 22, this.createItem(Material.BARRIER, ChatColor.RED + "No Players Online",
-                    Collections.singletonList(ChatColor.GRAY + "No one to transfer to!")));
+            gui.setItem(invSize == 27 ? 13 : 22,
+                    this.createItem(Material.BARRIER, plugin.getLanguageManager().getString("menus.no_players"),
+                            plugin.getLanguageManager().getStringList("menus.no_players_lore")));
         } else {
             for (int i = 0; i < eligiblePlayers.size(); i++) {
                 if (i >= 45)
@@ -423,60 +494,59 @@ public class PetManagerGUI {
                 Player target = eligiblePlayers.get(i);
                 ItemStack head = this.createPlayerHead(target.getUniqueId(), ChatColor.YELLOW + target.getName(),
                         "batch_transfer_to_player", null,
-                        Arrays.asList(ChatColor.GRAY + "Click to transfer " + selectedPetUUIDs.size() + " pets",
-                                ChatColor.GRAY + "to " + target.getName(), "",
-                                ChatColor.YELLOW + "⚠ This cannot be undone!"));
+                        plugin.getLanguageManager().getStringListReplacements("menus.transfer_player_lore", "count",
+                                String.valueOf(selectedPetUUIDs.size()), "player", target.getName()));
                 gui.setItem(i, head);
             }
         }
 
-        gui.setItem(invSize - 1, this.createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Batch Management",
-                "open_batch_manage", null, null));
+        gui.setItem(invSize - 1,
+                this.createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.back_batch"),
+                        "open_batch_manage", null, null));
         player.openInventory(gui);
     }
 
     public void openPetMenu(Player player, UUID petUUID) {
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
-            player.sendMessage(
-                    ChatColor.RED + "Error: Could not find data for that pet. It might have been freed or died.");
+            plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
             this.openMainMenu(player);
             return;
         }
 
-        String title = PET_MENU_TITLE_PREFIX + ChatColor.AQUA + petData.getDisplayName();
+        String title = plugin.getLanguageManager().getStringReplacements("menus.pet_title", "name",
+                petData.getDisplayName());
         if (title.length() > 32) {
             title = title.substring(0, 29) + "...";
         }
 
-        Inventory gui = Bukkit.createInventory(player, 54, title);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.PET_MENU), 54, title);
         boolean isFavorite = petData.isFavorite();
         boolean protectionEnabled = petData.isProtectedFromPlayers();
         ChatColor nameColor = getNameColor(petData);
         Material headerIcon = getDisplayMaterialForPet(petData);
 
         if (petData.isDead()) {
-            gui = Bukkit.createInventory(player, 27, title);
+            gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.PET_MENU), 27, title);
             ItemStack skull = new ItemStack(Material.SKELETON_SKULL);
             SkullMeta meta = (SkullMeta) skull.getItemMeta();
-            meta.setDisplayName(ChatColor.RED + "[DEAD] " + petData.getDisplayName());
-            meta.setLore(List.of(
-                    ChatColor.DARK_RED + "This pet is dead!",
-                    ChatColor.GRAY + "Choose an action below."));
+            meta.setDisplayName(plugin.getLanguageManager().getStringReplacements("menus.dead_pet_name", "name",
+                    petData.getDisplayName()));
+            meta.setLore(plugin.getLanguageManager().getStringList("menus.dead_pet_lore"));
             skull.setItemMeta(meta);
             gui.setItem(13, skull);
             gui.setItem(11, this.createActionButton(
                     Material.NETHER_STAR,
-                    ChatColor.GREEN + "Revive Pet",
+                    plugin.getLanguageManager().getString("menus.revive_pet"),
                     "confirm_revive_pet",
                     petUUID,
-                    List.of(ChatColor.GRAY + "Revive this pet with a Nether Star.")));
+                    plugin.getLanguageManager().getStringList("menus.revive_pet_lore")));
             gui.setItem(15, this.createActionButton(
                     Material.BARRIER,
-                    ChatColor.RED + "Remove Pet",
+                    plugin.getLanguageManager().getString("menus.remove_pet"),
                     "confirm_remove_pet",
                     petUUID,
-                    List.of(ChatColor.GRAY + "Permanently delete this pet.")));
+                    plugin.getLanguageManager().getStringList("menus.remove_pet_lore")));
             player.openInventory(gui);
             return;
         }
@@ -489,23 +559,26 @@ public class PetManagerGUI {
         if (petEntity instanceof LivingEntity livingEntity && petEntity.isValid()) {
             double health = livingEntity.getHealth();
             double maxHealth = livingEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
-            headerLore.add(ChatColor.RED + "Health: " + ChatColor.WHITE + String.format("%.1f", health) + " / "
-                    + String.format("%.1f", maxHealth));
+            headerLore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.header_lore_alive", "health",
+                    String.format("%.1f", health),
+                    "max_health", String.format("%.1f", maxHealth)));
         } else {
-            headerLore.add(ChatColor.GRAY + "Health: Unknown (Unloaded)");
+            headerLore.addAll(plugin.getLanguageManager().getStringList("menus.header_lore_dead_state"));
         }
-        headerLore.add(ChatColor.GRAY + "Protection: "
-                + (protectionEnabled ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled"));
+        headerLore.add(plugin.getLanguageManager().getStringReplacements("menus.header_protection", "status",
+                (protectionEnabled ? plugin.getLanguageManager().getString("menus.enabled")
+                        : plugin.getLanguageManager().getString("menus.disabled"))));
+
         int friendlyCount = petData.getFriendlyPlayers().size();
         if (friendlyCount > 0) {
-            headerLore.add("" + ChatColor.GREEN + friendlyCount + " Friendly Player" + (friendlyCount == 1 ? "" : "s"));
+            headerLore.add(plugin.getLanguageManager().getStringReplacements("menus.header_friendly_count", "count",
+                    String.valueOf(friendlyCount)));
         }
         if (petEntity instanceof Ageable ageable && !ageable.isAdult()) {
-            headerLore.add(ChatColor.LIGHT_PURPLE + "Baby");
+            headerLore.add(plugin.getLanguageManager().getString("menus.header_baby"));
         }
         headerLore.add("");
-        headerLore.add(ChatColor.YELLOW + "Left-click: Customize Display");
-        headerLore.add(ChatColor.YELLOW + "Right-click: Toggle Favorite");
+        headerLore.addAll(plugin.getLanguageManager().getStringList("menus.header_instructions"));
 
         ItemStack header = new ItemStack(headerIcon);
         ItemMeta hMeta = header.getItemMeta();
@@ -523,19 +596,23 @@ public class PetManagerGUI {
             boolean paused = petData.isGrowthPaused();
             gui.setItem(8, createActionButton(
                     paused ? Material.GOLDEN_CARROT : Material.CARROT,
-                    (paused ? ChatColor.GREEN : ChatColor.YELLOW) + "Pause Growth",
+                    plugin.getLanguageManager().getStringReplacements("menus.toggle_growth_name", "color",
+                            (paused ? "&a" : "&e")),
                     "toggle_growth_pause",
                     petUUID,
-                    List.of(
-                            ChatColor.GRAY + "Current: " + (paused ? "Paused" : "Growing"),
-                            "",
-                            ChatColor.YELLOW + "Click to toggle")));
+                    plugin.getLanguageManager().getStringListReplacements("menus.toggle_growth_lore", "status",
+                            (paused ? plugin.getLanguageManager().getString("menus.paused")
+                                    : plugin.getLanguageManager().getString("menus.growing")))));
         }
 
-        gui.setItem(11, this.createModeButton(Material.FEATHER, "Set Passive", BehaviorMode.PASSIVE, petData));
-        gui.setItem(13, this.createModeButton(Material.IRON_SWORD, "Set Neutral", BehaviorMode.NEUTRAL, petData));
+        gui.setItem(11, this.createModeButton(Material.FEATHER,
+                plugin.getLanguageManager().getString("menus.set_passive"), BehaviorMode.PASSIVE, petData));
+        gui.setItem(13, this.createModeButton(Material.IRON_SWORD,
+                plugin.getLanguageManager().getString("menus.set_neutral"), BehaviorMode.NEUTRAL, petData));
         gui.setItem(15,
-                this.createModeButton(Material.DIAMOND_SWORD, "Set Aggressive", BehaviorMode.AGGRESSIVE, petData));
+                this.createModeButton(Material.DIAMOND_SWORD,
+                        plugin.getLanguageManager().getString("menus.set_aggressive"), BehaviorMode.AGGRESSIVE,
+                        petData));
 
         boolean canSit = petEntity instanceof Sittable;
         if (canSit) {
@@ -545,62 +622,59 @@ public class PetManagerGUI {
             }
             gui.setItem(20, this.createActionButton(
                     isSitting ? Material.ARMOR_STAND : Material.SADDLE,
-                    isSitting ? ChatColor.GREEN + "Make Pet Stand" : ChatColor.YELLOW + "Make Pet Sit",
+                    isSitting ? plugin.getLanguageManager().getString("menus.make_stand")
+                            : plugin.getLanguageManager().getString("menus.make_sit"),
                     "toggle_sit",
                     petData.getPetUUID(),
-                    Collections.singletonList(ChatColor.GRAY + "Current: " + (isSitting ? "Sitting" : "Standing"))));
+                    plugin.getLanguageManager().getStringListReplacements("menus.sit_status_lore", "status",
+                            (isSitting ? plugin.getLanguageManager().getString("menus.sitting")
+                                    : plugin.getLanguageManager().getString("menus.standing")))));
         }
 
         gui.setItem(22, this.createActionButton(
                 Material.ENDER_PEARL,
-                ChatColor.LIGHT_PURPLE + "Teleport Pet to You",
+                plugin.getLanguageManager().getString("menus.teleport_pet"),
                 "teleport_pet",
                 petData.getPetUUID(),
-                Collections.singletonList(ChatColor.GRAY + "Summons this pet to your location.")));
+                plugin.getLanguageManager().getStringList("menus.teleport_pet_lore")));
 
         gui.setItem(24, this.createActionButton(
                 Material.MILK_BUCKET,
-                ChatColor.AQUA + "Calm Pet",
+                plugin.getLanguageManager().getString("menus.calm_pet"),
                 "calm_pet",
                 petData.getPetUUID(),
-                Arrays.asList(
-                        ChatColor.GRAY + "Clears the pet's current target",
-                        ChatColor.GRAY + "and resets any anger")));
+                plugin.getLanguageManager().getStringList("menus.calm_pet_lore")));
 
         gui.setItem(29, this.createActionButton(
                 Material.ANVIL,
-                ChatColor.GREEN + "Rename Pet",
+                plugin.getLanguageManager().getString("menus.rename_pet"),
                 "rename_pet_prompt",
                 petData.getPetUUID(),
-                Arrays.asList(
-                        ChatColor.GRAY + "Left-click: Change your pet's name via chat.",
-                        ChatColor.GRAY + "Shift-click: Reset to default name.")));
+                plugin.getLanguageManager().getStringList("menus.rename_pet_lore")));
 
         gui.setItem(31, this.createActionButton(
                 Material.PLAYER_HEAD,
-                ChatColor.GREEN + "Manage Friendly Players",
+                plugin.getLanguageManager().getString("menus.manage_friendly"),
                 "manage_friendly",
                 petData.getPetUUID(),
-                Collections.singletonList(ChatColor.GRAY + "Set players this pet will never attack.")));
+                plugin.getLanguageManager().getStringList("menus.manage_friendly_lore_single")));
 
         gui.setItem(33, this.createActionButton(
                 Material.LEAD,
-                ChatColor.GOLD + "Transfer Pet",
+                plugin.getLanguageManager().getString("menus.transfer_pet"),
                 "open_transfer",
                 petData.getPetUUID(),
-                Arrays.asList(
-                        ChatColor.GRAY + "Give this pet to another player",
-                        ChatColor.YELLOW + "⚠ This cannot be undone!")));
+                plugin.getLanguageManager().getStringList("menus.transfer_pet_lore")));
 
         String protName = protectionEnabled
-                ? ChatColor.YELLOW + "Disable Mutual Non-Aggression"
-                : ChatColor.GREEN + "Enable Mutual Non-Aggression";
+                ? plugin.getLanguageManager().getString("menus.disable_protection")
+                : plugin.getLanguageManager().getString("menus.enable_protection");
         List<String> protLore = new ArrayList<>();
-        protLore.add(ChatColor.GRAY + "Current: "
-                + (protectionEnabled ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled"));
+        protLore.add(plugin.getLanguageManager().getStringReplacements("menus.protection_status", "status",
+                (protectionEnabled ? plugin.getLanguageManager().getString("menus.enabled")
+                        : plugin.getLanguageManager().getString("menus.disabled"))));
         protLore.add("");
-        protLore.add(ChatColor.GRAY + "Players cannot damage this pet,");
-        protLore.add(ChatColor.GRAY + "and this pet will not attack players.");
+        protLore.addAll(plugin.getLanguageManager().getStringList("menus.protection_desc"));
         gui.setItem(35, this.createActionButton(
                 Material.SHIELD,
                 protName,
@@ -610,53 +684,78 @@ public class PetManagerGUI {
 
         // Station Button
         boolean isStationed = petData.getStationLocation() != null;
-        String stationStatus = isStationed ? ChatColor.GREEN + "Yes" : ChatColor.RED + "No";
         String currentRadius = String.format("%.0fm", petData.getStationRadius());
-        String currentTypes = "None";
+
         Set<String> types = petData.getStationTargetTypes();
-        if (types.contains("PLAYER") && types.contains("MOB"))
-            currentTypes = "Players & Mobs";
-        else if (types.contains("PLAYER"))
-            currentTypes = "Players Only";
-        else if (types.contains("MOB"))
-            currentTypes = "Mobs Only";
+        if (types == null)
+            types = new HashSet<>();
+
+        boolean hasMob = types.contains("MOB");
+        boolean hasPlayer = types.contains("PLAYER");
+        boolean hasAnimal = types.contains("ANIMAL");
+
+        String currentTypes;
+        if (hasMob && hasPlayer && hasAnimal) {
+            currentTypes = plugin.getLanguageManager().getString("menus.target_everything");
+        } else if (hasMob && hasPlayer) {
+            currentTypes = plugin.getLanguageManager().getString("menus.target_mobs_players");
+        } else if (hasMob && hasAnimal) {
+            currentTypes = plugin.getLanguageManager().getString("menus.target_mobs_animals");
+        } else if (hasPlayer && hasAnimal) {
+            currentTypes = plugin.getLanguageManager().getString("menus.target_players_animals");
+        } else if (hasMob) {
+            currentTypes = plugin.getLanguageManager().getString("menus.target_mobs_only");
+        } else if (hasPlayer) {
+            currentTypes = plugin.getLanguageManager().getString("menus.target_players_only");
+        } else if (hasAnimal) {
+            currentTypes = plugin.getLanguageManager().getString("menus.target_animals_only");
+        } else {
+            currentTypes = plugin.getLanguageManager().getString("menus.target_none");
+        }
+
+        List<String> stationLore = new ArrayList<>();
+        stationLore.add(isStationed ? plugin.getLanguageManager().getString("menus.station_active")
+                : plugin.getLanguageManager().getString("menus.station_inactive"));
+        stationLore.add("");
+        stationLore.add(plugin.getLanguageManager().getString("menus.station_settings"));
+        stationLore.add(plugin.getLanguageManager().getStringReplacements("menus.station_radius", "radius",
+                String.valueOf(currentRadius)));
+        stationLore.add(plugin.getLanguageManager().getStringReplacements("menus.station_targets", "targets",
+                currentTypes));
+        stationLore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.station_click_lore",
+                "action", (isStationed ? plugin.getLanguageManager().getString("menus.unstation_action")
+                        : plugin.getLanguageManager().getString("menus.station_action"))));
 
         gui.setItem(38, this.createActionButton(
                 isStationed ? Material.CAMPFIRE : Material.SOUL_CAMPFIRE,
-                isStationed ? ChatColor.YELLOW + "Modify Station" : ChatColor.GREEN + "Station Here",
+                isStationed ? plugin.getLanguageManager().getString("menus.modify_station")
+                        : plugin.getLanguageManager().getString("menus.station_here"),
                 "toggle_station",
                 petData.getPetUUID(),
-                Arrays.asList(
-                        ChatColor.GRAY + "Stationed: " + stationStatus,
-                        ChatColor.GRAY + "Radius: " + ChatColor.WHITE + currentRadius,
-                        ChatColor.GRAY + "Targets: " + ChatColor.WHITE + currentTypes,
-                        "",
-                        ChatColor.YELLOW + "Left-Click: " + ChatColor.GRAY
-                                + (isStationed ? "Unstation" : "Station Here"),
-                        ChatColor.YELLOW + "Right-Click: " + ChatColor.GRAY + "Cycle Target Mode",
-                        ChatColor.YELLOW + "Shift-Click: " + ChatColor.GRAY + "Cycle Radius (5-25m)")));
+                stationLore));
 
         // Target Button
         boolean hasExplicitTarget = petData.getExplicitTargetUUID() != null;
-        String targetName = "None";
+        String targetName = plugin.getLanguageManager().getString("menus.target_none");
         if (hasExplicitTarget) {
             Entity t = Bukkit.getEntity(petData.getExplicitTargetUUID());
             if (t != null)
                 targetName = t.getName();
             else
-                targetName = "Unknown/Unloaded";
+                targetName = plugin.getLanguageManager().getString("menus.unloaded_unknown");
         }
+
+        List<String> targetLore = new ArrayList<>();
+        targetLore.add(plugin.getLanguageManager().getStringReplacements("menus.target_current", "target", targetName));
+        targetLore.addAll(plugin.getLanguageManager().getStringList("menus.target_click_lore"));
 
         gui.setItem(40, this.createActionButton(
                 Material.CROSSBOW,
-                hasExplicitTarget ? ChatColor.YELLOW + "Clear Target" : ChatColor.RED + "Set Active Target",
+                hasExplicitTarget ? plugin.getLanguageManager().getString("menus.clear_target")
+                        : plugin.getLanguageManager().getString("menus.set_target"),
                 "toggle_target_prompt",
                 petData.getPetUUID(),
-                Arrays.asList(
-                        ChatColor.GRAY + "Current: " + ChatColor.WHITE + targetName,
-                        "",
-                        ChatColor.YELLOW + "Left-Click: " + ChatColor.GRAY + "Type Player Name",
-                        ChatColor.YELLOW + "Right-Click: " + ChatColor.GRAY + "Target Entity in Sight")));
+                targetLore));
 
         // Heal Button
         double currentHp = 0, maxHp = 0;
@@ -669,42 +768,33 @@ public class PetManagerGUI {
 
         gui.setItem(42, this.createActionButton(
                 Material.GOLDEN_APPLE,
-                ChatColor.GREEN + "Heal Pet",
+                plugin.getLanguageManager().getString("menus.heal_pet"),
                 "heal_pet",
                 petData.getPetUUID(),
-                Arrays.asList(
-                        ChatColor.RED + "Health: " + ChatColor.WHITE + String.format("%.1f", currentHp) + " / "
-                                + String.format("%.1f", maxHp),
-                        "",
-                        ChatColor.GRAY + "Cost: " + ChatColor.AQUA + "100 XP " + ChatColor.GRAY + "per HP",
-                        "",
-                        ChatColor.YELLOW + "Left-Click: " + ChatColor.GRAY + "Heal 1 HP",
-                        ChatColor.YELLOW + "Shift-Click: " + ChatColor.GRAY + "Full Heal (" + ChatColor.AQUA + healCost
-                                + " XP" + ChatColor.GRAY + ")")));
+                plugin.getLanguageManager().getStringListReplacements("menus.heal_lore",
+                        "health", String.format("%.1f", currentHp),
+                        "max_health", String.format("%.1f", maxHp),
+                        "cost", String.valueOf(healCost))));
 
         // Store Button
         gui.setItem(44, this.createActionButton(
                 Material.ENDER_CHEST,
-                ChatColor.GOLD + "Store Pet",
+                plugin.getLanguageManager().getString("menus.store_pet"),
                 "store_pet",
                 petData.getPetUUID(),
-                Arrays.asList(
-                        ChatColor.GRAY + "Despawns and stores this pet.",
-                        ChatColor.GRAY + "Use " + ChatColor.WHITE + "/pet withdraw" + ChatColor.GRAY
-                                + " to get it back.",
-                        "",
-                        ChatColor.YELLOW + "Click to store.")));
+                plugin.getLanguageManager().getStringList("menus.store_lore")));
 
-        gui.setItem(49, this.createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Pet List", "back_to_main",
-                null, null));
+        gui.setItem(49,
+                this.createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.back_to_list"),
+                        "back_to_main",
+                        null, null));
 
         gui.setItem(53, this.createActionButton(
                 Material.BARRIER,
-                ChatColor.RED + "Free This Pet",
+                plugin.getLanguageManager().getString("menus.free_pet"),
                 "confirm_free_pet_prompt",
                 petData.getPetUUID(),
-                Arrays.asList("" + ChatColor.DARK_RED + ChatColor.BOLD + "WARNING:",
-                        ChatColor.RED + "This is permanent!")));
+                plugin.getLanguageManager().getStringList("menus.free_pet_lore")));
 
         player.openInventory(gui);
     }
@@ -712,12 +802,13 @@ public class PetManagerGUI {
     public void openConfirmFreeMenu(Player player, UUID petUUID) {
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
-            player.sendMessage(ChatColor.RED + "Error: Could not find data for that pet.");
+            plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
             this.openMainMenu(player);
             return;
         }
 
-        String title = ChatColor.DARK_RED + "Confirm Free: " + ChatColor.RED + petData.getDisplayName();
+        String title = plugin.getLanguageManager().getStringReplacements("menus.confirm_free_single_title", "name",
+                petData.getDisplayName());
         if (title.length() > 32) {
             title = title.substring(0, 29) + "...";
         }
@@ -726,30 +817,25 @@ public class PetManagerGUI {
 
         gui.setItem(13, this.createItem(
                 this.getPetMaterial(petData.getEntityType()),
-                ChatColor.YELLOW + petData.getDisplayName(),
-                Arrays.asList(
-                        ChatColor.GRAY + "Type: " + ChatColor.WHITE + petData.getEntityType().name(),
-                        "",
-                        ChatColor.DARK_RED + "⚠ WARNING ⚠",
-                        ChatColor.RED + "This action cannot be undone!",
-                        ChatColor.RED + "The pet will be permanently freed."),
+                plugin.getLanguageManager().getStringReplacements("menus.free_info_single_name", "name",
+                        petData.getDisplayName()),
+                plugin.getLanguageManager().getStringListReplacements("menus.free_info_single_lore", "type",
+                        petData.getEntityType().name()),
                 petUUID));
 
         gui.setItem(11, this.createActionButton(
                 Material.LIME_WOOL,
-                ChatColor.GREEN + "Cancel",
+                plugin.getLanguageManager().getString("menus.cancel_free"),
                 "cancel_free",
                 petUUID,
-                Collections.singletonList(ChatColor.GRAY + "Keep your pet")));
+                plugin.getLanguageManager().getStringList("menus.cancel_free_single_lore")));
 
         gui.setItem(15, this.createActionButton(
                 Material.RED_WOOL,
-                ChatColor.DARK_RED + "Confirm Free Pet",
+                plugin.getLanguageManager().getString("menus.confirm_free_btn"),
                 "confirm_free",
                 petUUID,
-                Arrays.asList(
-                        ChatColor.RED + "Click to permanently free this pet",
-                        ChatColor.DARK_RED + "This cannot be undone!")));
+                plugin.getLanguageManager().getStringList("menus.confirm_free_single_btn_lore")));
 
         player.openInventory(gui);
     }
@@ -757,12 +843,13 @@ public class PetManagerGUI {
     public void openTransferMenu(Player player, UUID petUUID) {
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
-            player.sendMessage(ChatColor.RED + "Error: Could not find data for that pet.");
+            plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
             this.openMainMenu(player);
             return;
         }
 
-        String title = ChatColor.DARK_AQUA + "Transfer: " + ChatColor.AQUA + petData.getDisplayName();
+        String title = plugin.getLanguageManager().getStringReplacements("menus.transfer_single_title", "name",
+                petData.getDisplayName());
         if (title.length() > 32) {
             title = title.substring(0, 29) + "...";
         }
@@ -778,13 +865,14 @@ public class PetManagerGUI {
             invSize = 27;
         invSize = Math.min(54, invSize);
 
-        Inventory gui = Bukkit.createInventory(player, invSize, title);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.TRANSFER), invSize,
+                title);
 
         if (eligiblePlayers.isEmpty()) {
             gui.setItem(invSize == 27 ? 13 : 22, this.createItem(
                     Material.BARRIER,
-                    ChatColor.RED + "No Players Online",
-                    Collections.singletonList(ChatColor.GRAY + "No one to transfer to!")));
+                    plugin.getLanguageManager().getString("menus.no_players"),
+                    plugin.getLanguageManager().getStringList("menus.no_players_lore")));
         } else {
             for (int i = 0; i < eligiblePlayers.size(); i++) {
                 if (i >= 45)
@@ -792,27 +880,28 @@ public class PetManagerGUI {
                 Player target = eligiblePlayers.get(i);
                 ItemStack head = this.createPlayerHead(target.getUniqueId(), ChatColor.YELLOW + target.getName(),
                         "transfer_to_player", petUUID,
-                        Arrays.asList(ChatColor.GRAY + "Click to transfer " + petData.getDisplayName(),
-                                ChatColor.GRAY + "to " + target.getName(), "",
-                                ChatColor.YELLOW + "⚠ This cannot be undone!"));
+                        plugin.getLanguageManager().getStringListReplacements("menus.transfer_single_player_lore",
+                                "name", petData.getDisplayName(), "player", target.getName()));
                 gui.setItem(i, head);
             }
         }
 
-        gui.setItem(invSize - 1, this.createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Pet Management",
-                "back_to_pet", petUUID, null));
+        gui.setItem(invSize - 1,
+                this.createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.back_pet"),
+                        "back_to_pet", petUUID, null));
         player.openInventory(gui);
     }
 
     public void openFriendlyPlayerMenu(Player player, UUID petUUID, int page) {
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
-            player.sendMessage(ChatColor.RED + "Error: Could not find data for that pet.");
+            plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
             this.openMainMenu(player);
             return;
         }
 
-        String title = FRIENDLY_MENU_TITLE_PREFIX + ChatColor.AQUA + petData.getDisplayName();
+        String title = plugin.getLanguageManager().getStringReplacements("menus.friendly_title", "name",
+                petData.getDisplayName());
         if (title.length() > 32) {
             title = title.substring(0, 29) + "...";
         }
@@ -826,7 +915,7 @@ public class PetManagerGUI {
         int startIndex = page * itemsPerPage;
         int endIndex = Math.min(startIndex + itemsPerPage, friendlyList.size());
 
-        Inventory gui = Bukkit.createInventory(player, 54, title);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.FRIENDLY), 54, title);
 
         int slot = 0;
         for (int i = startIndex; i < endIndex; i++) {
@@ -838,25 +927,30 @@ public class PetManagerGUI {
                     ChatColor.YELLOW + name,
                     "remove_friendly",
                     petUUID,
-                    Collections.singletonList(ChatColor.RED + "Click to remove from friendly list"));
+                    plugin.getLanguageManager().getStringList("menus.remove_friendly_lore"));
             gui.setItem(slot++, head);
         }
 
         if (page > 0) {
-            gui.setItem(45, this.createFriendlyNavButton(Material.ARROW, ChatColor.GREEN + "Previous Page",
-                    "friendly_page", petUUID, page - 1));
+            gui.setItem(45,
+                    this.createFriendlyNavButton(Material.ARROW,
+                            plugin.getLanguageManager().getString("menus.prev_page"),
+                            "friendly_page", petUUID, page - 1));
         }
 
         gui.setItem(48,
-                this.createActionButton(Material.ANVIL, ChatColor.GREEN + "Add Friendly Player", "add_friendly_prompt",
-                        petUUID, Collections.singletonList(ChatColor.GRAY + "Click to type a player name in chat.")));
+                this.createActionButton(Material.ANVIL, plugin.getLanguageManager().getString("menus.add_friendly"),
+                        "add_friendly_prompt",
+                        petUUID, plugin.getLanguageManager().getStringList("menus.add_friendly_lore_single")));
 
         if (endIndex < friendlyList.size()) {
-            gui.setItem(50, this.createFriendlyNavButton(Material.ARROW, ChatColor.GREEN + "Next Page", "friendly_page",
-                    petUUID, page + 1));
+            gui.setItem(50,
+                    this.createFriendlyNavButton(Material.ARROW,
+                            plugin.getLanguageManager().getString("menus.next_page"), "friendly_page",
+                            petUUID, page + 1));
         }
 
-        gui.setItem(53, this.createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Pet Management",
+        gui.setItem(53, this.createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.back_pet"),
                 "back_to_pet", petUUID, null));
 
         player.openInventory(gui);
@@ -865,15 +959,17 @@ public class PetManagerGUI {
     public void openColorPicker(Player player, UUID petUUID) {
         PetData petData = petManager.getPetData(petUUID);
         if (petData == null) {
-            player.sendMessage(ChatColor.RED + "Error: Pet not found.");
+            plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
             openMainMenu(player);
             return;
         }
-        String title = ChatColor.DARK_AQUA + "Pick Color: " + petData.getDisplayName();
+        String title = plugin.getLanguageManager().getStringReplacements("menus.pick_color_title", "name",
+                petData.getDisplayName());
         if (title.length() > 32)
-            title = ChatColor.DARK_AQUA + "Pick Color";
+            title = plugin.getLanguageManager().getString("menus.pick_color_short");
 
-        Inventory gui = Bukkit.createInventory(player, 27, title);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.COLOR_PICKER), 27,
+                title);
 
         LinkedHashMap<Material, ChatColor> choices = new LinkedHashMap<>();
         choices.put(Material.WHITE_DYE, ChatColor.WHITE);
@@ -902,7 +998,7 @@ public class PetManagerGUI {
             ItemStack item = new ItemStack(mat);
             ItemMeta meta = item.getItemMeta();
             meta.setDisplayName(color + color.name());
-            meta.setLore(Collections.singletonList(ChatColor.GRAY + "Click to set this color."));
+            meta.setLore(plugin.getLanguageManager().getStringList("menus.pick_color_lore"));
             meta.getPersistentDataContainer().set(ACTION_KEY, PersistentDataType.STRING, "choose_color");
             meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, petUUID.toString());
             meta.getPersistentDataContainer().set(COLOR_KEY, PersistentDataType.STRING, color.name());
@@ -910,7 +1006,8 @@ public class PetManagerGUI {
             gui.setItem(i++, item);
         }
 
-        gui.setItem(26, createActionButton(Material.ARROW, ChatColor.YELLOW + "Back", "back_to_pet", petUUID, null));
+        gui.setItem(26, createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.back"),
+                "back_to_pet", petUUID, null));
 
         player.openInventory(gui);
     }
@@ -937,6 +1034,7 @@ public class PetManagerGUI {
         meta.getPersistentDataContainer().set(ACTION_KEY, PersistentDataType.STRING, action);
         meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, petUUID.toString());
         meta.getPersistentDataContainer().set(PAGE_KEY, PersistentDataType.INTEGER, targetPage);
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(meta);
         return item;
     }
@@ -959,23 +1057,23 @@ public class PetManagerGUI {
 
     public void openBatchConfirmRemoveDeadMenu(Player player, EntityType petType, int deadPetCount) {
         String typeName = petType.name().toLowerCase().replace('_', ' ');
-        String title = ChatColor.DARK_RED + "Confirm Remove: Dead " + typeName + "s";
-        Inventory gui = Bukkit.createInventory(player, 27, title);
+        String title = plugin.getLanguageManager().getStringReplacements("menus.batch_remove_dead_title", "type",
+                typeName);
+        Inventory gui = Bukkit.createInventory(
+                new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_CONFIRM_REMOVE_DEAD), 27, title);
 
         ItemStack info = createItem(
                 Material.SKELETON_SKULL,
-                ChatColor.YELLOW + "Remove " + deadPetCount + " Dead Pet Record(s)",
-                Arrays.asList(
-                        ChatColor.GRAY + "Pet Type: " + ChatColor.WHITE + typeName,
-                        "",
-                        ChatColor.DARK_RED + "⚠ WARNING ⚠",
-                        ChatColor.RED + "This action is permanent and cannot be undone."));
+                plugin.getLanguageManager().getStringReplacements("menus.batch_remove_dead_name", "count",
+                        String.valueOf(deadPetCount)),
+                plugin.getLanguageManager().getStringListReplacements("menus.batch_remove_dead_lore", "type",
+                        typeName));
         gui.setItem(13, info);
 
         ItemStack cancel = new ItemStack(Material.LIME_WOOL);
         ItemMeta cancelMeta = cancel.getItemMeta();
-        cancelMeta.setDisplayName(ChatColor.GREEN + "Cancel");
-        cancelMeta.setLore(Collections.singletonList(ChatColor.GRAY + "Keep the pet records."));
+        cancelMeta.setDisplayName(plugin.getLanguageManager().getString("menus.cancel"));
+        cancelMeta.setLore(plugin.getLanguageManager().getStringList("menus.cancel_remove_dead_lore"));
         cancelMeta.getPersistentDataContainer().set(BatchActionsGUI.BATCH_ACTION_KEY, PersistentDataType.STRING,
                 "open_pet_select");
         cancelMeta.getPersistentDataContainer().set(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING,
@@ -985,8 +1083,8 @@ public class PetManagerGUI {
 
         ItemStack confirm = new ItemStack(Material.RED_WOOL);
         ItemMeta confirmMeta = confirm.getItemMeta();
-        confirmMeta.setDisplayName(ChatColor.DARK_RED + "Confirm Removal");
-        confirmMeta.setLore(Collections.singletonList(ChatColor.RED + "Click to permanently remove these records."));
+        confirmMeta.setDisplayName(plugin.getLanguageManager().getString("menus.confirm_remove_dead"));
+        confirmMeta.setLore(plugin.getLanguageManager().getStringList("menus.confirm_remove_dead_lore"));
         confirmMeta.getPersistentDataContainer().set(BatchActionsGUI.BATCH_ACTION_KEY, PersistentDataType.STRING,
                 "batch_confirm_remove_dead");
         confirmMeta.getPersistentDataContainer().set(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING,
@@ -1004,10 +1102,9 @@ public class PetManagerGUI {
         if (petData.isDead()) {
             ItemStack skull = new ItemStack(Material.SKELETON_SKULL);
             SkullMeta meta = (SkullMeta) skull.getItemMeta();
-            meta.setDisplayName(ChatColor.RED + "[DEAD] " + petData.getDisplayName());
-            meta.setLore(List.of(
-                    ChatColor.DARK_RED + "This pet is dead!",
-                    ChatColor.GRAY + "Click to view revival or removal options."));
+            meta.setDisplayName(plugin.getLanguageManager().getStringReplacements("menus.dead_pet_item_name", "name",
+                    petData.getDisplayName()));
+            meta.setLore(plugin.getLanguageManager().getStringList("menus.dead_pet_item_lore"));
             meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING,
                     petData.getPetUUID().toString());
             skull.setItemMeta(meta);
@@ -1018,11 +1115,10 @@ public class PetManagerGUI {
         if (petData.isStored()) {
             ItemStack chest = new ItemStack(Material.CHEST);
             ItemMeta meta = chest.getItemMeta();
-            meta.setDisplayName(ChatColor.GOLD + "[STORED] " + ChatColor.WHITE + petData.getDisplayName());
-            meta.setLore(List.of(
-                    ChatColor.GRAY + "Type: " + ChatColor.WHITE + petData.getEntityType().name(),
-                    ChatColor.YELLOW + "This pet is in storage.",
-                    ChatColor.GRAY + "Use /pet withdraw to bring it out."));
+            meta.setDisplayName(plugin.getLanguageManager().getStringReplacements("menus.stored_pet_item_name", "name",
+                    petData.getDisplayName()));
+            meta.setLore(plugin.getLanguageManager().getStringListReplacements("menus.stored_pet_item_lore", "type",
+                    petData.getEntityType().name()));
             meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING,
                     petData.getPetUUID().toString());
             chest.setItemMeta(meta);
@@ -1037,64 +1133,69 @@ public class PetManagerGUI {
         String displayName = (petData.isFavorite() ? ChatColor.GOLD + "★ " : "") + nameColor + petData.getDisplayName();
         meta.setDisplayName(displayName);
         List<String> lore = new java.util.ArrayList<>();
-        lore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + petData.getEntityType().name());
+        lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.pet_item_lore_basic", "type",
+                petData.getEntityType().name()));
 
         // Variant Info (Wolf, Cat, Parrot, etc.)
         String variant = getVariantFromMetadata(petData);
         if (variant != null) {
-            lore.add(ChatColor.GRAY + "Variant: " + ChatColor.AQUA + variant);
+            lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.pet_item_lore_variant", "variant",
+                    variant));
         }
 
-        lore.add(ChatColor.GRAY + "Mode: " + ChatColor.WHITE + petData.getMode().name());
+        lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.pet_item_lore_mode", "mode",
+                petData.getMode().name()));
 
         if (petEntity instanceof LivingEntity livingEntity && petEntity.isValid()) {
             double health = livingEntity.getHealth();
             double maxHealth = livingEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
-            lore.add(ChatColor.RED + "Health: " + ChatColor.WHITE + String.format("%.1f", health) + " / "
-                    + String.format("%.1f", maxHealth));
+            lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.pet_item_lore_health", "health",
+                    String.format("%.1f", health), "max_health", String.format("%.1f", maxHealth)));
         } else {
-            lore.add(ChatColor.GRAY + "Health: Unknown (Unloaded)");
+            lore.addAll(plugin.getLanguageManager().getStringList("menus.pet_item_lore_health_unknown"));
         }
 
-        lore.add(ChatColor.GRAY + "Protection: "
-                + (petData.isProtectedFromPlayers() ? ChatColor.GREEN + "Enabled" : ChatColor.RED + "Disabled"));
+        lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.pet_item_lore_protection", "status",
+                (petData.isProtectedFromPlayers() ? plugin.getLanguageManager().getString("menus.enabled")
+                        : plugin.getLanguageManager().getString("menus.disabled"))));
+
         int friendlyCount = petData.getFriendlyPlayers().size();
         if (friendlyCount > 0) {
-            lore.add("" + ChatColor.GREEN + friendlyCount + " Friendly Player" + (friendlyCount == 1 ? "" : "s"));
+            lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.pet_item_lore_friendly",
+                    "count", String.valueOf(friendlyCount),
+                    "s", (friendlyCount == 1 ? "" : "s")));
         }
         if (petEntity instanceof Ageable ageable && !ageable.isAdult()) {
-            lore.add(ChatColor.LIGHT_PURPLE + "Baby");
+            lore.addAll(plugin.getLanguageManager().getStringList("menus.pet_item_lore_baby"));
         }
 
         // Station Status
         if (petData.getStationLocation() != null) {
             Location st = petData.getStationLocation();
-            lore.add("");
-            lore.add(ChatColor.YELLOW + "⚑ STATIONED");
-            lore.add(ChatColor.GRAY + "  Location: " + ChatColor.WHITE + st.getBlockX() + ", " + st.getBlockY() + ", "
-                    + st.getBlockZ());
-            lore.add(ChatColor.GRAY + "  Radius: " + ChatColor.WHITE + (int) petData.getStationRadius() + "m");
             String tTypes = formatTargetTypes(petData.getStationTargetTypes());
-            lore.add(ChatColor.GRAY + "  Targets: " + ChatColor.WHITE + tTypes);
+            lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.pet_item_lore_station",
+                    "x", String.valueOf(st.getBlockX()),
+                    "y", String.valueOf(st.getBlockY()),
+                    "z", String.valueOf(st.getBlockZ()),
+                    "radius", String.valueOf((int) petData.getStationRadius()),
+                    "target_types", tTypes));
         }
 
         // Explicit Target Status
         if (petData.getExplicitTargetUUID() != null) {
-            lore.add("");
-            lore.add(ChatColor.RED + "⚔ HUNTING TARGET");
             Entity target = Bukkit.getEntity(petData.getExplicitTargetUUID());
+            String tName = plugin.getLanguageManager().getString("menus.unloaded_unknown");
             if (target != null) {
-                String tName = target.getName();
+                tName = target.getName();
                 if (target instanceof Player p)
                     tName = p.getName();
-                lore.add(ChatColor.GRAY + "  Target: " + ChatColor.RED + tName);
-            } else {
-                lore.add(ChatColor.GRAY + "  Target: " + ChatColor.DARK_GRAY + "Unloaded/Unknown");
             }
+            lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.pet_item_lore_target", "target",
+                    tName));
         }
 
         lore.add("");
-        lore.add(ChatColor.YELLOW + "Click to manage this pet.");
+        lore.addAll(plugin.getLanguageManager().getStringList("menus.pet_item_lore_footer"));
         meta.setLore(lore);
         meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, petData.getPetUUID().toString());
         item.setItemMeta(meta);
@@ -1135,25 +1236,25 @@ public class PetManagerGUI {
 
     private String formatTargetTypes(Set<String> types) {
         if (types == null || types.isEmpty())
-            return "None";
+            return plugin.getLanguageManager().getString("menus.target_none");
         boolean p = types.contains("PLAYER");
         boolean m = types.contains("MOB");
         boolean a = types.contains("ANIMAL");
         if (p && m && a)
-            return "Everything";
+            return plugin.getLanguageManager().getString("menus.target_everything");
         if (p && m)
-            return "Mobs & Players";
+            return plugin.getLanguageManager().getString("menus.target_mobs_players");
         if (m && a)
-            return "Mobs & Animals";
+            return plugin.getLanguageManager().getString("menus.target_mobs_animals");
         if (p && a)
-            return "Players & Animals";
+            return plugin.getLanguageManager().getString("menus.target_players_animals");
         if (p)
-            return "Players Only";
+            return plugin.getLanguageManager().getString("menus.target_players_only");
         if (m)
-            return "Mobs Only";
+            return plugin.getLanguageManager().getString("menus.target_mobs_only");
         if (a)
-            return "Animals Only";
-        return "Custom";
+            return plugin.getLanguageManager().getString("menus.target_animals_only");
+        return plugin.getLanguageManager().getString("menus.target_custom");
     }
 
     public ItemStack createModeButton(Material material, String name, BehaviorMode mode, PetData currentPetData) {
@@ -1166,29 +1267,39 @@ public class PetManagerGUI {
 
             List<String> lore = new ArrayList<>();
             switch (mode) {
-                case PASSIVE -> lore.add(ChatColor.GRAY + "Pet will not attack any targets.");
-                case NEUTRAL -> {
-                    lore.add(ChatColor.GRAY + "Pet defends owner and attacks");
-                    lore.add(ChatColor.GRAY + "owner's targets (vanilla).");
-                }
-                case AGGRESSIVE -> {
-                    lore.add(ChatColor.GRAY + "Pet attacks nearby hostiles");
-                    lore.add(ChatColor.GRAY + "proactively (if possible).");
-                }
+                case PASSIVE -> lore.addAll(plugin.getLanguageManager().getStringList("menus.mode_passive_desc"));
+                case NEUTRAL -> lore.addAll(plugin.getLanguageManager().getStringList("menus.mode_neutral_desc"));
+                case AGGRESSIVE -> lore.addAll(plugin.getLanguageManager().getStringList("menus.mode_aggressive_desc"));
                 default -> {
                 }
             }
 
             if (isActive) {
                 lore.add("");
-                lore.add(ChatColor.DARK_GREEN + "▶ " + ChatColor.GREEN + "Currently Active");
+                lore.addAll(plugin.getLanguageManager().getStringList("menus.mode_active"));
             } else if (currentPetData.getMode() == BehaviorMode.BATCH) {
                 lore.add("");
-                lore.add(ChatColor.AQUA + "Selection has mixed modes.");
-                lore.add(ChatColor.YELLOW + "Click to set all to this mode.");
+                lore.addAll(plugin.getLanguageManager().getStringList("menus.mode_batch_mixed"));
             } else {
                 lore.add("");
-                lore.add(ChatColor.YELLOW + "Click to activate this mode.");
+                lore.addAll(plugin.getLanguageManager().getStringList("menus.mode_inactive"));
+            }
+
+            if (mode == BehaviorMode.AGGRESSIVE) {
+                Set<String> types = currentPetData.getAggressiveTargetTypes();
+                boolean mob = types.contains("MOB");
+                boolean animal = types.contains("ANIMAL");
+                boolean player = types.contains("PLAYER");
+                lore.add("");
+                lore.addAll(plugin.getLanguageManager().getStringListReplacements("menus.aggressive_lore_config",
+                        "mob_status",
+                        (mob ? plugin.getLanguageManager().getString("menus.enabled")
+                                : plugin.getLanguageManager().getString("menus.disabled")),
+                        "animal_status",
+                        (animal ? plugin.getLanguageManager().getString("menus.enabled")
+                                : plugin.getLanguageManager().getString("menus.disabled")),
+                        "player_status", (player ? plugin.getLanguageManager().getString("menus.enabled")
+                                : plugin.getLanguageManager().getString("menus.disabled"))));
             }
 
             meta.setLore(lore);
@@ -1228,6 +1339,7 @@ public class PetManagerGUI {
             }
             meta.getPersistentDataContainer().set(TARGET_PLAYER_UUID_KEY, PersistentDataType.STRING,
                     playerUUID.toString());
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
             item.setItemMeta(meta);
         }
         return item;
@@ -1295,42 +1407,41 @@ public class PetManagerGUI {
     public void openCustomizationMenu(Player player, UUID petUUID) {
         PetData petData = petManager.getPetData(petUUID);
         if (petData == null) {
-            player.sendMessage(ChatColor.RED + "Error: Pet not found.");
+            plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
             openMainMenu(player);
             return;
         }
-        String title = ChatColor.DARK_AQUA + "Customize: " + petData.getDisplayName();
+        String title = plugin.getLanguageManager().getStringReplacements("menus.customize_title", "name",
+                petData.getDisplayName());
         if (title.length() > 32)
-            title = ChatColor.DARK_AQUA + "Customize Pet";
+            title = plugin.getLanguageManager().getString("menus.customize_title_short");
 
-        Inventory gui = Bukkit.createInventory(player, 45, title);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.CUSTOMIZE), 45,
+                title);
 
         gui.setItem(4, createItem(
                 getDisplayMaterialForPet(petData),
                 getNameColor(petData) + petData.getDisplayName(),
-                Collections.singletonList(ChatColor.GRAY + "Select an option below.")));
+                plugin.getLanguageManager().getStringList("menus.customize_header_lore"))); // Assuming this key exists
 
         gui.setItem(20, createActionButton(
                 Material.ITEM_FRAME,
-                ChatColor.AQUA + "Set Display Icon",
+                plugin.getLanguageManager().getString("menus.set_display_icon"),
                 "set_display_icon",
                 petUUID,
-                Arrays.asList(
-                        ChatColor.GRAY + "Left-click: Use the item in your main hand",
-                        ChatColor.GRAY + "as this pet's icon.",
-                        ChatColor.GRAY + "Shift-click: Reset to default.")));
+                plugin.getLanguageManager().getStringList("menus.set_display_icon_lore")));
 
         gui.setItem(24, createActionButton(
                 Material.WHITE_DYE,
-                ChatColor.AQUA + "Edit Name Color",
+                plugin.getLanguageManager().getString("menus.edit_name_color"),
                 "set_display_color",
                 petUUID,
-                Arrays.asList(
-                        ChatColor.GRAY + "Left-click: Pick a color",
-                        ChatColor.GRAY + "Shift-click: Reset to default color.")));
+                plugin.getLanguageManager().getStringList("menus.edit_name_color_lore")));
 
-        gui.setItem(44, createActionButton(Material.ARROW, ChatColor.YELLOW + "Back to Pet Management", "back_to_pet",
-                petUUID, null));
+        gui.setItem(44,
+                createActionButton(Material.ARROW, plugin.getLanguageManager().getString("menus.back_pet"),
+                        "back_to_pet",
+                        petUUID, null));
 
         player.openInventory(gui);
     }
@@ -1342,24 +1453,24 @@ public class PetManagerGUI {
                 .filter(p -> Bukkit.getEntity(p.getPetUUID()) != null)
                 .collect(Collectors.toList());
 
-        String title = ChatColor.GOLD + "Store a Pet";
+        String title = plugin.getLanguageManager().getString("menus.store_pet_title");
         int size = Math.max(9, (int) Math.ceil(activePets.size() / 9.0) * 9);
         if (size > 54)
             size = 54;
         if (size < 9)
             size = 9;
 
-        Inventory gui = Bukkit.createInventory(player, size, title);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.STORE_PET), size,
+                title);
 
         for (int i = 0; i < Math.min(activePets.size(), size); i++) {
             PetData pet = activePets.get(i);
             ItemStack item = new ItemStack(Material.ENDER_CHEST);
             ItemMeta meta = item.getItemMeta();
-            meta.setDisplayName(ChatColor.GOLD + "Store: " + ChatColor.WHITE + pet.getDisplayName());
-            meta.setLore(Arrays.asList(
-                    ChatColor.GRAY + "Type: " + ChatColor.WHITE + pet.getEntityType().name(),
-                    "",
-                    ChatColor.YELLOW + "Click to store this pet."));
+            meta.setDisplayName(plugin.getLanguageManager().getStringReplacements("menus.store_pet_item_name", "name",
+                    pet.getDisplayName()));
+            meta.setLore(plugin.getLanguageManager().getStringListReplacements("menus.store_pet_item_lore", "type",
+                    formatEntityType(pet.getEntityType())));
             meta.getPersistentDataContainer().set(ACTION_KEY, PersistentDataType.STRING, "do_store_pet");
             meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, pet.getPetUUID().toString());
             item.setItemMeta(meta);
@@ -1369,7 +1480,7 @@ public class PetManagerGUI {
         if (activePets.isEmpty()) {
             ItemStack empty = new ItemStack(Material.BARRIER);
             ItemMeta meta = empty.getItemMeta();
-            meta.setDisplayName(ChatColor.RED + "No active pets to store.");
+            meta.setDisplayName(plugin.getLanguageManager().getString("menus.no_active_pets"));
             empty.setItemMeta(meta);
             gui.setItem(4, empty);
         }
@@ -1383,24 +1494,24 @@ public class PetManagerGUI {
                 .filter(PetData::isStored)
                 .collect(Collectors.toList());
 
-        String title = ChatColor.GREEN + "Withdraw a Pet";
+        String title = plugin.getLanguageManager().getString("menus.withdraw_pet_title");
         int size = Math.max(9, (int) Math.ceil(storedPets.size() / 9.0) * 9);
         if (size > 54)
             size = 54;
         if (size < 9)
             size = 9;
 
-        Inventory gui = Bukkit.createInventory(player, size, title);
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.WITHDRAW_PET), size,
+                title);
 
         for (int i = 0; i < Math.min(storedPets.size(), size); i++) {
             PetData pet = storedPets.get(i);
             ItemStack item = new ItemStack(Material.CHEST);
             ItemMeta meta = item.getItemMeta();
-            meta.setDisplayName(ChatColor.GREEN + "Withdraw: " + ChatColor.WHITE + pet.getDisplayName());
-            meta.setLore(Arrays.asList(
-                    ChatColor.GRAY + "Type: " + ChatColor.WHITE + pet.getEntityType().name(),
-                    "",
-                    ChatColor.YELLOW + "Click to spawn this pet."));
+            meta.setDisplayName(plugin.getLanguageManager().getStringReplacements("menus.withdraw_pet_item_name",
+                    "name", pet.getDisplayName()));
+            meta.setLore(plugin.getLanguageManager().getStringListReplacements("menus.withdraw_pet_item_lore", "type",
+                    formatEntityType(pet.getEntityType())));
             meta.getPersistentDataContainer().set(ACTION_KEY, PersistentDataType.STRING, "do_withdraw_pet");
             meta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, pet.getPetUUID().toString());
             item.setItemMeta(meta);
@@ -1410,7 +1521,7 @@ public class PetManagerGUI {
         if (storedPets.isEmpty()) {
             ItemStack empty = new ItemStack(Material.BARRIER);
             ItemMeta meta = empty.getItemMeta();
-            meta.setDisplayName(ChatColor.RED + "No stored pets to withdraw.");
+            meta.setDisplayName(plugin.getLanguageManager().getString("menus.no_stored_pets"));
             empty.setItemMeta(meta);
             gui.setItem(4, empty);
         }
@@ -1418,4 +1529,15 @@ public class PetManagerGUI {
         player.openInventory(gui);
     }
 
+    private String formatEntityType(EntityType type) {
+        String name = type.name().toLowerCase().replace('_', ' ');
+        String[] words = name.split(" ");
+        StringBuilder formatted = new StringBuilder();
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                formatted.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1)).append(" ");
+            }
+        }
+        return formatted.toString().trim();
+    }
 }

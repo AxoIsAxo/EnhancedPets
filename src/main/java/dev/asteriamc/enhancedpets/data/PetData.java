@@ -128,7 +128,14 @@ public class PetData {
                 data.setStationRadius(((Number) map.get("stationRadius")).doubleValue());
             }
             if (map.containsKey("stationTargetTypes")) {
-                data.setStationTargetTypes(new HashSet<>((List<String>) map.get("stationTargetTypes")));
+                List<?> rawList = (List<?>) map.get("stationTargetTypes");
+                Set<String> types = new HashSet<>();
+                for (Object o : rawList) {
+                    if (o instanceof String) {
+                        types.add((String) o);
+                    }
+                }
+                data.setStationTargetTypes(types);
             }
 
             // Target Deserialization
@@ -137,6 +144,10 @@ public class PetData {
                     data.setExplicitTargetUUID(UUID.fromString((String) map.get("explicitTargetUUID")));
                 } catch (Exception ignored) {
                 }
+            }
+
+            if (map.containsKey("aggressiveTargetTypes")) {
+                data.setAggressiveTargetTypes(new HashSet<>((List<String>) map.get("aggressiveTargetTypes")));
             }
 
             return data;
@@ -206,6 +217,7 @@ public class PetData {
         if (this.explicitTargetUUID != null) {
             map.put("explicitTargetUUID", this.explicitTargetUUID.toString());
         }
+        map.put("aggressiveTargetTypes", new ArrayList<>(this.aggressiveTargetTypes));
 
         return map;
     }
@@ -353,5 +365,15 @@ public class PetData {
 
     public void setExplicitTargetUUID(UUID explicitTargetUUID) {
         this.explicitTargetUUID = explicitTargetUUID;
+    }
+
+    private Set<String> aggressiveTargetTypes = new HashSet<>(Arrays.asList("MOB", "ANIMAL", "PLAYER"));
+
+    public Set<String> getAggressiveTargetTypes() {
+        return aggressiveTargetTypes;
+    }
+
+    public void setAggressiveTargetTypes(Set<String> aggressiveTargetTypes) {
+        this.aggressiveTargetTypes = aggressiveTargetTypes != null ? aggressiveTargetTypes : new HashSet<>();
     }
 }

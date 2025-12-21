@@ -78,6 +78,19 @@ public class PetListener implements Listener {
             UUID petUUID = entity.getUniqueId();
             PetData data = this.petManager.getPetData(petUUID);
             String name = data != null ? data.getDisplayName() : "Unknown Pet";
+
+            // Notify Owner
+            if (data != null) {
+                Player owner = Bukkit.getPlayer(data.getOwnerUUID());
+                if (owner != null && owner.isOnline()) {
+                    org.bukkit.Location loc = entity.getLocation();
+                    String locStr = String.format("x=%d, y=%d, z=%d", loc.getBlockX(), loc.getBlockY(),
+                            loc.getBlockZ());
+                    plugin.getLanguageManager().sendReplacements(owner, "event.death", "pet", name, "location", locStr);
+                    owner.playSound(owner.getLocation(), org.bukkit.Sound.ENTITY_WITHER_DEATH, 0.5f, 0.5f);
+                }
+            }
+
             this.plugin.debugLog("Managed pet " + name + " (UUID: " + petUUID + ") died. Marking as dead.");
             this.petManager.unregisterPet(livingEntity);
         } else if (entity instanceof Tameable t && t.isTamed() && t.getOwnerUniqueId() != null
@@ -294,7 +307,7 @@ public class PetListener implements Listener {
                 PetData petData = petManager.getPetData(petUUID);
                 if (petData != null) {
                     if (!isValidSelectionTarget(victim)) {
-                        player.sendMessage(ChatColor.RED + "Invalid target. Must be a Player, Monster, or Animal.");
+                        plugin.getLanguageManager().sendMessage(player, "event.target_selection_invalid");
                         return;
                     }
 
@@ -310,8 +323,8 @@ public class PetListener implements Listener {
                     else
                         tName = victim.getType().name();
 
-                    player.sendMessage(ChatColor.GREEN + "Locked target for " + ChatColor.AQUA
-                            + petData.getDisplayName() + ChatColor.GREEN + ": " + ChatColor.RED + tName);
+                    plugin.getLanguageManager().sendReplacements(player, "event.target_locked", "pet",
+                            petData.getDisplayName(), "target", tName);
 
                     plugin.getGuiManager().openPetMenu(player, petUUID);
                     awaitingTarget.remove(player.getUniqueId());
@@ -375,6 +388,50 @@ public class PetListener implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof LivingEntity livingEntity))
+            return;
+
+        if (!this.petManager.isManagedPet(livingEntity.getUniqueId()))
+            return;
+
+        PetData data = this.petManager.getPetData(livingEntity.getUniqueId());
+        if (data == null)
+            return;
+
+        Player owner = Bukkit.getPlayer(data.getOwnerUUID());
+        if (owner == null || !owner.isOnline())
+            return;
+
+        if (livingEntity.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH) == null)
+            return;
+
+        double maxHealth = livingEntity.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
+        double currentHealth = livingEntity.getHealth();
+        double finalDamage = event.getFinalDamage();
+        double newHealth = currentHealth - finalDamage;
+
+        if (newHealth <= 0)
+            return; // Let death event handle it
+
+        double pctBefore = currentHealth / maxHealth;
+        double pctAfter = newHealth / maxHealth;
+
+        // Check thresholds crossing downwards (Exclusive checks ensures we only send
+        // the
+        // most severe warning)
+        if (pctBefore > 0.05 && pctAfter <= 0.05) {
+            plugin.getLanguageManager().sendReplacements(owner, "event.hp_danger", "pet", data.getDisplayName());
+            owner.playSound(owner.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 2f);
+        } else if (pctBefore > 0.10 && pctAfter <= 0.10) {
+            plugin.getLanguageManager().sendReplacements(owner, "event.hp_critical", "pet", data.getDisplayName());
+            owner.playSound(owner.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1f, 1.5f);
+        } else if (pctBefore > 0.25 && pctAfter <= 0.25) {
+            plugin.getLanguageManager().sendReplacements(owner, "event.hp_warning", "pet", data.getDisplayName());
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent e) {
         Player player = e.getPlayer();
@@ -388,12 +445,12 @@ public class PetListener implements Listener {
                 if (Math.random() < 0.2) {
                     String defaultName = petManager.assignNewDefaultName(target.getType());
                     petManager.registerNonTameablePet(target, player.getUniqueId(), defaultName);
-                    player.sendMessage(ChatColor.GREEN + "You have tamed this Happy Ghast! It is now your pet.");
+                    plugin.getLanguageManager().sendMessage(player, "event.ghast_tame_success");
                 } else {
-                    player.sendMessage(ChatColor.YELLOW + "The Happy Ghast resisted your taming attempt. Try again!");
+                    plugin.getLanguageManager().sendMessage(player, "event.ghast_tame_fail");
                 }
             } else {
-                player.sendMessage(ChatColor.YELLOW + "This Happy Ghast is already registered as a pet.");
+                plugin.getLanguageManager().sendMessage(player, "event.ghast_already_tamed");
             }
             return;
         }
@@ -497,7 +554,7 @@ public class PetListener implements Listener {
                 Entity target = result.getHitEntity();
                 // Validate
                 if (!isValidSelectionTarget(target)) {
-                    player.sendMessage(ChatColor.RED + "Invalid target. Must be a Player, Monster, or Animal.");
+                    plugin.getLanguageManager().sendMessage(player, "event.target_selection_invalid");
                     return;
                 }
 
@@ -517,13 +574,13 @@ public class PetListener implements Listener {
                     else
                         tName = target.getType().name();
 
-                    player.sendMessage(ChatColor.GREEN + "Locked target for " + ChatColor.AQUA
-                            + petData.getDisplayName() + ChatColor.GREEN + ": " + ChatColor.RED + tName);
+                    plugin.getLanguageManager().sendReplacements(player, "event.target_locked", "pet",
+                            petData.getDisplayName(), "target", tName);
 
                     plugin.getGuiManager().openPetMenu(player, petUUID);
                 }
             } else {
-                player.sendMessage(ChatColor.RED + "No valid target in sight.");
+                plugin.getLanguageManager().sendMessage(player, "event.target_selection_none");
             }
         }
     }

@@ -296,6 +296,19 @@ public class PetTargetingTask extends BukkitRunnable {
             if (!isValidTarget(petCreature, petData, target))
                 continue;
 
+            // Filter by aggressive settings
+            boolean validAggressiveTarget = false;
+            Set<String> types = petData.getAggressiveTargetTypes();
+            if (types.contains("PLAYER") && target instanceof Player)
+                validAggressiveTarget = true;
+            if (types.contains("MOB") && isHostile(target))
+                validAggressiveTarget = true;
+            if (types.contains("ANIMAL") && isAnimal(target))
+                validAggressiveTarget = true;
+
+            if (!validAggressiveTarget)
+                continue;
+
             double distanceSq = petCreature.getLocation().distanceSquared(target.getLocation());
             if (distanceSq < bestTargetDistanceSq) {
                 bestTarget = target;

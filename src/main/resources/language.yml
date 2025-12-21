@@ -1,0 +1,652 @@
+command:
+  only_players:
+    - "&c✖ &7Only players can use this command."
+  no_permission:
+    - "&c✖ &7You do not have permission to use this command."
+  petadmin_usage:
+    - "&c✖ &7Usage: /petadmin <player>"
+  petadmin_not_found:
+    - "&c✖ &7Player '&e%player%&7' does not exist."
+  reload_no_perm:
+    - "&c✖ &7You do not have permission to reload."
+  station_invalid_radius:
+    - "&c✖ &7Invalid radius."
+  station_success:
+    - "&a✔ &7Stationed &b%count% &7pets at your location (Radius: &b%radius%&7)."
+  unstation_success:
+    - "&a✔ &7Released &b%count% &7pets from station."
+  target_usage:
+    - "&c✖ &7Usage: /pet target <player|mob>"
+  target_locked:
+    - "&a✔ &7Target locked: &b%target%"
+  target_none:
+    - "&c✖ &7No mob found in line of sight."
+  target_player_not_found:
+    - "&c✖ &7Player not found."
+  target_success:
+    - "&a✔ &7Ordered &b%count% &7pets to attack target."
+  untarget_success:
+    - "&a✔ &7Cleared targets for &b%count% &7pets."
+gui:
+  dead_removed:
+    - "&e⚠ &7Removed dead pet record for &b%pet%&7."
+  batch_no_selection:
+    - "&c✖ &7You must select at least one pet to manage."
+  batch_no_dead:
+    - "&bℹ &7No dead pets of this type found."
+  batch_remove_dead_success:
+    - "&a✔ &7Successfully removed &b%count% &7dead pet record(s)."
+  scan_not_owner:
+    - "&c✖ &7Scan is only available for your own pets."
+  scan_start:
+    - "&bℹ &7Scanning for your unregistered pets..."
+  scan_success:
+    - "&a✔ &7Success! Found and registered &b%count% &7new pet(s)."
+  scan_none:
+    - "&bℹ &7Scan complete. No new unregistered pets were found."
+  store_fail:
+    - "&c✖ &7This pet cannot be stored."
+  store_success:
+    - "&a✔ &7Stored &b%pet%&7."
+  withdraw_fail:
+    - "&c✖ &7This pet is not in storage."
+  withdraw_success:
+    - "&a✔ &7Withdrew &b%pet%&7!"
+  favorite_added:
+    - "&6★ &7Marked &b%pet% &7as favorite!"
+  favorite_removed:
+    - "&6☆ &7Removed &b%pet% &7from favorites."
+  selection_lost:
+    - "&c✖ &7Your pet selection was lost. Please start again."
+  batch_mode_set:
+    - "&a✔ &7Set mode for &b%count% &7pets to &e%mode%&7."
+  batch_no_babies:
+    - "&c✖ &7No babies in your selection."
+  batch_growth_paused:
+    - "&a✔ &7Paused growth for &b%count% &7baby pet(s)."
+  batch_growth_resumed:
+    - "&a✔ &7Resumed growth for &b%count% &7baby pet(s)."
+  batch_favorite_marked:
+    - "&a✔ &7Marked &b%count% &7pets as favorites."
+  batch_favorite_unmarked:
+    - "&a✔ &7Unmarked &b%count% &7pets as favorites."
+  batch_summoned:
+    - "&a✔ &7Summoned &b%count% &7pets!"
+  batch_calmed:
+    - "&a✔ &7Calmed &b%count% &7pets."
+  batch_sit:
+    - "&a✔ &7Told &b%count% &7pets to sit."
+  batch_stand:
+    - "&a✔ &7Told &b%count% &7pets to stand."
+  batch_freed:
+    - "&e⚠ &7You have freed &b%count% &7pets."
+  batch_friendly_prompt:
+    - "&6✉ &7Type the name of the player to add as friendly for &bALL &7selected pets..."
+    - "&7(Type 'cancel' to abort)"
+  batch_friendly_removed:
+    - "&a✔ &7Removed &b%player% &7from &b%count% &7pets' friendly lists."
+  transfer_batch_sender:
+    - "&a✔ &7Transferred &b%count% &7pets to &e%target%&7."
+  transfer_batch_receiver:
+    - "&6✦ &7You received &b%count% &7pets from &e%sender%&7."
+  batch_protection_enabled:
+    - "&a✔ &7Mutual Non-Aggression enabled for &b%count% &7pets."
+  batch_protection_disabled:
+    - "&a✔ &7Mutual Non-Aggression disabled for &b%count% &7pets."
+  mode_set:
+    - "&a✔ &7Set &b%pet%&7's mode to &e%mode%&7."
+  growth_paused:
+    - "&a✔ &7Paused growth for &b%pet%&7."
+  growth_resumed:
+    - "&a✔ &7Resumed growth for &b%pet%&7."
+  station_updated:
+    - "&bℹ &7Station location updated."
+  summon_success:
+    - "&a✔ &7Summoned &b%pet%&7!"
+  pet_not_found:
+    - "&c✖ &7Could not find &b%pet%&7."
+  freed:
+    - "&e⚠ &7You have freed &b%pet%&7."
+  rename_reset:
+    - "&bℹ &7Reset name of &b%old% &7to &b%new%&7."
+  rename_prompt:
+    - "&6✉ &7Enter a new name for &b%pet% &7in chat."
+    - "&7Allowed characters: A-Z, a-z, 0-9, _, -"
+    - "&7(Type 'cancel' to abort)"
+  transfer_offline:
+    - "&c✖ &7That player is no longer online."
+  transfer_sender:
+    - "&a✔ &7Transferred &b%pet% &7to &e%target%&7."
+  transfer_receiver:
+    - "&6✦ &7You received &b%pet% &7from &e%sender%&7."
+  sit_toggled:
+    - "&a✔ &b%pet% &7is now %state%."
+  calm_success:
+    - "&a✔ &7Calmed &b%pet%&7."
+  friendly_prompt:
+    - "&6✉ &7Type the name of the player to add as friendly for &b%pet%&7."
+    - "&7(Type 'cancel' to abort)"
+  friendly_removed:
+    - "&a✔ &7Removed &b%player% &7from &b%pet%&7's friendly list."
+  icon_reset:
+    - "&bℹ &7Reset icon for &b%pet% &7to default."
+  icon_no_item:
+    - "&c✖ &7Hold an item in your main hand to set as icon."
+  icon_updated:
+    - "&a✔ &7Updated icon for &b%pet%&7."
+  revive_not_dead:
+    - "&c✖ &7This pet is not dead."
+  revive_no_star:
+    - "&c✖ &7You need a Nether Star in your main hand to revive this pet."
+  revive_success:
+    - ""
+    - "&6✦ &dREVIVAL COMPLETE &6✦"
+    - "&b%pet% &aHas returned to the living!"
+    - ""
+  remove_permanent:
+    - "&e⚠ &7You have permanently deleted &b%pet%&7."
+  color_reset:
+    - "&e⚠ &7Reset color for &b%pet% &7to default."
+  color_invalid:
+    - "&c✖ &7Invalid color selection."
+  color_updated:
+    - "&a✔ &7Set color for &b%pet% &7to &e%color%&7."
+  pet_data_error:
+    - "&c✖ &7Pet data not found or invalid."
+  protection_enabled:
+    - "&a✔ &7Enabled Mutual Non-Aggression for &b%pet%&7."
+  protection_disabled:
+    - "&e⚠ &7Disabled Mutual Non-Aggression for &b%pet%&7."
+  station_radius:
+    - "&a✔ &7Updated Station Radius: &b%radius%m"
+  station_targets:
+    - "&a✔ &7Updated Station Targets: &b%targets%"
+  station_active:
+    - ""
+    - "&a✔ &b%pet% &a is now STATIONED here."
+    - "&7It will guard this area based on your settings."
+    - ""
+  station_inactive:
+    - "&e✖ &b%pet% &e is no longer stationed."
+  target_cleared:
+    - "&e⚠ &7Cleared target for &b%pet%&7."
+  target_selection_mode:
+    - "&6=== Target Selection Mode ==="
+    - "&eLeft-Click &f an entity to set as target."
+    - "&eRight-Click &f anywhere to cancel."
+  target_prompt:
+    - "&6✉ &7Type the name of the player you want &b%pet% &7to target."
+    - "&7(Type 'cancel' to abort)"
+  heal_not_loaded:
+    - "&c✖ &7Pet is not loaded or invalid. Cannot heal."
+  heal_full:
+    - "&a✔ &b%pet% &7is already at full health!"
+  heal_no_xp:
+    - "&c✖ &7Not enough XP! Need &b%needed% XP&c, you have &f%current% XP&c."
+  heal_success_full:
+    - "&a✔ &7Fully healed &b%pet% &7for &b%xp% XP&7!"
+  heal_success_single:
+    - "&a✔ &7Healed &b%pet% &7for 1 HP (&b100 XP&7)."
+  store_already:
+    - "&e⚠ &b%pet% &7is already stored."
+  store_nearby_only: "&cPet must be nearby (loaded) to store it!"
+  not_dead: "&cThis pet is not dead."
+  need_nether_star: "&cYou need a Nether Star in your main hand to revive this pet."
+  sitting_state: "sitting"
+  standing_state: "standing"
+  store_success_prompt:
+    - "&6✦ &7Stored &b%pet%&6. Use &f/pet withdraw &6to retrieve it."
+event:
+  death:
+    - ""
+    - "&c☠ &4YOUR PET &l%pet% &4HAS DIED!"
+    - "&7Location: &f%location%"
+    - "&7Use the Pet Menu to manage or resurrect it."
+    - ""
+  target_locked:
+    - "&a✔ &7Locked target for &b%pet%&7: &c%target%"
+  hp_danger:
+    - "&4☠ &cDANGER: &b%pet% &cIS NEAR DEATH! (<5%)"
+  hp_critical:
+    - "&c⚠ &6CRITICAL: &b%pet% &6depends on you! (<10% HP)"
+  hp_warning:
+    - "&e⚠ &7Warning: &b%pet% &7is below 25% health."
+  ghast_tame_success:
+    - "&a✔ &7You have tamed this Happy Ghast! It is now your pet."
+  ghast_tame_fail:
+    - "&e⚠ &7The Happy Ghast resisted your taming attempt."
+  ghast_already_tamed:
+    - "&bℹ &7This Happy Ghast is already registered as a pet."
+  target_selection_cancelled:
+    - "&bℹ &7Target selection cancelled."
+  target_selection_invalid:
+    - "&c✖ &7Invalid target. Must be a Player, Monster, or Animal."
+  target_selection_none:
+    - "&c✖ &7No valid target in sight."
+chat:
+  rename_cancel:
+    - "&bℹ &7Cancelled pet rename."
+  rename_error:
+    - "&c✖ &7Error: Pet does not exist anymore."
+  rename_success:
+    - "&a✔ &7Renamed &b%old% &7to &b%new%&7."
+  rename_invalid:
+    - "&c✖ &7Invalid name characters. Rename cancelled."
+  friendly_cancel:
+    - "&bℹ &7Cancelled adding friendly player."
+  data_lost:
+    - "&c✖ &7Error: Pet data lost."
+  player_not_found:
+    - "&c✖ &7Player '&e%player%&7' not found."
+  try_again:
+    - "&6✉ &7Please try again, or type 'cancel'."
+  friendly_owner:
+    - "&bℹ &7The owner is always friendly towards their pet."
+  friendly_already:
+    - "&bℹ &7%player% is already on the friendly list."
+  friendly_success:
+    - "&a✔ &7Added &b%player% &7to &b%pet%&7's friendly list."
+  friendly_batch_success:
+    - "&a✔ &7Added &b%player% &7to &b%count% &7pets' friendly lists."
+  target_cancel:
+    - "&bℹ &7Cancelled setting target."
+  target_set:
+    - "&a✔ &7Set target for &b%pet% &7to &b%target%&7."
+menus:
+  # Targeting
+  clear_target: "&eClear Target"
+  set_target: "&cSet Active Target"
+  target_current: "&7Current: &f%target%"
+  target_click_lore:
+    - ""
+    - "&eLeft-Click: &7Type Player Name"
+    - "&eRight-Click: &7Target Entity in Sight"
+  target_none: "None"
+  unloaded_unknown: "&7Unloaded/Unknown"
+
+  # General Management
+  main_title: "&3Your Enhanced Pets"
+  pet_title: "&3Manage Pet: &b%name%"
+  pet_title_prefix: "&3Manage Pet: &b%pet%"
+  dead_pet_name: "&c[DEAD] %name%"
+  dead_pet_lore:
+    - "&4This pet has died!"
+    - "&7Revive it with a Nether Star"
+    - "&7or remove it permanently."
+  no_pets_name: "&cNo Pets Found"
+  no_pets_lore:
+    - "&7Tame some wolves or cats!"
+  scan_button_name: "&bScan for My Pets"
+  scan_button_lore:
+    - "&7Scans loaded areas for your unregistered pets."
+    - ""
+    - "&eClick to scan and sync."
+  page_count_name: "&bPage %page% / %total%"
+  page_count_lore:
+    - "&7Total Pets: %count%"
+  batch_button_name: "&6Batch Actions"
+  batch_button_lore:
+    - "&7Manage multiple pets at once."
+  prev_page: "&aPrevious Page"
+  next_page: "&aNext Page"
+  back_to_list: "&eBack to Pet List"
+  back_pet: "&eBack to Pet Management"
+  back: "&eBack"
+
+  # Single Pet Actions
+  heal_pet: "&aHeal Pet"
+  heal_lore:
+    - "&cHealth: &f%health% / %max_health%"
+    - ""
+    - "&7Cost: &b100 XP &7per HP"
+    - ""
+    - "&eLeft-Click: &7Heal 1 HP"
+    - "&eShift-Click: &7Full Heal (&b%cost% XP&7)"
+  store_pet: "&6Store Pet"
+  store_lore:
+    - "&7Despawns and stores this pet."
+    - "&7Use &f/pet withdraw &7to get it back."
+    - ""
+    - "&eClick to store."
+  free_pet: "&cFree This Pet"
+  free_pet_lore:
+    - "&cPermanently release this pet."
+    - "&4⚠ This cannot be undone!"
+  revive_pet: "&aRevive Pet"
+  revive_pet_lore:
+    - "&7Revive this pet with a Nether Star."
+  remove_pet: "&cRemove Pet"
+  remove_pet_lore:
+    - "&7Permanently delete this pet record."
+  rename_pet: "&aRename Pet"
+  rename_pet_lore:
+    - "&7Left-click: Change your pet's name via chat."
+    - "&7Shift-click: Reset to default name."
+  teleport_pet: "&dTeleport Pet to You"
+  teleport_pet_lore:
+    - "&7Summons this pet to your location."
+  calm_pet: "&bCalm Pet"
+  calm_pet_lore:
+    - "&7Clears the pet's current target"
+    - "&7and resets any anger"
+  transfer_pet: "&6Transfer Pet"
+  transfer_pet_lore:
+    - "&7Give this pet to another player"
+    - "&e⚠ This cannot be undone!"
+
+  # Single Pet Confirmation
+  confirm_free_single_title: "&4Confirm Free: %name%"
+  free_info_single_name: "&eFree %name%"
+  free_info_single_lore:
+    - "&4⚠ WARNING ⚠"
+    - "&cThis action cannot be undone!"
+    - "&cThe pet will be permanently freed."
+  cancel_free: "&aCancel"
+  cancel_free_single_lore:
+    - "&7Keep this pet."
+  confirm_free_single_btn_lore:
+    - "&cClick to permanently free this pet"
+    - "&4This cannot be undone!"
+  transfer_single_title: "&3Transfer: &b%pet%"
+  transfer_single_player_lore:
+    - "&7Click to transfer this pet"
+    - "&7to %player%"
+    - ""
+    - "&e⚠ This cannot be undone!"
+
+  # Customization
+  customize_title: "&3Customize: %name%"
+  customize_title_short: "&3Customize Pet"
+  customize_header_lore:
+    - "&7Select an option below."
+  set_display_icon: "&bSet Display Icon"
+  set_display_icon_lore:
+    - "&7Left-click: Use the item in your main hand"
+    - "&7as this pet's icon."
+    - "&7Shift-click: Reset to default."
+  edit_name_color: "&bEdit Name Color"
+  edit_name_color_lore:
+    - "&7Left-click: Pick a color"
+    - "&7Shift-click: Reset to default color."
+  pick_color_title: "&3Pick a Color for %name%"
+  pick_color_short: "&3Pick Color"
+  pick_color_lore:
+    - "&7Click to set this name color."
+
+  # Friendly Players
+  friendly_title: "&3Friendly Players: %name%"
+  friendly_title_prefix: "&3Friendly Players: &b%pet%"
+  manage_friendly: "&aManage Friendly Players"
+  manage_friendly_lore:
+    - "&7Manage common friendly players."
+  manage_friendly_lore_single:
+    - "&7Set players this pet will never attack."
+  add_friendly: "&aAdd Friendly Player"
+  add_friendly_lore:
+    - "&7Adds a player as friendly to ALL selected pets."
+  add_friendly_lore_single:
+    - "&7Adds a player as friendly to this pet."
+  remove_friendly_lore:
+    - "&cClick to remove from selection"
+
+  # Station & Targeting
+  station_here: "&aStation Here"
+  modify_station: "&eModify Station"
+  station_active: "&2▶ &aCurrently Active"
+  station_inactive: "&cInactive"
+  station_settings: "&eSettings:"
+  station_radius: "&7  Radius: &f%radius% &7(Shift-Click)"
+  station_targets: "&7  Targets: &f%targets% &7(Right-Click)"
+  station_click_lore:
+    - ""
+    - "&eLeft-Click: &7%action%"
+    - "&eRight-Click: &7Cycle Target Mode"
+    - "&eShift-Click: &7Cycle Radius (5-25m)"
+  unstation_action: "Unstation"
+  station_action: "Station Here"
+
+  # Pet Header & Items (Main List)
+  header_lore_alive:
+    - "&cHealth: &f%health% / %max_health%"
+  header_lore_dead_state:
+    - "&7Health: Unknown (Unloaded)"
+  header_protection: "&7Protection: %status%"
+  protection_status: "&7Status: %status%"
+  protection_desc:
+    - "&7When enabled, players cannot damage"
+    - "&7this pet, and it will not attack"
+    - "&7players even when aggressive."
+  header_friendly_count: "&a%count% Friendly Player%s%"
+  header_baby: "&dBaby"
+  header_instructions:
+    - ""
+    - "&eLeft-click: Customize Display"
+    - "&eRight-click: Toggle Favorite"
+  pet_item_lore_basic:
+    - "&7Type: &f%type%"
+  pet_item_lore_variant:
+    - "&7Variant: &b%variant%"
+  pet_item_lore_mode:
+    - "&7Mode: &f%mode%"
+  pet_item_lore_health:
+    - "&cHealth: &f%health% / %max_health%"
+  pet_item_lore_health_unknown:
+    - "&7Health: Unknown (Unloaded)"
+  pet_item_lore_protection:
+    - "&7Protection: %status%"
+  pet_item_lore_friendly:
+    - "&a%count% Friendly Player%s%"
+  pet_item_lore_baby:
+    - "&dBaby"
+  pet_item_lore_station:
+    - ""
+    - "&e⚑ STATIONED"
+    - "&7  Location: &f%x%, %y%, %z%"
+    - "&7  Radius: &f%radius%m"
+    - "&7  Targets: &f%target_types%"
+  pet_item_lore_target:
+    - ""
+    - "&c⚔ HUNTING TARGET"
+    - "&7  Target: &c%target%"
+  pet_item_lore_footer:
+    - ""
+    - "&eClick to manage this pet."
+  dead_pet_item_name: "&c[DEAD] %name%"
+  dead_pet_item_lore:
+    - "&4This pet is dead!"
+    - "&7Click to view revival or removal options."
+  stored_pet_item_name: "&6[STORED] &f%name%"
+  stored_pet_item_lore:
+    - "&7Type: &f%type%"
+    - "&eThis pet is in storage."
+    - "&7Use /pet withdraw to bring it out."
+
+  # Batch Management
+  batch_title: "&3Batch Manage %count% Pets"
+  batch_type_title: "&3Batch Actions: Select Type"
+  batch_select_title: "&3Select %type%%s%"
+  managing_header: "&e&lManaging %count% Pets"
+  managing_header_lore:
+    - "&7Selected: &f%count% pets"
+    - ""
+    - "&6Click to toggle favorites"
+  type_lore:
+    - "&7You have %count% of this pet type."
+    - ""
+    - "&aClick to select which ones to manage."
+  pet_selection_lore:
+    - "&7Status: %status%"
+    - ""
+    - "&eClick to toggle selection."
+  next_step: "&a&lNext Step"
+  next_step_lore:
+    - "&7Selection: &e%count% pets"
+    - "&7Status: %status%"
+    - ""
+    - "&eClick to proceed to management."
+  next_step_error: "&cSelect at least one pet!"
+  next_step_success: "&aClick to proceed."
+  status_selected: "&a[SELECTED]"
+  status_not_selected: "&7[NOT SELECTED]"
+  select_all: "&aSelect All"
+  select_none: "&cSelect None"
+  remove_all_dead: "&4Remove All Dead Pets"
+  back_batch: "&eBack to Batch Management"
+  back_selection: "&eBack to Pet Selection"
+  back_type: "&eBack to Type Selection"
+
+  # Batch Actions
+  set_passive: "Set Passive"
+  set_neutral: "Set Neutral"
+  set_aggressive: "Set Aggressive"
+  make_stand: "&aMake Pets Stand"
+  make_sit: "&eMake Pets Sit"
+  sit_status_lore:
+    - "&7Current: %status%"
+  teleport_pets: "&dTeleport Pets to You"
+  teleport_pets_lore:
+    - "&7Summons all selected pets."
+  calm_pets: "&bCalm Pets"
+  calm_pets_lore:
+    - "&7Clears targets for all selected pets."
+  enable_protection: "&aEnable Mutual Non-Aggression"
+  disable_protection: "&eDisable Mutual Non-Aggression"
+  protection_lore:
+    - "&7Current: %status%"
+    - ""
+    - "&7Players cannot damage these pets,"
+    - "&7and they will not attack players."
+  transfer_pets: "&6Transfer Pets"
+  transfer_pets_lore:
+    - "&7Give selected pets to another player"
+    - "&e⚠ This cannot be undone!"
+  free_selected: "&cFree Selected Pets"
+  free_selected_lore:
+    - "&4&lWARNING:"
+    - "&cThis is permanent!"
+  confirm_free_title: "&4Confirm Free: %count% Pets"
+  free_info_name: "&eFree %count% Pets"
+  free_info_lore:
+    - "&4⚠ WARNING ⚠"
+    - "&cThis action cannot be undone!"
+    - "&cThe selected pets will be permanently freed."
+  cancel_free_lore:
+    - "&7Keep your pets"
+  confirm_free_btn: "&4Confirm Free Pets"
+  confirm_free_btn_lore:
+    - "&cClick to permanently free these pets"
+    - "&4This cannot be undone!"
+  batch_friendly_title: "&3Batch Friendly: %count% Pets"
+  transfer_title: "&3Transfer %count% Pets"
+  transfer_player_lore:
+    - "&7Click to transfer %count% pets"
+    - "&7to %player%"
+    - ""
+    - "&e⚠ This cannot be undone!"
+  batch_remove_dead_title: "&4Confirm Remove: Dead %type%s"
+  batch_remove_dead_name: "&eRemove %count% Dead Pet Record(s)"
+  batch_remove_dead_lore:
+    - "&7Pet Type: &f%type%"
+    - ""
+    - "&4⚠ WARNING ⚠"
+    - "&cThis action is permanent and cannot be undone."
+  confirm_remove_dead: "&4Confirm Removal"
+  confirm_remove_dead_lore:
+    - "&cClick to permanently remove these records."
+  cancel_remove_dead_lore:
+    - "&7Do not remove these records."
+
+  # Pet States & Modes
+  enabled: "&aEnabled"
+  disabled: "&cDisabled"
+  all_protected: "&aAll Protected"
+  all_unprotected: "&cAll Unprotected"
+  all_paused: "&cAll Paused"
+  all_growing: "&aAll Growing"
+  all_sitting: "&eAll Sitting"
+  all_standing: "&aAll Standing"
+  paused: "&cPaused"
+  growing: "&aGrowing"
+  sitting: "&eSitting"
+  standing: "&aStanding"
+  mixed: "&bMixed"
+  unloaded_unknown: "&7Unloaded/Unknown"
+
+  # Mode Overlays
+  mode_active:
+    - ""
+    - "&2▶ &aCurrently Active"
+  mode_batch_mixed:
+    - ""
+    - "&bSelection has mixed modes."
+    - "&eClick to set all to this mode."
+  mode_inactive:
+    - ""
+    - "&eLeft-Click to activate this mode."
+  aggressive_lore_config:
+    - "&eTargeting Config (Active or Not):"
+    - "%mob_status% &7Mobs (Shift-Left)"
+    - "%animal_status% &7Animals (Right-Click)"
+    - "%player_status% &7Players (Shift-Right)"
+
+  # Specific Mode Desc
+  mode_passive_desc:
+    - "&7Pet will not attack any targets."
+  mode_neutral_desc:
+    - "&7Pet defends owner and attacks"
+    - "&7owner's targets (vanilla)."
+  mode_aggressive_desc:
+    - "&7Pet attacks nearby hostiles"
+    - "&7proactively (if possible)."
+
+  # Storage UI
+  store_pet_title: "&3Store Pets"
+  store_pet_item_name: "&eStore &b%name%"
+  store_pet_item_lore:
+    - "&7Type: &f%type%"
+    - ""
+    - "&eClick to store this pet."
+  no_active_pets: "&cNo Active Pets to Store"
+  withdraw_pet_title: "&3Withdraw Pets"
+  withdraw_pet_item_name: "&eWithdraw &b%name%"
+  withdraw_pet_item_lore:
+    - "&7Type: &f%type%"
+    - ""
+    - "&eClick to withdraw this pet."
+  no_stored_pets: "&cNo Stored Pets found"
+
+  # Misc UI
+  no_players: "&cNo Players Online"
+  no_players_lore:
+    - "&7No one to transfer to!"
+  no_types_found: "&cNo Pet Types Found"
+  no_types_found_lore:
+    - "&7You don't have any pets to manage in batch."
+  page_count_name: "&bPage %page% / %total%"
+  page_count_lore:
+    - "&7Total Pets: %count%"
+  cancel: "&aCancel"
+  cancel_btn: "&eCancel"
+  confirm_revival_title: "&aConfirm Revival"
+  confirm_removal_title: "&cConfirm Removal"
+  toggle_growth_name: "%color%Toggle Growth"
+  toggle_growth_lore:
+    - "&7Current: %status%"
+    - ""
+    - "&eClick to toggle"
+  toggle_growth_baby_name: "%color%Toggle Growth (Babies)"
+  toggle_growth_baby_lore:
+    - "&7Current: %status%"
+    - "&7Affects selected babies only."
+    - ""
+    - "&eClick to toggle all babies"
+
+  # Targets strings
+  target_everything: "Everything"
+  target_mobs_players: "Mobs & Players"
+  target_mobs_animals: "Mobs & Animals"
+  target_players_animals: "Players & Animals"
+  target_players_only: "Players Only"
+  target_mobs_only: "Mobs Only"
+  target_animals_only: "Animals Only"
+  target_custom: "Custom"

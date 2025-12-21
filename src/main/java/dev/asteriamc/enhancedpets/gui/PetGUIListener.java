@@ -5,7 +5,6 @@ import dev.asteriamc.enhancedpets.data.BehaviorMode;
 import dev.asteriamc.enhancedpets.data.PetData;
 import dev.asteriamc.enhancedpets.manager.PetManager;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
@@ -63,20 +62,10 @@ public class PetGUIListener implements Listener {
         if (!(event.getWhoClicked() instanceof Player player))
             return;
 
-        String title = event.getView().getTitle();
-        boolean isPetGui = title.startsWith(ChatColor.DARK_AQUA.toString())
-                || title.startsWith(ChatColor.DARK_RED + "Confirm Free:")
-                || title.startsWith(ChatColor.GREEN + "Confirm Revival")
-                || title.startsWith(ChatColor.DARK_RED + "Confirm Remove:")
-                || title.startsWith(ChatColor.RED + "Confirm Removal")
-                // Added checks for Store and Withdraw menus
-                || title.equals(ChatColor.GOLD + "Store a Pet")
-                || title.equals(ChatColor.GREEN + "Withdraw a Pet");
-
-        if (!isPetGui)
+        if (!(event.getInventory().getHolder() instanceof PetInventoryHolder))
             return;
 
-        if (title.equals(PetManagerGUI.MAIN_MENU_TITLE) && event.isShiftClick() && event.isRightClick()) {
+        if (event.isShiftClick() && event.isRightClick()) {
             ItemStack clickedItem = event.getCurrentItem();
             if (clickedItem != null && clickedItem.getType() == Material.SKELETON_SKULL) {
                 event.setCancelled(true);
@@ -87,8 +76,8 @@ public class PetGUIListener implements Listener {
                     PetData petData = petManager.getPetData(petUUID);
                     if (petData != null && petData.isDead()) {
                         petManager.freePetCompletely(petUUID);
-                        player.sendMessage(ChatColor.GREEN + "Removed dead pet record for " + ChatColor.AQUA
-                                + petData.getDisplayName() + ChatColor.GREEN + ".");
+                        plugin.getLanguageManager().sendReplacements(player, "gui.dead_removed", "pet",
+                                petData.getDisplayName());
                         guiManager.openMainMenu(player);
                         return;
                     }
@@ -96,8 +85,8 @@ public class PetGUIListener implements Listener {
             }
         }
 
-        if (title.startsWith(ChatColor.GREEN + "Confirm Revival")
-                || title.startsWith(ChatColor.RED + "Confirm Removal")) {
+        PetInventoryHolder holder = (PetInventoryHolder) event.getInventory().getHolder();
+        if (holder.getMenuType() == PetInventoryHolder.MenuType.CONFIRM_ACTION) {
             event.setCancelled(true);
             ItemStack clickedItem = event.getCurrentItem();
             if (clickedItem == null || clickedItem.getType() == Material.AIR)
@@ -108,7 +97,7 @@ public class PetGUIListener implements Listener {
             PersistentDataContainer data = meta.getPersistentDataContainer();
             String action = data.get(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING);
             if (action != null) {
-                handleRegularAction(player, action, data, title, event);
+                handleRegularAction(player, action, data, event);
             }
             return;
         }
@@ -132,28 +121,28 @@ public class PetGUIListener implements Listener {
 
         String batchAction = data.get(BatchActionsGUI.BATCH_ACTION_KEY, PersistentDataType.STRING);
         if (batchAction != null) {
-            handleBatchAction(player, batchAction, data, title);
+            handleBatchAction(player, batchAction, data);
             return;
         }
 
         String action = data.get(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING);
         if (action != null) {
-            handleRegularAction(player, action, data, title, event);
+            handleRegularAction(player, action, data, event);
             return;
         }
 
         String mainPetUUIDString = data.get(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING);
-        if (title.equals(PetManagerGUI.MAIN_MENU_TITLE) && mainPetUUIDString != null) {
+        if (mainPetUUIDString != null) {
             this.guiManager.openPetMenu(player, UUID.fromString(mainPetUUIDString));
         }
     }
 
-    private void handleBatchAction(Player player, String batchAction, PersistentDataContainer data, String title) {
+    private void handleBatchAction(Player player, String batchAction, PersistentDataContainer data) {
         Set<UUID> selectedPets = batchActionsGUI.getPlayerSelections().computeIfAbsent(player.getUniqueId(),
                 k -> new HashSet<>());
         String typeName = data.get(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING);
         EntityType petType = typeName != null ? EntityType.valueOf(typeName) : null;
-        Integer page = data.get(BatchActionsGUI.PAGE_KEY, PersistentDataType.INTEGER);
+        Integer page = data.get(PetManagerGUI.PAGE_KEY, PersistentDataType.INTEGER);
 
         switch (batchAction) {
             case "open_type_select" -> batchActionsGUI.openPetTypeSelectionMenu(player);
@@ -170,7 +159,7 @@ public class PetGUIListener implements Listener {
             }
             case "toggle_pet_selection" -> {
                 String petUUIDString = data.get(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING);
-                Integer currentPage = data.get(BatchActionsGUI.PAGE_KEY, PersistentDataType.INTEGER);
+                Integer currentPage = data.get(PetManagerGUI.PAGE_KEY, PersistentDataType.INTEGER);
                 if (petUUIDString != null && petType != null && currentPage != null) {
                     UUID petUUID = UUID.fromString(petUUIDString);
                     if (selectedPets.contains(petUUID)) {
@@ -198,7 +187,7 @@ public class PetGUIListener implements Listener {
             }
             case "open_batch_manage" -> {
                 if (selectedPets.isEmpty()) {
-                    player.sendMessage(ChatColor.RED + "You must select at least one pet to manage.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.batch_no_selection");
                 } else {
                     guiManager.openBatchManagementMenu(player, selectedPets);
                 }
@@ -211,7 +200,7 @@ public class PetGUIListener implements Listener {
                             .filter(p -> p.getEntityType() == petType && p.isDead())
                             .toList();
                     if (deadPets.isEmpty()) {
-                        player.sendMessage(ChatColor.YELLOW + "No dead pets of this type found.");
+                        plugin.getLanguageManager().sendMessage(player, "gui.batch_no_dead");
                     } else {
                         guiManager.openBatchConfirmRemoveDeadMenu(player, petType, deadPets.size());
                     }
@@ -225,8 +214,8 @@ public class PetGUIListener implements Listener {
                             .toList();
                     if (!deadPets.isEmpty()) {
                         deadPets.forEach(p -> petManager.freePetCompletely(p.getPetUUID()));
-                        player.sendMessage(
-                                ChatColor.GREEN + "Successfully removed " + deadPets.size() + " dead pet record(s).");
+                        plugin.getLanguageManager().sendReplacements(player, "gui.batch_remove_dead_success", "count",
+                                String.valueOf(deadPets.size()));
                     }
                     batchActionsGUI.openPetSelectionMenu(player, petType, 0);
                 }
@@ -239,7 +228,7 @@ public class PetGUIListener implements Listener {
         }
     }
 
-    private void handleRegularAction(Player player, String action, PersistentDataContainer data, String title,
+    private void handleRegularAction(Player player, String action, PersistentDataContainer data,
             InventoryClickEvent event) {
         String petUUIDString = data.get(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING);
         UUID petUUID = (petUUIDString != null) ? UUID.fromString(petUUIDString) : null;
@@ -277,21 +266,19 @@ public class PetGUIListener implements Listener {
                 player.closeInventory();
                 UUID override = plugin.getGuiManager().getViewerOwnerOverride(player.getUniqueId());
                 if (override != null && !override.equals(player.getUniqueId())) {
-                    player.sendMessage(ChatColor.RED
-                            + "Scan is only available for your own pets while viewing as another player.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.scan_not_owner");
                     guiManager.openMainMenu(player);
                     return;
                 }
-                player.sendMessage(ChatColor.YELLOW + "Scanning for your unregistered pets...");
+                plugin.getLanguageManager().sendMessage(player, "gui.scan_start");
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     int foundCount = petManager.scanAndRegisterPetsForOwner(player);
                     if (foundCount > 0) {
-                        player.sendMessage(
-                                ChatColor.GREEN + "Success! Found and registered " + foundCount + " new pet(s).");
+                        plugin.getLanguageManager().sendReplacements(player, "gui.scan_success", "count",
+                                String.valueOf(foundCount));
                         guiManager.openMainMenu(player);
                     } else {
-                        player.sendMessage(ChatColor.GREEN
-                                + "Scan complete. No new unregistered pets were found in loaded areas.");
+                        plugin.getLanguageManager().sendMessage(player, "gui.scan_none");
                     }
                 });
                 return;
@@ -302,7 +289,7 @@ public class PetGUIListener implements Listener {
                     return;
                 PetData pd = petManager.getPetData(petUUID);
                 if (pd == null || pd.isStored()) {
-                    player.sendMessage(ChatColor.RED + "This pet cannot be stored.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.store_fail");
                     return;
                 }
                 Entity petEntity = Bukkit.getEntity(petUUID);
@@ -316,8 +303,7 @@ public class PetGUIListener implements Listener {
                 pd.setStationLocation(null);
                 pd.setExplicitTargetUUID(null);
                 petManager.updatePetData(pd);
-                player.sendMessage(
-                        ChatColor.GOLD + "Stored " + ChatColor.AQUA + pd.getDisplayName() + ChatColor.GOLD + ".");
+                plugin.getLanguageManager().sendReplacements(player, "gui.store_success", "pet", pd.getDisplayName());
                 player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ENDER_CHEST_CLOSE, 1.0f, 1.0f);
                 guiManager.openStorePetMenu(player);
                 return;
@@ -328,7 +314,7 @@ public class PetGUIListener implements Listener {
                     return;
                 PetData pd = petManager.getPetData(petUUID);
                 if (pd == null || !pd.isStored()) {
-                    player.sendMessage(ChatColor.RED + "This pet is not in storage.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.withdraw_fail");
                     return;
                 }
                 // Respawn the pet
@@ -351,9 +337,8 @@ public class PetGUIListener implements Listener {
                 newData.setStored(false);
                 petManager.updatePetData(newData);
 
-                player.sendMessage(
-                        ChatColor.GREEN + "Withdrew " + ChatColor.AQUA + newData.getDisplayName() + ChatColor.GREEN
-                                + "!");
+                plugin.getLanguageManager().sendReplacements(player, "gui.withdraw_success", "pet",
+                        newData.getDisplayName());
                 player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ENDER_CHEST_OPEN, 1.0f, 1.0f);
                 guiManager.openWithdrawPetMenu(player);
                 return;
@@ -370,11 +355,13 @@ public class PetGUIListener implements Listener {
 
                 petData.setFavorite(!petData.isFavorite());
                 petManager.updatePetData(petData);
-                player.sendMessage(petData.isFavorite()
-                        ? ChatColor.GREEN + "Marked " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.GREEN
-                                + " as a favorite!"
-                        : ChatColor.YELLOW + "Removed " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.YELLOW
-                                + " from favorites.");
+                if (petData.isFavorite()) {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.favorite_added", "pet",
+                            petData.getDisplayName());
+                } else {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.favorite_removed", "pet",
+                            petData.getDisplayName());
+                }
                 guiManager.openPetMenu(player, petUUID);
                 return;
             } else if (event.isLeftClick()) {
@@ -386,18 +373,18 @@ public class PetGUIListener implements Listener {
 
         if (action.startsWith("batch_")) {
             if (selectedPets == null || selectedPets.isEmpty()) {
-                player.sendMessage(ChatColor.RED + "Your pet selection was lost. Please start again.");
+                plugin.getLanguageManager().sendMessage(player, "gui.selection_lost");
                 guiManager.openMainMenu(player);
                 return;
             }
-            handleBatchManagementAction(player, action, data, selectedPets);
+            handleBatchManagementAction(player, action, data, selectedPets, event);
             return;
         }
 
         if (petUUID != null) {
             PetData petData = petManager.getPetData(petUUID);
             if (petData == null) {
-                player.sendMessage(ChatColor.RED + "This pet no longer exists.");
+                plugin.getLanguageManager().sendReplacements(player, "gui.pet_not_found", "pet", "Pet");
                 guiManager.openMainMenu(player);
                 return;
             }
@@ -415,9 +402,9 @@ public class PetGUIListener implements Listener {
     }
 
     private void handleBatchManagementAction(Player player, String action, PersistentDataContainer data,
-            Set<UUID> selectedPets) {
+            Set<UUID> selectedPets, InventoryClickEvent event) {
         if (selectedPets == null || selectedPets.isEmpty()) {
-            player.sendMessage(ChatColor.RED + "No pets selected or selection lost.");
+            plugin.getLanguageManager().sendMessage(player, "gui.batch_no_selection");
             guiManager.openMainMenu(player);
             return;
         }
@@ -426,6 +413,45 @@ public class PetGUIListener implements Listener {
         switch (action) {
             case "batch_set_mode_PASSIVE", "batch_set_mode_NEUTRAL", "batch_set_mode_AGGRESSIVE" -> {
                 BehaviorMode newMode = BehaviorMode.valueOf(action.substring(15));
+
+                if (newMode == BehaviorMode.AGGRESSIVE) {
+                    String typeToToggle = null;
+                    if (event.getClick() == org.bukkit.event.inventory.ClickType.SHIFT_LEFT) {
+                        typeToToggle = "MOB";
+                    } else if (event.getClick() == org.bukkit.event.inventory.ClickType.RIGHT) {
+                        typeToToggle = "ANIMAL";
+                    } else if (event.getClick() == org.bukkit.event.inventory.ClickType.SHIFT_RIGHT) {
+                        typeToToggle = "PLAYER";
+                    }
+
+                    if (typeToToggle != null) {
+                        boolean allHave = true;
+                        for (PetData pd : petDataList) {
+                            if (!pd.getAggressiveTargetTypes().contains(typeToToggle)) {
+                                allHave = false;
+                                break;
+                            }
+                        }
+
+                        for (PetData pd : petDataList) {
+                            Set<String> types = pd.getAggressiveTargetTypes();
+                            if (allHave) {
+                                types.remove(typeToToggle);
+                            } else {
+                                types.add(typeToToggle);
+                            }
+                        }
+                        petManager.saveAllPetData(petDataList);
+                        player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1f, 1f);
+                        guiManager.openBatchManagementMenu(player, selectedPets);
+                        return;
+                    }
+
+                    if (event.getClick() != org.bukkit.event.inventory.ClickType.LEFT) {
+                        return;
+                    }
+                }
+
                 petDataList.forEach(pd -> pd.setMode(newMode));
                 petManager.saveAllPetData(petDataList);
                 if (newMode != BehaviorMode.AGGRESSIVE) {
@@ -434,8 +460,8 @@ public class PetGUIListener implements Listener {
                             .filter(e -> e instanceof Creature)
                             .forEach(e -> ((Creature) e).setTarget(null));
                 }
-                player.sendMessage(ChatColor.GREEN + "Set mode for " + petDataList.size() + " pets to "
-                        + ChatColor.YELLOW + newMode.name() + ".");
+                plugin.getLanguageManager().sendReplacements(player, "gui.batch_mode_set", "count",
+                        String.valueOf(petDataList.size()), "mode", newMode.name());
                 guiManager.openBatchManagementMenu(player, selectedPets);
             }
             case "batch_toggle_growth_pause" -> {
@@ -446,7 +472,7 @@ public class PetGUIListener implements Listener {
                         .toList();
 
                 if (babyUUIDs.isEmpty()) {
-                    player.sendMessage(ChatColor.RED + "No babies in your selection.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.batch_no_babies");
                     guiManager.openBatchManagementMenu(player, selectedPets);
                     break;
                 }
@@ -468,9 +494,11 @@ public class PetGUIListener implements Listener {
                 }
 
                 if (shouldPause) {
-                    player.sendMessage(ChatColor.GREEN + "Paused growth for " + changed + " baby pet(s).");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.batch_growth_paused", "count",
+                            String.valueOf(changed));
                 } else {
-                    player.sendMessage(ChatColor.GREEN + "Resumed growth for " + changed + " baby pet(s).");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.batch_growth_resumed", "count",
+                            String.valueOf(changed));
                 }
                 guiManager.openBatchManagementMenu(player, selectedPets);
             }
@@ -479,8 +507,13 @@ public class PetGUIListener implements Listener {
                 boolean makeFavorite = favoriteCount < petDataList.size();
                 petDataList.forEach(pd -> pd.setFavorite(makeFavorite));
                 petManager.saveAllPetData(petDataList);
-                player.sendMessage(ChatColor.GREEN + (makeFavorite ? "Marked" : "Unmarked") + " " + petDataList.size()
-                        + " pets as favorites.");
+                if (makeFavorite) {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.batch_favorite_marked", "count",
+                            String.valueOf(petDataList.size()));
+                } else {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.batch_favorite_unmarked", "count",
+                            String.valueOf(petDataList.size()));
+                }
                 guiManager.openBatchManagementMenu(player, selectedPets);
             }
             case "batch_teleport" -> {
@@ -489,7 +522,8 @@ public class PetGUIListener implements Listener {
                         .filter(e -> e != null && e.isValid())
                         .peek(e -> e.teleport(player.getLocation()))
                         .count();
-                player.sendMessage(ChatColor.GREEN + "Summoned " + summoned + " pets!");
+                plugin.getLanguageManager().sendReplacements(player, "gui.batch_summoned", "count",
+                        String.valueOf(summoned));
             }
             case "batch_calm" -> {
                 int calmed = (int) selectedPets.stream()
@@ -500,7 +534,8 @@ public class PetGUIListener implements Listener {
                             if (e instanceof Wolf w)
                                 w.setAngry(false);
                         }).count();
-                player.sendMessage(ChatColor.GREEN + "Calmed " + calmed + " pets.");
+                plugin.getLanguageManager().sendReplacements(player, "gui.batch_calmed", "count",
+                        String.valueOf(calmed));
             }
             case "batch_toggle_sit" -> {
                 List<Sittable> sittables = selectedPets.stream().map(Bukkit::getEntity)
@@ -509,8 +544,13 @@ public class PetGUIListener implements Listener {
                     long sittingCount = sittables.stream().filter(Sittable::isSitting).count();
                     boolean shouldSit = sittingCount < sittables.size();
                     sittables.forEach(s -> s.setSitting(shouldSit));
-                    player.sendMessage(ChatColor.GREEN + "Told " + sittables.size() + " pets to "
-                            + (shouldSit ? "sit." : "stand."));
+                    if (shouldSit) {
+                        plugin.getLanguageManager().sendReplacements(player, "gui.batch_sit", "count",
+                                String.valueOf(sittables.size()));
+                    } else {
+                        plugin.getLanguageManager().sendReplacements(player, "gui.batch_stand", "count",
+                                String.valueOf(sittables.size()));
+                    }
                     guiManager.openBatchManagementMenu(player, selectedPets);
                 }
             }
@@ -520,7 +560,7 @@ public class PetGUIListener implements Listener {
                 int count = selectedPets.size();
                 selectedPets.forEach(petManager::freePetCompletely);
                 batchActionsGUI.getPlayerSelections().remove(player.getUniqueId());
-                player.sendMessage(ChatColor.YELLOW + "You have freed " + count + " pets.");
+                plugin.getLanguageManager().sendReplacements(player, "gui.batch_freed", "count", String.valueOf(count));
             }
             case "batch_manage_friendly" -> guiManager.openBatchFriendlyPlayerMenu(player, selectedPets, 0);
             case "batch_friendly_page" -> {
@@ -531,9 +571,7 @@ public class PetGUIListener implements Listener {
             case "add_batch_friendly_prompt" -> {
                 awaitingBatchFriendlyInput.put(player.getUniqueId(), true);
                 player.closeInventory();
-                player.sendMessage(ChatColor.GOLD
-                        + "Please type the name of the player to add as friendly for all selected pets.");
-                player.sendMessage(ChatColor.GRAY + "(Type 'cancel' to abort)");
+                plugin.getLanguageManager().sendMessage(player, "gui.batch_friendly_prompt");
             }
             case "remove_batch_friendly" -> {
                 String targetUUIDString = data.get(PetManagerGUI.TARGET_PLAYER_UUID_KEY, PersistentDataType.STRING);
@@ -541,8 +579,9 @@ public class PetGUIListener implements Listener {
                     UUID targetUUID = UUID.fromString(targetUUIDString);
                     petDataList.forEach(pd -> pd.removeFriendlyPlayer(targetUUID));
                     petManager.saveAllPetData(petDataList);
-                    player.sendMessage(ChatColor.GREEN + "Removed " + Bukkit.getOfflinePlayer(targetUUID).getName()
-                            + " from " + petDataList.size() + " pets' friendly lists.");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.batch_friendly_removed",
+                            "player", Bukkit.getOfflinePlayer(targetUUID).getName(), "count",
+                            String.valueOf(petDataList.size()));
                     guiManager.openBatchFriendlyPlayerMenu(player, selectedPets, 0);
                 }
             }
@@ -552,7 +591,7 @@ public class PetGUIListener implements Listener {
                 if (targetUUIDString != null) {
                     Player targetPlayer = Bukkit.getPlayer(UUID.fromString(targetUUIDString));
                     if (targetPlayer == null || !targetPlayer.isOnline()) {
-                        player.sendMessage(ChatColor.RED + "That player is no longer online!");
+                        plugin.getLanguageManager().sendMessage(player, "gui.transfer_offline");
                         return;
                     }
                     player.closeInventory();
@@ -564,10 +603,10 @@ public class PetGUIListener implements Listener {
                         }
                     });
                     petManager.saveAllPetData(petDataList);
-                    player.sendMessage(ChatColor.GREEN + "You transferred " + petDataList.size() + " pets to "
-                            + ChatColor.YELLOW + targetPlayer.getName());
-                    targetPlayer.sendMessage(ChatColor.GREEN + "You received " + petDataList.size() + " pets from "
-                            + ChatColor.YELLOW + oldOwnerName);
+                    plugin.getLanguageManager().sendReplacements(player, "gui.transfer_batch_sender", "count",
+                            String.valueOf(petDataList.size()), "target", targetPlayer.getName());
+                    plugin.getLanguageManager().sendReplacements(targetPlayer, "gui.transfer_batch_receiver", "count",
+                            String.valueOf(petDataList.size()), "sender", oldOwnerName);
                 }
             }
             case "batch_toggle_protection" -> {
@@ -575,8 +614,13 @@ public class PetGUIListener implements Listener {
                 boolean makeProtected = protectedCount < petDataList.size();
                 petDataList.forEach(pd -> pd.setProtectedFromPlayers(makeProtected));
                 petManager.saveAllPetData(petDataList);
-                player.sendMessage((makeProtected ? ChatColor.GREEN + "Enabled" : ChatColor.YELLOW + "Disabled")
-                        + ChatColor.GREEN + " Mutual Non-Aggression for " + petDataList.size() + " pets.");
+                if (makeProtected) {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.batch_protection_enabled", "count",
+                            String.valueOf(petDataList.size()));
+                } else {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.batch_protection_disabled", "count",
+                            String.valueOf(petDataList.size()));
+                }
                 guiManager.openBatchManagementMenu(player, selectedPets);
             }
         }
@@ -589,16 +633,51 @@ public class PetGUIListener implements Listener {
             case "set_mode_PASSIVE", "set_mode_NEUTRAL", "set_mode_AGGRESSIVE" -> {
                 if (player.hasPermission("enhancedpets.use")) {
                     BehaviorMode newMode = BehaviorMode.valueOf(action.substring(9));
-                    if (petData.getMode() != newMode) {
-                        petData.setMode(newMode);
-                        petManager.updatePetData(petData);
-                        player.sendMessage(ChatColor.GREEN + "Set " + ChatColor.AQUA + petData.getDisplayName()
-                                + ChatColor.GREEN + "'s mode to " + ChatColor.YELLOW + newMode.name());
-                        if (newMode != BehaviorMode.AGGRESSIVE && Bukkit.getEntity(petUUID) instanceof Creature c) {
-                            c.setTarget(null);
+
+                    // Configuration Logic (Aggressive Mode Button Only)
+                    // If we clicked the Aggressive button, check for config toggles
+                    if (newMode == BehaviorMode.AGGRESSIVE) {
+                        String typeToToggle = null;
+
+                        // Shift-Left = Mobs
+                        // Right-Click = Animals
+                        // Shift-Right = Players
+                        if (event.getClick() == org.bukkit.event.inventory.ClickType.SHIFT_LEFT) {
+                            typeToToggle = "MOB";
+                        } else if (event.getClick() == org.bukkit.event.inventory.ClickType.RIGHT) {
+                            typeToToggle = "ANIMAL";
+                        } else if (event.getClick() == org.bukkit.event.inventory.ClickType.SHIFT_RIGHT) {
+                            typeToToggle = "PLAYER";
+                        }
+
+                        if (typeToToggle != null) {
+                            Set<String> types = petData.getAggressiveTargetTypes();
+                            if (types.contains(typeToToggle)) {
+                                types.remove(typeToToggle);
+                            } else {
+                                types.add(typeToToggle);
+                            }
+                            petManager.updatePetData(petData);
+                            player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1f, 1f);
+                            guiManager.openPetMenu(player, petUUID);
+                            return; // Stop here, do not change mode
                         }
                     }
-                    guiManager.openPetMenu(player, petUUID);
+
+                    // Activation Logic (Plain Left Click)
+                    // "only plain left click switches to agressive mode"
+                    if (event.getClick() == org.bukkit.event.inventory.ClickType.LEFT) {
+                        if (petData.getMode() != newMode) {
+                            petData.setMode(newMode);
+                            petManager.updatePetData(petData);
+                            plugin.getLanguageManager().sendReplacements(player, "gui.mode_set", "pet",
+                                    petData.getDisplayName(), "mode", newMode.name());
+                            if (newMode != BehaviorMode.AGGRESSIVE && Bukkit.getEntity(petUUID) instanceof Creature c) {
+                                c.setTarget(null);
+                            }
+                        }
+                        guiManager.openPetMenu(player, petUUID);
+                    }
                 }
             }
             case "confirm_free_pet_prompt" -> guiManager.openConfirmFreeMenu(player, petUUID);
@@ -606,8 +685,13 @@ public class PetGUIListener implements Listener {
             case "toggle_growth_pause" -> {
                 boolean paused = petData.isGrowthPaused();
                 plugin.getPetManager().setGrowthPaused(petUUID, !paused);
-                player.sendMessage(ChatColor.GREEN + (paused ? "Resumed" : "Paused") +
-                        " growth for " + petData.getDisplayName());
+                if (paused) {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.growth_resumed", "pet",
+                            petData.getDisplayName());
+                } else {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.growth_paused", "pet",
+                            petData.getDisplayName());
+                }
                 guiManager.openPetMenu(player, petUUID);
             }
             case "teleport_pet" -> {
@@ -621,20 +705,19 @@ public class PetGUIListener implements Listener {
                     if (petData.getStationLocation() != null) {
                         petData.setStationLocation(player.getLocation());
                         petManager.updatePetData(petData);
-                        player.sendMessage(ChatColor.YELLOW + "Station location updated.");
+                        plugin.getLanguageManager().sendMessage(player, "gui.station_updated");
                     }
 
-                    player.sendMessage(ChatColor.GREEN + "Summoned " + ChatColor.AQUA + petData.getDisplayName()
-                            + ChatColor.GREEN + "!");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.summon_success", "pet",
+                            petData.getDisplayName());
                 } else {
-                    player.sendMessage(ChatColor.RED + "Could not find " + ChatColor.AQUA + petData.getDisplayName()
-                            + ChatColor.RED + ". Is it loaded in the world?");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.pet_not_found", "pet",
+                            petData.getDisplayName());
                 }
             }
             case "free_pet" -> {
                 petManager.freePetCompletely(petUUID);
-                player.sendMessage(ChatColor.YELLOW + "You have freed " + ChatColor.AQUA + petData.getDisplayName()
-                        + ChatColor.YELLOW + ".");
+                plugin.getLanguageManager().sendReplacements(player, "gui.freed", "pet", petData.getDisplayName());
                 guiManager.openMainMenu(player);
             }
             case "friendly_page" -> {
@@ -652,17 +735,14 @@ public class PetGUIListener implements Listener {
                         petEntity.setCustomName(null);
                     }
                     petManager.updatePetData(petData);
-                    player.sendMessage(ChatColor.YELLOW + "Reset name of " + ChatColor.AQUA + oldName + ChatColor.YELLOW
-                            + " to " + ChatColor.AQUA + newDefaultName + ChatColor.YELLOW + ".");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.rename_reset", "old", oldName, "new",
+                            newDefaultName);
                     guiManager.openPetMenu(player, petUUID);
                 } else {
                     awaitingRenameInput.put(player.getUniqueId(), petUUID);
                     player.closeInventory();
-                    player.sendMessage(ChatColor.GOLD + "Enter a new name for " + ChatColor.AQUA
-                            + petData.getDisplayName() + ChatColor.GOLD + " in chat.");
-                    player.sendMessage(ChatColor.GRAY + "Allowed characters: A-Z, a-z, 0-9, _, -");
-                    player.sendMessage(ChatColor.GRAY + "Using other characters will cancel the rename.");
-                    player.sendMessage(ChatColor.GRAY + "Type 'cancel' to abort.");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.rename_prompt", "pet",
+                            petData.getDisplayName());
                 }
             }
 
@@ -672,7 +752,7 @@ public class PetGUIListener implements Listener {
                 if (targetUUIDString != null) {
                     Player targetPlayer = Bukkit.getPlayer(UUID.fromString(targetUUIDString));
                     if (targetPlayer == null || !targetPlayer.isOnline()) {
-                        player.sendMessage(ChatColor.RED + "That player is no longer online!");
+                        plugin.getLanguageManager().sendMessage(player, "gui.transfer_offline");
                         guiManager.openTransferMenu(player, petUUID);
                         return;
                     }
@@ -681,18 +761,20 @@ public class PetGUIListener implements Listener {
                     petManager.updatePetData(petData);
                     if (Bukkit.getEntity(petUUID) instanceof Tameable t)
                         t.setOwner(targetPlayer);
-                    player.sendMessage(ChatColor.GREEN + "You transferred " + ChatColor.AQUA + petData.getDisplayName()
-                            + " to " + ChatColor.YELLOW + targetPlayer.getName());
-                    targetPlayer.sendMessage(ChatColor.GREEN + "You received " + ChatColor.AQUA
-                            + petData.getDisplayName() + " from " + ChatColor.YELLOW + oldOwnerName);
+                    plugin.getLanguageManager().sendReplacements(player, "gui.transfer_sender", "pet",
+                            petData.getDisplayName(), "target", targetPlayer.getName());
+                    plugin.getLanguageManager().sendReplacements(targetPlayer, "gui.transfer_receiver", "pet",
+                            petData.getDisplayName(), "sender", oldOwnerName);
                     player.closeInventory();
                 }
             }
             case "toggle_sit" -> {
                 if (Bukkit.getEntity(petUUID) instanceof Sittable s) {
                     s.setSitting(!s.isSitting());
-                    player.sendMessage(ChatColor.GREEN + petData.getDisplayName() + " is now "
-                            + (s.isSitting() ? "sitting." : "standing."));
+                    plugin.getLanguageManager().sendReplacements(player, "gui.sit_toggled", "pet",
+                            petData.getDisplayName(), "state",
+                            s.isSitting() ? plugin.getLanguageManager().getString("gui.sitting_state")
+                                    : plugin.getLanguageManager().getString("gui.standing_state"));
                     guiManager.openPetMenu(player, petUUID);
                 }
             }
@@ -701,23 +783,24 @@ public class PetGUIListener implements Listener {
                     c.setTarget(null);
                     if (c instanceof Wolf w)
                         w.setAngry(false);
-                    player.sendMessage(ChatColor.GREEN + "Calmed " + ChatColor.AQUA + petData.getDisplayName() + ".");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.calm_success", "pet",
+                            petData.getDisplayName());
                 } else {
-                    player.sendMessage(ChatColor.RED + "Could not find " + petData.getDisplayName() + " in the world.");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.pet_not_found", "pet",
+                            petData.getDisplayName());
                 }
             }
             case "confirm_free" -> {
                 String petDisplayName = petData.getDisplayName();
                 petManager.freePetCompletely(petUUID);
-                player.sendMessage(ChatColor.YELLOW + "You have freed " + ChatColor.AQUA + petDisplayName + ".");
+                plugin.getLanguageManager().sendReplacements(player, "gui.freed", "pet", petDisplayName);
                 guiManager.openMainMenu(player);
             }
             case "add_friendly_prompt" -> {
                 awaitingFriendlyInput.put(player.getUniqueId(), petUUID);
                 player.closeInventory();
-                player.sendMessage(ChatColor.GOLD + "Please type the name of the player to add as friendly for "
-                        + ChatColor.AQUA + petData.getDisplayName() + ".");
-                player.sendMessage(ChatColor.GRAY + "(Type 'cancel' to abort)");
+                plugin.getLanguageManager().sendReplacements(player, "gui.friendly_prompt", "pet",
+                        petData.getDisplayName());
             }
             case "remove_friendly" -> {
                 String targetFriendUUIDString = data.get(PetManagerGUI.TARGET_PLAYER_UUID_KEY,
@@ -726,9 +809,9 @@ public class PetGUIListener implements Listener {
                     UUID targetFriendUUID = UUID.fromString(targetFriendUUIDString);
                     petData.removeFriendlyPlayer(targetFriendUUID);
                     petManager.updatePetData(petData);
-                    player.sendMessage(
-                            ChatColor.GREEN + "Removed " + Bukkit.getOfflinePlayer(targetFriendUUID).getName()
-                                    + " from " + petData.getDisplayName() + "'s friendly list.");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.friendly_removed",
+                            "player", Bukkit.getOfflinePlayer(targetFriendUUID).getName(), "pet",
+                            petData.getDisplayName());
                     guiManager.openFriendlyPlayerMenu(player, petUUID, 0);
                 }
             }
@@ -736,28 +819,44 @@ public class PetGUIListener implements Listener {
             case "confirm_remove_pet" -> openConfirmMenu(player, petUUID, false);
             case "do_revive_pet" -> {
                 if (!petData.isDead()) {
-                    player.sendMessage(ChatColor.RED + "This pet is not dead.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.not_dead");
                     guiManager.openPetMenu(player, petData.getPetUUID());
                     return;
                 }
                 ItemStack hand = player.getInventory().getItemInMainHand();
                 if (hand.getType() != Material.NETHER_STAR) {
-                    player.sendMessage(ChatColor.RED + "You need a Nether Star in your main hand to revive this pet.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.need_nether_star");
                     guiManager.openPetMenu(player, petData.getPetUUID());
                     return;
                 }
+
+                // Consume Cost
                 hand.setAmount(hand.getAmount() - 1);
+
+                player.closeInventory(); // Close completely to transition
+
+                // Spawn Logic
                 LivingEntity newPet = (LivingEntity) player.getWorld().spawnEntity(player.getLocation(),
                         petData.getEntityType());
-                petManager.revivePet(petData, newPet);
-                player.sendMessage(ChatColor.GREEN + "You have revived " + ChatColor.AQUA + petData.getDisplayName()
-                        + ChatColor.GREEN + "!");
-                guiManager.openPetMenu(player, newPet.getUniqueId());
+
+                // Manager Revival (Data Transfer + Core Effects)
+                petManager.revivePet(petData, newPet); // Also plays TOTEM sound/particle from Manager
+
+                // Player Gratification
+                plugin.getLanguageManager().sendReplacements(player, "gui.revive_success", "pet",
+                        petData.getDisplayName());
+
+                // Delay opening new menu to ensure smooth transition and data sync
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (newPet.isValid()) {
+                        guiManager.openPetMenu(player, newPet.getUniqueId());
+                    }
+                }, 10L); // 0.5s delay
             }
             case "do_remove_pet" -> {
                 petManager.freePetCompletely(petUUID);
-                player.sendMessage(ChatColor.YELLOW + "You have permanently deleted " + ChatColor.AQUA
-                        + petData.getDisplayName() + ChatColor.YELLOW + ".");
+                plugin.getLanguageManager().sendReplacements(player, "gui.remove_permanent", "pet",
+                        petData.getDisplayName());
                 guiManager.openMainMenu(player);
             }
             case "cancel_confirm" -> guiManager.openPetMenu(player, petUUID);
@@ -766,18 +865,17 @@ public class PetGUIListener implements Listener {
                 if (event.isShiftClick()) {
                     petData.setCustomIconMaterial(null);
                     petManager.updatePetData(petData);
-                    player.sendMessage(ChatColor.YELLOW + "Reset icon for " + ChatColor.AQUA + petData.getDisplayName()
-                            + ChatColor.YELLOW + " to default.");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.icon_reset", "pet",
+                            petData.getDisplayName());
                 } else {
                     ItemStack hand = player.getInventory().getItemInMainHand();
                     if (hand == null || hand.getType().isAir()) {
-                        player.sendMessage(ChatColor.RED + "Hold an item in your main hand to set as icon.");
+                        plugin.getLanguageManager().sendMessage(player, "gui.icon_no_item");
                     } else {
                         petData.setCustomIconMaterial(hand.getType().name());
                         petManager.updatePetData(petData);
-                        player.sendMessage(ChatColor.GREEN + "Set icon for " + ChatColor.AQUA + petData.getDisplayName()
-                                + ChatColor.GREEN + " to " + ChatColor.YELLOW + hand.getType().name() + ChatColor.GREEN
-                                + ".");
+                        plugin.getLanguageManager().sendReplacements(player, "gui.icon_updated", "pet",
+                                petData.getDisplayName());
                     }
                 }
 
@@ -788,8 +886,8 @@ public class PetGUIListener implements Listener {
                 if (event.isShiftClick()) {
                     petData.setDisplayColor(null);
                     petManager.updatePetData(petData);
-                    player.sendMessage(ChatColor.YELLOW + "Reset color for " + ChatColor.AQUA + petData.getDisplayName()
-                            + ChatColor.YELLOW + " to default.");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.color_reset", "pet",
+                            petData.getDisplayName());
 
                     guiManager.openPetMenu(player, petUUID);
                 } else {
@@ -799,12 +897,12 @@ public class PetGUIListener implements Listener {
             case "choose_color" -> {
                 String colorName = data.get(PetManagerGUI.COLOR_KEY, PersistentDataType.STRING);
                 if (colorName == null || colorName.isEmpty()) {
-                    player.sendMessage(ChatColor.RED + "Invalid color selection.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.color_invalid");
                 } else {
                     petData.setDisplayColor(colorName);
                     petManager.updatePetData(petData);
-                    player.sendMessage(ChatColor.GREEN + "Set color for " + ChatColor.AQUA + petData.getDisplayName()
-                            + ChatColor.GREEN + " to " + ChatColor.YELLOW + colorName + ChatColor.GREEN + ".");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.color_updated", "pet",
+                            petData.getDisplayName(), "color", colorName);
                 }
                 guiManager.openPetMenu(player, petUUID);
             }
@@ -814,97 +912,112 @@ public class PetGUIListener implements Listener {
                 petData.setProtectedFromPlayers(nowProtected);
                 petManager.updatePetData(petData);
                 if (nowProtected) {
-                    player.sendMessage(ChatColor.GREEN + "Enabled Mutual Non-Aggression for " + ChatColor.AQUA
-                            + petData.getDisplayName() + ChatColor.GREEN + ".");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.protection_enabled", "pet",
+                            petData.getDisplayName());
                 } else {
-                    player.sendMessage(ChatColor.YELLOW + "Disabled Mutual Non-Aggression for " + ChatColor.AQUA
-                            + petData.getDisplayName() + ChatColor.YELLOW + ".");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.protection_disabled", "pet",
+                            petData.getDisplayName());
                 }
                 guiManager.openPetMenu(player, petUUID);
             }
             case "toggle_station" -> {
                 // Station Logic Refactored: Allow config modification at any time
                 if (event.isShiftClick()) {
-                    // Cycle Radius (Always allowed)
+                    // Cycle Radius (Always allowed, updates live or future)
                     double r = petData.getStationRadius();
                     r += 5.0;
                     if (r > 25.0)
                         r = 5.0;
                     petData.setStationRadius(r);
-                    petManager.updatePetData(petData);
-                    player.sendMessage(ChatColor.GREEN + "Set station radius for " + petData.getDisplayName()
-                            + " to " + (int) r + "m.");
-                } else if (event.isRightClick()) {
-                    // Cycle Target Types (Always allowed)
-                    Set<String> types = petData.getStationTargetTypes();
-                    Set<String> newTypes = new HashSet<>();
 
-                    if (types.contains("PLAYER") && types.contains("MOB") && types.contains("ANIMAL")) {
-                        newTypes.add("MOB");
-                        player.sendMessage(ChatColor.YELLOW + petData.getDisplayName() + " will now target "
-                                + ChatColor.RED + "Mobs Only" + ChatColor.YELLOW + ".");
-                    } else if (types.contains("MOB") && types.contains("ANIMAL")) {
-                        newTypes.add("MOB");
-                        newTypes.add("PLAYER");
-                        player.sendMessage(ChatColor.YELLOW + petData.getDisplayName() + " will now target "
-                                + ChatColor.RED + "Mobs & Players" + ChatColor.YELLOW + ".");
-                    } else if (types.contains("MOB") && types.contains("PLAYER")) {
-                        newTypes.add("MOB");
-                        newTypes.add("PLAYER");
-                        newTypes.add("ANIMAL");
-                        player.sendMessage(ChatColor.YELLOW + petData.getDisplayName() + " will now target "
-                                + ChatColor.RED + "Everything (Mobs, Animals, Players)" + ChatColor.YELLOW + ".");
-                    } else if (types.contains("MOB")) {
-                        newTypes.add("ANIMAL");
-                        player.sendMessage(ChatColor.YELLOW + petData.getDisplayName() + " will now target "
-                                + ChatColor.RED + "Animals Only" + ChatColor.YELLOW + ".");
-                    } else if (types.contains("ANIMAL")) {
-                        newTypes.add("PLAYER");
-                        player.sendMessage(ChatColor.YELLOW + petData.getDisplayName() + " will now target "
-                                + ChatColor.RED + "Players Only" + ChatColor.YELLOW + ".");
-                    } else if (types.contains("PLAYER")) {
-                        newTypes.add("MOB");
-                        newTypes.add("ANIMAL");
-                        player.sendMessage(ChatColor.YELLOW + petData.getDisplayName() + " will now target "
-                                + ChatColor.RED + "Mobs & Animals" + ChatColor.YELLOW + ".");
-                    } else {
-                        // Fallback/Default -> All
-                        newTypes.add("MOB");
-                        newTypes.add("ANIMAL");
-                        newTypes.add("PLAYER");
+                    // Defaults check just in case
+                    if (petData.getStationTargetTypes() == null || petData.getStationTargetTypes().isEmpty()) {
+                        petData.setStationTargetTypes(new HashSet<>(Arrays.asList("PLAYER", "MOB")));
                     }
 
-                    petData.setStationTargetTypes(newTypes);
                     petManager.updatePetData(petData);
+                    player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1f, 1f);
+                    plugin.getLanguageManager().sendReplacements(player, "gui.station_radius", "radius",
+                            String.valueOf((int) r));
+                } else if (event.isRightClick()) {
+                    // Cycle Target Types (Full Combinatorics)
+                    // Order: Mob -> Animal -> Player -> Mob+Player -> Mob+Animal -> Player+Animal
+                    // -> All -> Mob...
+                    Set<String> current = petData.getStationTargetTypes();
+                    Set<String> types = (current == null) ? new HashSet<>() : new HashSet<>(current);
+                    String nextDesc;
+
+                    boolean hasMob = types.contains("MOB");
+                    boolean hasAnimal = types.contains("ANIMAL");
+                    boolean hasPlayer = types.contains("PLAYER");
+
+                    types.clear();
+
+                    // State Machine for granular control
+                    if (hasMob && !hasAnimal && !hasPlayer) {
+                        // [1] MobOnly -> AnimalOnly
+                        types.add("ANIMAL");
+                        nextDesc = plugin.getLanguageManager().getString("menus.target_animals_only");
+                    } else if (!hasMob && hasAnimal && !hasPlayer) {
+                        // [2] AnimalOnly -> PlayerOnly
+                        types.add("PLAYER");
+                        nextDesc = plugin.getLanguageManager().getString("menus.target_players_only");
+                    } else if (!hasMob && !hasAnimal && hasPlayer) {
+                        // [3] PlayerOnly -> Mob+Player (Common Defense)
+                        types.add("MOB");
+                        types.add("PLAYER");
+                        nextDesc = plugin.getLanguageManager().getString("menus.target_mobs_players");
+                    } else if (hasMob && !hasAnimal && hasPlayer) {
+                        // [4] Mob+Player -> Mob+Animal (Farming/Grinding)
+                        types.add("MOB");
+                        types.add("ANIMAL");
+                        nextDesc = plugin.getLanguageManager().getString("menus.target_mobs_animals");
+                    } else if (hasMob && hasAnimal && !hasPlayer) {
+                        // [5] Mob+Animal -> Player+Animal (Niche)
+                        types.add("PLAYER");
+                        types.add("ANIMAL");
+                        nextDesc = plugin.getLanguageManager().getString("menus.target_players_animals");
+                    } else if (!hasMob && hasAnimal && hasPlayer) {
+                        // [6] Player+Animal -> All (Total Defense)
+                        types.add("MOB");
+                        types.add("ANIMAL");
+                        types.add("PLAYER");
+                        nextDesc = plugin.getLanguageManager().getString("menus.target_everything");
+                    } else {
+                        // [7] All (or invalid/empty) -> MobOnly (Reset)
+                        types.add("MOB");
+                        nextDesc = plugin.getLanguageManager().getString("menus.target_mobs_only");
+                    }
+
+                    petData.setStationTargetTypes(types);
+                    petManager.updatePetData(petData);
+                    player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1f, 1f);
+                    plugin.getLanguageManager().sendReplacements(player, "gui.station_targets", "targets", nextDesc);
                 } else {
                     // Left Click -> Toggle ON/OFF
                     if (petData.getStationLocation() == null) {
                         // Turn ON
                         petData.setStationLocation(player.getLocation());
 
-                        // Initialize defaults ONLY if unset/empty
-                        // Radius is primitive double, defaults to 0.0 or 10.0 in logic.
-                        // PetData constructor likely sets it. If it's valid, leave it.
-                        // If it's 0 (unlikely with 10.0 init), set 10.
-                        if (petData.getStationRadius() <= 0.1) {
+                        // Defaults Validation
+                        if (petData.getStationRadius() <= 0.1)
                             petData.setStationRadius(10.0);
-                        }
-
-                        Set<String> currentTypes = petData.getStationTargetTypes();
-                        if (currentTypes == null || currentTypes.isEmpty()) {
+                        if (petData.getStationTargetTypes() == null || petData.getStationTargetTypes().isEmpty()) {
                             petData.setStationTargetTypes(new HashSet<>(Arrays.asList("PLAYER", "MOB")));
                         }
 
-                        petData.setExplicitTargetUUID(null); // Clear explicit target
+                        petData.setExplicitTargetUUID(null);
                         petManager.updatePetData(petData);
-                        player.sendMessage(ChatColor.GREEN + "Stationed " + ChatColor.AQUA + petData.getDisplayName()
-                                + ChatColor.GREEN + " here.");
+                        player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 1f, 1f);
+                        plugin.getLanguageManager().sendReplacements(player, "gui.station_active", "pet",
+                                petData.getDisplayName());
                     } else {
                         // Turn OFF
                         petData.setStationLocation(null);
                         petManager.updatePetData(petData);
-                        player.sendMessage(ChatColor.YELLOW + "Unstationed " + ChatColor.AQUA + petData.getDisplayName()
-                                + ChatColor.YELLOW + ".");
+                        player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1f, 0.5f);
+                        plugin.getLanguageManager().sendReplacements(player, "gui.station_inactive", "pet",
+                                petData.getDisplayName());
                     }
                 }
                 guiManager.openPetMenu(player, petUUID);
@@ -913,8 +1026,8 @@ public class PetGUIListener implements Listener {
                 if (petData.getExplicitTargetUUID() != null) {
                     petData.setExplicitTargetUUID(null);
                     petManager.updatePetData(petData);
-                    player.sendMessage(ChatColor.YELLOW + "Cleared target for " + ChatColor.AQUA
-                            + petData.getDisplayName() + ChatColor.YELLOW + ".");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.target_cleared", "pet",
+                            petData.getDisplayName());
                     guiManager.openPetMenu(player, petUUID);
                 } else {
                     if (event.isRightClick()) {
@@ -922,24 +1035,20 @@ public class PetGUIListener implements Listener {
                         player.closeInventory();
                         awaitingTargetSelection.put(player.getUniqueId(), petUUID);
 
-                        player.sendMessage(ChatColor.GOLD + "=== Target Selection Mode ===");
-                        player.sendMessage(
-                                ChatColor.YELLOW + "Left-Click" + ChatColor.WHITE + " an entity to set as target.");
-                        player.sendMessage(ChatColor.YELLOW + "Right-Click" + ChatColor.WHITE + " anywhere to cancel.");
+                        plugin.getLanguageManager().sendMessage(player, "gui.target_selection_mode");
                     } else {
                         // Left Click -> Chat Prompt
                         awaitingTargetInput.put(player.getUniqueId(), petUUID);
                         player.closeInventory();
-                        player.sendMessage(ChatColor.GOLD + "Type the name of the player you want " + ChatColor.AQUA
-                                + petData.getDisplayName() + ChatColor.GOLD + " to target.");
-                        player.sendMessage(ChatColor.GRAY + "(Type 'cancel' to abort)");
+                        plugin.getLanguageManager().sendReplacements(player, "gui.target_prompt", "pet",
+                                petData.getDisplayName());
                     }
                 }
             }
             case "heal_pet" -> {
                 Entity petEntity = Bukkit.getEntity(petUUID);
                 if (!(petEntity instanceof LivingEntity le) || !petEntity.isValid()) {
-                    player.sendMessage(ChatColor.RED + "Pet is not loaded or invalid. Cannot heal.");
+                    plugin.getLanguageManager().sendMessage(player, "gui.heal_not_loaded");
                     return;
                 }
 
@@ -948,7 +1057,8 @@ public class PetGUIListener implements Listener {
                 double missingHp = maxHp - currentHp;
 
                 if (missingHp <= 0) {
-                    player.sendMessage(ChatColor.GREEN + petData.getDisplayName() + " is already at full health!");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.heal_full", "pet",
+                            petData.getDisplayName());
                     return;
                 }
 
@@ -958,103 +1068,43 @@ public class PetGUIListener implements Listener {
                     int requiredXp = (int) Math.ceil(missingHp) * xpCostPer;
                     int playerXp = player.getTotalExperience();
                     if (playerXp < requiredXp) {
-                        player.sendMessage(ChatColor.RED + "Not enough XP! Need " + ChatColor.AQUA + requiredXp + " XP"
-                                + ChatColor.RED + ", you have " + ChatColor.WHITE + playerXp + " XP.");
+                        plugin.getLanguageManager().sendReplacements(player, "gui.heal_no_xp", "needed",
+                                String.valueOf(requiredXp), "current", String.valueOf(playerXp));
                         return;
                     }
                     player.giveExp(-requiredXp);
                     le.setHealth(maxHp);
-                    player.sendMessage(ChatColor.GREEN + "Fully healed " + ChatColor.AQUA + petData.getDisplayName()
-                            + ChatColor.GREEN + " for " + ChatColor.AQUA + requiredXp + " XP" + ChatColor.GREEN + "!");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.heal_success_full", "pet",
+                            petData.getDisplayName(), "xp", String.valueOf(requiredXp));
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
                 } else {
                     // Single HP heal
                     int requiredXp = xpCostPer;
                     int playerXp = player.getTotalExperience();
                     if (playerXp < requiredXp) {
-                        player.sendMessage(ChatColor.RED + "Not enough XP! Need " + ChatColor.AQUA + requiredXp + " XP"
-                                + ChatColor.RED + ".");
+                        plugin.getLanguageManager().sendReplacements(player, "gui.heal_no_xp", "needed",
+                                String.valueOf(requiredXp), "current", String.valueOf(playerXp));
                         return;
                     }
                     player.giveExp(-requiredXp);
                     le.setHealth(Math.min(currentHp + 1, maxHp));
-                    player.sendMessage(ChatColor.GREEN + "Healed " + ChatColor.AQUA + petData.getDisplayName()
-                            + ChatColor.GREEN + " for 1 HP (" + ChatColor.AQUA + "100 XP" + ChatColor.GREEN + ").");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.heal_success_single", "pet",
+                            petData.getDisplayName());
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GENERIC_EAT, 1.0f, 1.0f);
                 }
-                // Refresh GUI Items (Header and Heal Button) without reopening inventory
-                Inventory view = player.getOpenInventory().getTopInventory();
-
-                // 1. Header (Slot 4)
-                List<String> headerLore = new ArrayList<>();
-                headerLore.add(ChatColor.GRAY + "Type: " + ChatColor.WHITE + petData.getEntityType().name());
-                headerLore.add(ChatColor.GRAY + "Mode: " + ChatColor.WHITE + petData.getMode().name());
-
-                double finalHealth = le.getHealth();
-                double finalMaxHealth = le.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
-                headerLore.add(ChatColor.RED + "Health: " + ChatColor.WHITE + String.format("%.1f", finalHealth) + " / "
-                        + String.format("%.1f", finalMaxHealth));
-
-                headerLore.add(ChatColor.GRAY + "Protection: "
-                        + (petData.isProtectedFromPlayers() ? ChatColor.GREEN + "Enabled"
-                                : ChatColor.RED + "Disabled"));
-                int friendlyCount = petData.getFriendlyPlayers().size();
-                if (friendlyCount > 0) {
-                    headerLore.add("" + ChatColor.GREEN + friendlyCount + " Friendly Player"
-                            + (friendlyCount == 1 ? "" : "s"));
-                }
-                if (petEntity instanceof Ageable ageable && !ageable.isAdult()) {
-                    headerLore.add(ChatColor.LIGHT_PURPLE + "Baby");
-                }
-                headerLore.add("");
-                headerLore.add(ChatColor.YELLOW + "Left-click: Customize Display");
-                headerLore.add(ChatColor.YELLOW + "Right-click: Toggle Favorite");
-
-                ItemStack header = new ItemStack(guiManager.getDisplayMaterialForPet(petData));
-                ItemMeta hMeta = header.getItemMeta();
-                String favoriteStar = petData.isFavorite() ? ChatColor.GOLD + "★ " : "";
-                ChatColor nameColor = guiManager.getNameColor(petData);
-                hMeta.setDisplayName(favoriteStar + nameColor + petData.getDisplayName());
-                hMeta.setLore(headerLore);
-                hMeta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING,
-                        "pet_header");
-                hMeta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING,
-                        petUUID.toString());
-                hMeta.addItemFlags(org.bukkit.inventory.ItemFlag.HIDE_ATTRIBUTES);
-                header.setItemMeta(hMeta);
-                view.setItem(4, header);
-
-                // 2. Heal Button (Slot 42)
-                double missingHpFinal = finalMaxHealth - finalHealth;
-                int healCostFinal = (int) Math.ceil(missingHpFinal) * 100;
-
-                ItemStack healBtn = guiManager.createActionButton(
-                        Material.GOLDEN_APPLE,
-                        ChatColor.GREEN + "Heal Pet",
-                        "heal_pet",
-                        petData.getPetUUID(),
-                        Arrays.asList(
-                                ChatColor.RED + "Health: " + ChatColor.WHITE + String.format("%.1f", finalHealth)
-                                        + " / "
-                                        + String.format("%.1f", finalMaxHealth),
-                                "",
-                                ChatColor.GRAY + "Cost: " + ChatColor.AQUA + "100 XP " + ChatColor.GRAY + "per HP",
-                                "",
-                                ChatColor.YELLOW + "Left-Click: " + ChatColor.GRAY + "Heal 1 HP",
-                                ChatColor.YELLOW + "Shift-Click: " + ChatColor.GRAY + "Full Heal (" + ChatColor.AQUA
-                                        + healCostFinal
-                                        + " XP" + ChatColor.GRAY + ")"));
-                view.setItem(42, healBtn);
+                // Refresh GUI by reopening
+                guiManager.openPetMenu(player, petUUID);
             }
             case "store_pet" -> {
                 if (petData.isStored()) {
-                    player.sendMessage(ChatColor.YELLOW + petData.getDisplayName() + " is already stored.");
+                    plugin.getLanguageManager().sendReplacements(player, "gui.store_already", "pet",
+                            petData.getDisplayName());
                     return;
                 }
 
                 Entity petEntity = Bukkit.getEntity(petUUID);
                 if (petEntity == null || !petEntity.isValid()) {
-                    player.sendMessage(ChatColor.RED + "You can only store pets that are nearby (loaded).");
+                    plugin.getLanguageManager().sendMessage(player, "gui.store_nearby_only");
                     return;
                 }
 
@@ -1068,9 +1118,8 @@ public class PetGUIListener implements Listener {
                 petData.setExplicitTargetUUID(null); // Clear target on store
                 petManager.updatePetData(petData);
 
-                player.sendMessage(
-                        ChatColor.GOLD + "Stored " + ChatColor.AQUA + petData.getDisplayName() + ChatColor.GOLD
-                                + ". Use " + ChatColor.WHITE + "/pet withdraw" + ChatColor.GOLD + " to retrieve it.");
+                plugin.getLanguageManager().sendReplacements(player, "gui.store_success_prompt", "pet",
+                        petData.getDisplayName());
                 player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ENDER_CHEST_CLOSE, 1.0f, 1.0f);
                 player.closeInventory();
                 guiManager.openMainMenu(player);
@@ -1079,11 +1128,13 @@ public class PetGUIListener implements Listener {
     }
 
     private void openConfirmMenu(Player player, UUID petUUID, boolean isRevive) {
-        Inventory gui = Bukkit.createInventory(player, 27,
-                (isRevive ? ChatColor.GREEN + "Confirm Revival" : ChatColor.RED + "Confirm Removal"));
+        String title = isRevive ? plugin.getLanguageManager().getString("menus.confirm_revival_title")
+                : plugin.getLanguageManager().getString("menus.confirm_removal_title");
+        Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.CONFIRM_ACTION), 27,
+                title);
         ItemStack confirm = new ItemStack(isRevive ? Material.NETHER_STAR : Material.BARRIER);
         ItemMeta meta = confirm.getItemMeta();
-        meta.setDisplayName(isRevive ? ChatColor.GREEN + "Confirm Revival" : ChatColor.RED + "Confirm Removal");
+        meta.setDisplayName(title);
         meta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING,
                 isRevive ? "do_revive_pet" : "do_remove_pet");
         meta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING,
@@ -1092,7 +1143,7 @@ public class PetGUIListener implements Listener {
         gui.setItem(11, confirm);
         ItemStack cancel = new ItemStack(Material.ARROW);
         ItemMeta cancelMeta = cancel.getItemMeta();
-        cancelMeta.setDisplayName(ChatColor.YELLOW + "Cancel");
+        cancelMeta.setDisplayName(plugin.getLanguageManager().getString("menus.cancel_btn"));
         cancelMeta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING,
                 "cancel_confirm");
         cancelMeta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING,
