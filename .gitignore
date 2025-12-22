@@ -7,5 +7,5 @@ target/
 out/
 /src/output.txt
 /src/structure.txt
-.vscode/
+.vscode/*
 /src/old.txt

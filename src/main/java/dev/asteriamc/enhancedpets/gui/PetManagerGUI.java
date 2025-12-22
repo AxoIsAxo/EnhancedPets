@@ -532,15 +532,19 @@ public class PetManagerGUI {
             SkullMeta meta = (SkullMeta) skull.getItemMeta();
             meta.setDisplayName(plugin.getLanguageManager().getStringReplacements("menus.dead_pet_name", "name",
                     petData.getDisplayName()));
-            meta.setLore(plugin.getLanguageManager().getStringList("menus.dead_pet_lore"));
+            meta.setLore(plugin.getLanguageManager().getStringListReplacements("menus.dead_pet_lore",
+                    "item", plugin.getConfigManager().getReviveItem().name(),
+                    "amount", String.valueOf(plugin.getConfigManager().getReviveItemAmount())));
             skull.setItemMeta(meta);
             gui.setItem(13, skull);
             gui.setItem(11, this.createActionButton(
-                    Material.NETHER_STAR,
+                    plugin.getConfigManager().getReviveItem(),
                     plugin.getLanguageManager().getString("menus.revive_pet"),
                     "confirm_revive_pet",
                     petUUID,
-                    plugin.getLanguageManager().getStringList("menus.revive_pet_lore")));
+                    plugin.getLanguageManager().getStringListReplacements("menus.revive_pet_lore",
+                            "item", plugin.getConfigManager().getReviveItem().name(),
+                            "amount", String.valueOf(plugin.getConfigManager().getReviveItemAmount()))));
             gui.setItem(15, this.createActionButton(
                     Material.BARRIER,
                     plugin.getLanguageManager().getString("menus.remove_pet"),

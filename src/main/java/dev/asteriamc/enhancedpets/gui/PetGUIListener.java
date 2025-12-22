@@ -823,15 +823,34 @@ public class PetGUIListener implements Listener {
                     guiManager.openPetMenu(player, petData.getPetUUID());
                     return;
                 }
-                ItemStack hand = player.getInventory().getItemInMainHand();
-                if (hand.getType() != Material.NETHER_STAR) {
-                    plugin.getLanguageManager().sendMessage(player, "gui.need_nether_star");
-                    guiManager.openPetMenu(player, petData.getPetUUID());
-                    return;
-                }
+                Material requiredItem = plugin.getConfigManager().getReviveItem();
+                int requiredAmount = plugin.getConfigManager().getReviveItemAmount();
+                boolean requireMainHand = plugin.getConfigManager().isReviveItemRequireMainHand();
 
-                // Consume Cost
-                hand.setAmount(hand.getAmount() - 1);
+                if (requireMainHand) {
+                    ItemStack hand = player.getInventory().getItemInMainHand();
+                    if (hand.getType() != requiredItem || hand.getAmount() < requiredAmount) {
+                        plugin.getLanguageManager().sendReplacements(player, "gui.need_nether_star",
+                                "amount", String.valueOf(requiredAmount),
+                                "item", requiredItem.name(),
+                                "hand", "in your main hand ");
+                        guiManager.openPetMenu(player, petData.getPetUUID());
+                        return;
+                    }
+                    // Consume Cost
+                    hand.setAmount(hand.getAmount() - requiredAmount);
+                } else {
+                    if (!player.getInventory().containsAtLeast(new ItemStack(requiredItem), requiredAmount)) {
+                        plugin.getLanguageManager().sendReplacements(player, "gui.need_nether_star",
+                                "amount", String.valueOf(requiredAmount),
+                                "item", requiredItem.name(),
+                                "hand", "");
+                        guiManager.openPetMenu(player, petData.getPetUUID());
+                        return;
+                    }
+                    // Consume Cost
+                    player.getInventory().removeItem(new ItemStack(requiredItem, requiredAmount));
+                }
 
                 player.closeInventory(); // Close completely to transition
 
@@ -1132,7 +1151,7 @@ public class PetGUIListener implements Listener {
                 : plugin.getLanguageManager().getString("menus.confirm_removal_title");
         Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.CONFIRM_ACTION), 27,
                 title);
-        ItemStack confirm = new ItemStack(isRevive ? Material.NETHER_STAR : Material.BARRIER);
+        ItemStack confirm = new ItemStack(isRevive ? plugin.getConfigManager().getReviveItem() : Material.BARRIER);
         ItemMeta meta = confirm.getItemMeta();
         meta.setDisplayName(title);
         meta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING,

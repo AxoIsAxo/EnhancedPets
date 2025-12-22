@@ -24,6 +24,8 @@ happy-ghast-fireball: true
 
 # Setup the item for reviving a pet.
 revive-item: NETHER_STAR
+revive-item-amount: 1
+revive-item-require-mainhand: true
 
 #Require advanced logs? want to check if there's a bug?
 #Enable this to receive tons of helpful messages from the plugin in the server console

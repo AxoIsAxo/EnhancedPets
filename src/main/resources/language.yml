@@ -191,7 +191,7 @@ gui:
     - "&e⚠ &b%pet% &7is already stored."
   store_nearby_only: "&cPet must be nearby (loaded) to store it!"
   not_dead: "&cThis pet is not dead."
-  need_nether_star: "&cYou need a Nether Star in your main hand to revive this pet."
+  need_nether_star: "&cYou need %amount% %item% %hand%to revive this pet."
   sitting_state: "sitting"
   standing_state: "standing"
   store_success_prompt:
@@ -271,7 +271,7 @@ menus:
   dead_pet_name: "&c[DEAD] %name%"
   dead_pet_lore:
     - "&4This pet has died!"
-    - "&7Revive it with a Nether Star"
+    - "&7Revive it with %amount% %item%"
     - "&7or remove it permanently."
   no_pets_name: "&cNo Pets Found"
   no_pets_lore:
@@ -314,7 +314,7 @@ menus:
     - "&4⚠ This cannot be undone!"
   revive_pet: "&aRevive Pet"
   revive_pet_lore:
-    - "&7Revive this pet with a Nether Star."
+    - "&7Revive this pet with %amount% %item%."
   remove_pet: "&cRemove Pet"
   remove_pet_lore:
     - "&7Permanently delete this pet record."
