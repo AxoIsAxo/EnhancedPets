@@ -27,7 +27,12 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
 ## 💡 Feature Highlights
 
 ### 💎 Pet Modes
-- **Passive, Neutral, Aggressive** — switch instantly from the GUI
+### 💎 Pet Modes
+- **Passive, Neutral, Aggressive** — switch instantly from the GUI (Left-Click).
+- **Aggressive Mode Config:** Fine-tune what your pet targets in Aggressive mode!
+    - **Shift-Left-Click:** Toggle Mob targeting.
+    - **Right-Click:** Toggle Animal targeting.
+    - **Shift-Right-Click:** Toggle Player targeting.
 - AKA 'we vibe', 'default', and 'try me.'
 
 ### 🧭 Teleport & Calm
@@ -94,8 +99,13 @@ Go beyond "Aggressive Mode" with a manual **lock-on** system:
 - **16 Name Colors:** Pick a unique color for each pet's display name from a full 16-color picker menu! (Shift-click to reset).
 
 ### 🧺 Batch Actions
-- Select a type (e.g., Wolves) → pick pets → do things at scale:
-- Set modes, toggle favorites, sit/stand, teleport, calm, manage friendlies, transfer, toggle protection, or free
+### 🧺 Batch Actions
+- Select a type (e.g., Wolves) → pick pets → manage your army:
+    - **Mass Mode:** Set all to Passive, Neutral, or Aggressive.
+    - **Utility:** Mass Sit/Stand, Teleport, or Calm.
+    - **Growth:** Pause/Resume growth for all babies.
+    - **Management:** Toggle Favorites, Mutual Protection, or Manage Friendlies.
+    - **Ownership:** Mass Transfer to another player or Release (Free).
 
 ### 🪦 Dead Pet Flow
 - When a pet dies, it stays in the GUI as a skeleton skull
@@ -156,6 +166,8 @@ Requirements
 ## ⌨️ Commands & Permissions
 
 ### Commands
+**Aliases:** `/pet`, `/mypets`, `/ep`
+
 | Command | Description |
 |---------|-------------|
 | `/pets` | Opens the main Pets GUI. |
@@ -209,6 +221,9 @@ shift-doubleclick-pet-gui: true
 # Allow players riding the custom "Happy Ghast" pet to shoot fireballs?
 # If true, players can left-click while riding their ghast to shoot a small fireball.
 happy-ghast-fireball: true
+
+# Setup the item for reviving a pet.
+revive-item: NETHER_STAR
 
 #Require advanced logs? want to check if there's a bug?
 #Enable this to receive tons of helpful messages from the plugin in the server console
@@ -273,7 +288,7 @@ Should you find an attribute you feel is yet to be etched in our restoration lis
 
 ## ⚠️ Known Notes
 
-- Aggressive mode picks "valid nearby" targets in line-of-sight that aren't friendly or yours; it's not restricted to monsters only
+- Aggressive mode defaults to attacking all hostile mobs, but can be configured to target Players, Animals, or Mobs specifically via the GUI.
 - The config option "ocelot-taming-legacy-style" is reserved for future expansion
 - Station and Target modes are mutually exclusive. Setting a target clears the station, and vice-versa.
 
