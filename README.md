@@ -6,8 +6,11 @@
 ![Discord Support](https://img.shields.io/discord/b7BVkJ56mR?label=Discord&logo=discord&color=7289DA)
 
 > Enhance the vanilla pet experience now without mental gymnastics!\
-> Wolves, cats, parrots, and more — but smarter, friendlier, and easier to manage.
+> Wolves, cats, parrots, and more — but smarter, friendlier, and easier to manage.\
 > By Easier i mean navigate through 19338798 (Hyperbolic) Menus to manage your pet's very Soul :D :D
+
+One pet or fifty. Dead or alive. We handle it.\
+And don't even worry about the Happy Ghast (1.21.6+) — we implement features very quickly after 4 months have passed after the main release.
 
 Thanks to:
 - cystol
@@ -28,52 +31,73 @@ EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players 
 
 ## Features 
 
-### Pet Modes
-Switch behavior instantly from the GUI:
-- **Passive** — "we vibe"
-- **Neutral** — default vanilla behavior
-- **Aggressive** — "try me"
+### Sit / Stand
+Feather button toggles sitting for sittable pets (wolves, cats, etc.)
 
-**Aggressive Mode Target Configuration:**
-Each pet remembers what it should target in Aggressive mode. Configure via clicks on the Aggressive button:
-- **Shift-Left-Click:** Toggle Mob targeting
-- **Right-Click:** Toggle Animal targeting
-- **Shift-Right-Click:** Toggle Player targeting
-
-Example: Want your wolf to attack only players and mobs, but leave animals alone? Toggle off Animals. The button shows current targets with colored indicators.
+More micromanagement for our dear users.
 
 ---
 
-### Creeper Behavior (Per-Pet)
-Each pet can have its own reaction to those green walking bombs:
-- **Neutral:** Default. Pets only attack creepers if you hit one first (like vanilla wolves).
-- **Flee:** Pets actively run away from creepers within 3 blocks. They won't attack creepers under any circumstance.
-- **Ignore:** Creepers become invisible to your pet's AI. No attacking, no fleeing, just vibes.
+### Rename (with validation)
+- Click Name Tag button: Type new name in chat (A–Z, 0–9, _, -)
+- Shift-Click: Reset to default generated name (e.g., "Wolf #42")
 
-Access via the Creeper Head button in the pet menu. Cycles through: Neutral > Flee > Ignore > Neutral...
-
-*(Note: Cats are inherently feared by creepers in vanilla, so Flee has no additional effect on them. They're already winning.)*
+If you rename a pet in-game with a standard Name Tag, the plugin auto-syncs the GUI name.
 
 ---
 
-### Leash Adoption (Non-Tameable Pets)
-Got a cool mob on a leash? Make it yours.
+### Favorites
+Star button toggles favorite status. Favorites bubble to the top of the list.
 
-When you open the pet menu, any leashed non-tameable entity near you appears as an "adoption offer." Click to register it as your pet. Works for:
-- Llamas (non-trader)
-- Any leashaeable mob that isn't already tameable
-
-The leash stays, but now you can manage them through the GUI like any other pet. Finally, a use for that random cow you've been dragging around for 3000 blocks.
+*You should use this on all your pets lest you a monster*
 
 ---
 
-### Public Access (Rideable Pets)
-For horses, llamas, striders, Happy Ghasts and other rideable friends:
+### Pet Display Customization
+- **Icon:** Hold any item in main hand, click the GUI item to set it as the pet's display icon. Shift-click to reset.
+- **Color:** Pick from 16 colors for the pet's display name. Shift-click to reset.
 
-- **Public Access ON:** Anyone can ride and access the inventory. Party bus mode.
-- **Public Access OFF:** Only you and your trusted players (from Friendly list) can interact. VIP access only.
+---
 
-Toggle via the Eye of Ender button in the pet menu. Unauthorized riders get denied with a message.
+### Scan & Sync
+Compass button scans loaded chunks for your unmanaged tamed pets and registers them.
+
+Helps if you tamed animals before installing the plugin.
+
+---
+
+### Dead Pet Necromancy (not literal)
+When a pet dies:
+- Shows in GUI as a skull icon
+- Click for options: Revive (costs configurable item) or Remove permanently
+- Revival restores metadata: collar color, variants, health, inventory
+
+Death notifications include sound and location info.
+
+---
+
+### Batch Actions
+Select pets by type, then manage your army:
+
+1. Open Batch menu (Hopper button in main menu)
+2. Pick a pet type (e.g., Wolves)
+3. Select/deselect individual pets or use Select All/None
+4. Open batch management
+
+**Available Batch Actions:**
+- **Modes:** Set all to Passive/Neutral/Aggressive (with same click-config as single pet)
+- **Sit/Stand:** Toggle sitting state
+- **Teleport:** Summon all to you
+- **Calm:** Clear targets and anger
+- **Growth Pause:** Pause/resume baby growth
+- **Favorites:** Mark/unmark all as favorites
+- **Protection:** Toggle mutual protection
+- **Friendly Players:** Add/remove from whitelist across all selected
+- **Targeting:** Enter target selection mode for batch
+- **Transfer:** Transfer all selected to another player
+- **Free:** Release all selected (with confirmation)
+- **Heal:** XP-heal all selected (click = 1HP each, shift = full heal all)
+- **Remove Dead:** Permanently delete all dead pets of the selected type
 
 ---
 
@@ -124,13 +148,19 @@ Your personal wolf hit squad, essentially.
 
 ---
 
-### XP-Based Healing
-Heal pets using your experience points:
+### Pet Modes
+Switch behavior instantly from the GUI:
+- **Passive** — "we vibe"
+- **Neutral** — default vanilla behavior
+- **Aggressive** — "try me"
 
-- **Click:** Heal 1 HP (cost: configurable, default 100 XP points per HP)
-- **Shift-Click:** Full heal (calculates total cost automatically)
+**Aggressive Mode Target Configuration:**
+Each pet remembers what it should target in Aggressive mode. Configure via clicks on the Aggressive button:
+- **Shift-Left-Click:** Toggle Mob targeting
+- **Right-Click:** Toggle Animal targeting
+- **Shift-Right-Click:** Toggle Player targeting
 
-Indicated by the Golden Apple button. If you're broke on XP, the game tells you how much more you need.
+Example: Want your wolf to attack only players and mobs, but leave animals alone? Toggle off Animals. The button shows current targets with colored indicators.
 
 ---
 
@@ -146,30 +176,36 @@ Perfect for keeping your favorite wolf safe while you explore the End.
 
 ---
 
-### Rename (with validation)
-- Click Name Tag button: Type new name in chat (A–Z, 0–9, _, -)
-- Shift-Click: Reset to default generated name (e.g., "Wolf #42")
+### Creeper Behavior (Per-Pet)
+Each pet can have its own reaction to those green walking bombs:
+- **Neutral:** Default. Pets only attack creepers if you hit one first (like vanilla wolves).
+- **Flee:** Pets actively run away from creepers within 3 blocks. They won't attack creepers under any circumstance.
+- **Ignore:** Creepers become invisible to your pet's AI. No attacking, no fleeing, just vibes.
 
-If you rename a pet in-game with a standard Name Tag, the plugin auto-syncs the GUI name.
+Access via the Creeper Head button in the pet menu. Cycles through: Neutral > Flee > Ignore > Neutral...
 
----
-
-### Favorites
-Star button toggles favorite status. Favorites bubble to the top of the list.
-
-*You should use this on all your pets lest you a monster*
+*(Note: Cats are inherently feared by creepers in vanilla, so Flee has no additional effect on them. They're already winning.)*
 
 ---
 
-### Sit / Stand
-Feather button toggles sitting for sittable pets (wolves, cats, etc.)
+### Public Access (Rideable Pets)
+For horses, llamas, striders, Happy Ghasts and other rideable friends:
 
-More micromanagement for our dear users.
+- **Public Access ON:** Anyone can ride and access the inventory. Party bus mode.
+- **Public Access OFF:** Only you and your trusted players (from Friendly list) can interact. VIP access only.
+
+Toggle via the Eye of Ender button in the pet menu. Unauthorized riders get denied with a message.
 
 ---
 
-### Baby Growth Control
-Cake button pauses/resumes baby growth. A background task enforces this even across restarts.
+### Leash Adoption (Non-Tameable Pets)
+Got a cool mob on a leash? Make it yours.
+
+When you open the pet menu, any leashed non-tameable entity near you appears as an "adoption offer." Click to register it as your pet. Works for:
+- Llamas (non-trader)
+- Any leashaeable mob that isn't already tameable
+
+The leash stays, but now you can manage them through the GUI like any other pet. Finally, a use for that random cow you've been dragging around for 3000 blocks.
 
 ---
 
@@ -190,51 +226,28 @@ Peace treaty goes hard! Use this feature irresponsibly... unless dog army.
 
 ---
 
-### Pet Display Customization
-- **Icon:** Hold any item in main hand, click the GUI item to set it as the pet's display icon. Shift-click to reset.
-- **Color:** Pick from 16 colors for the pet's display name. Shift-click to reset.
+### XP-Based Healing
+Heal pets using your experience points:
+
+- **Click:** Heal 1 HP (cost: configurable, default 100 XP points per HP)
+- **Shift-Click:** Full heal (calculates total cost automatically)
+
+Indicated by the Golden Apple button. If you're broke on XP, the game tells you how much more you need.
 
 ---
 
-### Batch Actions
-Select pets by type, then manage your army:
+### HP Notifications
+When your pet takes damage:
+- **25% HP:** Warning message
+- **10% HP:** Critical warning + ping sound
+- **5% HP:** DANGER + louder ping
 
-1. Open Batch menu (Hopper button in main menu)
-2. Pick a pet type (e.g., Wolves)
-3. Select/deselect individual pets or use Select All/None
-4. Open batch management
-
-**Available Batch Actions:**
-- **Modes:** Set all to Passive/Neutral/Aggressive (with same click-config as single pet)
-- **Sit/Stand:** Toggle sitting state
-- **Teleport:** Summon all to you
-- **Calm:** Clear targets and anger
-- **Growth Pause:** Pause/resume baby growth
-- **Favorites:** Mark/unmark all as favorites
-- **Protection:** Toggle mutual protection
-- **Friendly Players:** Add/remove from whitelist across all selected
-- **Targeting:** Enter target selection mode for batch
-- **Transfer:** Transfer all selected to another player
-- **Free:** Release all selected (with confirmation)
-- **Heal:** XP-heal all selected (click = 1HP each, shift = full heal all)
-- **Remove Dead:** Permanently delete all dead pets of the selected type
+You'll know when to panic.
 
 ---
 
-### Dead Pet Necromancy (not literal)
-When a pet dies:
-- Shows in GUI as a skull icon
-- Click for options: Revive (costs configurable item) or Remove permanently
-- Revival restores metadata: collar color, variants, health, inventory
-
-Death notifications include sound and location info.
-
----
-
-### Scan & Sync
-Compass button scans loaded chunks for your unmanaged tamed pets and registers them.
-
-Helps if you tamed animals before installing the plugin.
+### Baby Growth Control
+Cake button pauses/resumes baby growth. A background task enforces this even across restarts.
 
 ---
 
@@ -249,16 +262,6 @@ If your server is 1.21.6+:
 
 Don't torture your Happy Ghasts, Kids.
 - Yes we do not allow you to use happy ghasts are fireball throwing machines cuz its AGAINST the LLLLLLLLLLLore
-
----
-
-### HP Notifications
-When your pet takes damage:
-- **25% HP:** Warning message
-- **10% HP:** Critical warning + ping sound
-- **5% HP:** DANGER + louder ping
-
-You'll know when to panic.
 
 ---
 
