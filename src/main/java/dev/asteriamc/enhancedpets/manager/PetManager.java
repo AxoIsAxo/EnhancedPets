@@ -215,6 +215,12 @@ public class PetManager {
         // inherited traits saved right away, not just when they die or are stored.
         captureMetadata(data, pet);
 
+        // Add owner to "trusted" players for entities that have this mechanic (e.g.
+        // Fox)
+        // This ensures the pet recognizes the owner as trusted and won't flee from
+        // them.
+        addOwnerToTrustedPlayers(pet, ownerUUID);
+
         String ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
         this.plugin.debugLog("Registered new pet: " + finalName + " (Owner: " + ownerName + ")");
         queueOwnerSave(data.getOwnerUUID());
@@ -803,6 +809,40 @@ public class PetManager {
         petData.setPausedAgeTicks(-24000);
 
         queueOwnerSave(petData.getOwnerUUID());
+    }
+
+    /**
+     * Adds the owner to the entity's "trusted players" list if the entity has such
+     * a mechanic.
+     * For example, Foxes have setFirstTrustedPlayer/setSecondTrustedPlayer.
+     * This ensures the pet recognizes its owner and won't flee from them.
+     */
+    private void addOwnerToTrustedPlayers(Entity pet, UUID ownerUUID) {
+        if (pet == null || ownerUUID == null)
+            return;
+
+        OfflinePlayer owner = Bukkit.getOfflinePlayer(ownerUUID);
+
+        if (pet instanceof Fox fox) {
+            // Foxes can have up to 2 trusted players
+            // If first slot is empty or doesn't contain owner, set them as first trusted
+            if (fox.getFirstTrustedPlayer() == null ||
+                    !ownerUUID.equals(fox.getFirstTrustedPlayer().getUniqueId())) {
+
+                // Check if already in second slot
+                if (fox.getSecondTrustedPlayer() != null &&
+                        ownerUUID.equals(fox.getSecondTrustedPlayer().getUniqueId())) {
+                    // Already trusted, nothing to do
+                    return;
+                }
+
+                // Set owner as first trusted player
+                fox.setFirstTrustedPlayer(owner);
+                plugin.debugLog("Added owner " + owner.getName() + " as trusted player for Fox");
+            }
+        }
+        // Add more entity types here as needed (if Bukkit adds trusted player APIs for
+        // other mobs)
     }
 
     public void unregisterPet(LivingEntity petEntity) {

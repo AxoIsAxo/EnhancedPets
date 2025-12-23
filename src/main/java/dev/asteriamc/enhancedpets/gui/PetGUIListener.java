@@ -471,7 +471,8 @@ public class PetGUIListener implements Listener {
         if (petUUID != null) {
             PetData petData = petManager.getPetData(petUUID);
             if (petData == null) {
-                plugin.getLanguageManager().sendReplacements(player, "gui.pet_not_found", "pet", "Pet");
+                plugin.getLanguageManager().sendReplacements(player, "gui.pet_not_found", "pet",
+                        plugin.getLanguageManager().getString("misc.default_pet_name"));
                 guiManager.openMainMenu(player);
                 return;
             }
@@ -1052,7 +1053,7 @@ public class PetGUIListener implements Listener {
                         plugin.getLanguageManager().sendReplacements(player, "gui.need_nether_star",
                                 "amount", String.valueOf(requiredAmount),
                                 "item", requiredItem.name(),
-                                "hand", "in your main hand ");
+                                "hand", plugin.getLanguageManager().getString("misc.in_main_hand"));
                         guiManager.openPetMenu(player, petData.getPetUUID());
                         return;
                     }

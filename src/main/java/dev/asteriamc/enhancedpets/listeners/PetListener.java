@@ -193,18 +193,16 @@ public class PetListener implements Listener {
                     return; // Allow teleport
                 }
 
-                // Block vanilla teleport for STATIONED pets
-                // They should stay at their station unless explicitly teleported via GUI
-                if (data.getStationLocation() != null) {
-                    event.setCancelled(true);
-                    return;
-                }
+                // Stationed pets: Allow teleport - the GUI summon updates station location
+                // We don't block stationed pets here anymore.
 
-                // Block vanilla teleport for pets with EXPLICIT TARGET
-                // They should stay hunting their target unless explicitly teleported via GUI
+                // Explicit Target: Block natural teleport to owner if targeting something
                 if (data.getExplicitTargetUUID() != null) {
-                    event.setCancelled(true);
-                    return;
+                    // Block teleport if changing world OR distance is significant (> 8 blocks)
+                    if (event.getFrom().getWorld() != event.getTo().getWorld() ||
+                            event.getFrom().distanceSquared(event.getTo()) > 64) {
+                        event.setCancelled(true);
+                    }
                 }
             }
         }
@@ -656,6 +654,9 @@ public class PetListener implements Listener {
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (adminOverride) {
                     plugin.getGuiManager().setViewerOwnerOverride(p.getUniqueId(), finalPetOwnerUUID);
+                } else {
+                    // Owner managing their own pet - clear any stale admin override
+                    plugin.getGuiManager().clearViewerOwnerOverride(p.getUniqueId());
                 }
                 plugin.getGuiManager().openPetMenu(p, targetEntity.getUniqueId());
             });

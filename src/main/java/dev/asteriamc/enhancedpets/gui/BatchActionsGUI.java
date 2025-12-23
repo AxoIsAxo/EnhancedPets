@@ -202,7 +202,8 @@ public class BatchActionsGUI {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            String displayName = (petData.isFavorite() ? ChatColor.GOLD + "★ " : "") + ChatColor.AQUA
+            String displayName = (petData.isFavorite() ? plugin.getLanguageManager().getString("misc.star_symbol") : "")
+                    + ChatColor.AQUA
                     + petData.getDisplayName();
             meta.displayName(toComponent(displayName));
 

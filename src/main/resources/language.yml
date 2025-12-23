@@ -531,6 +531,7 @@ menus:
   back_batch: "&eBack to Batch Management"
   back_selection: "&eBack to Pet Selection"
   back_type: "&eBack to Type Selection"
+  back_main: "&eBack to Main Menu"
 
   # Batch Actions
   set_passive: "Set Passive"
@@ -703,9 +704,7 @@ menus:
   no_types_found: "&cNo Pet Types Found"
   no_types_found_lore:
     - "&7You don't have any pets to manage in batch."
-  page_count_name: "&bPage %page% / %total%"
-  page_count_lore:
-    - "&7Total Pets: %count%"
+
   cancel: "&aCancel"
   cancel_btn: "&eCancel"
   confirm_revival_title: "&aConfirm Revival"
@@ -782,3 +781,9 @@ pet:
 
 misc:
   location_short: "x=%x%, y=%y%, z=%z%"
+  unloaded_suffix: " (Unloaded)"
+  unknown: "Unknown"
+  unknown_unloaded: "Unknown/Unloaded"
+  star_symbol: "&6★ "
+  default_pet_name: "Pet"
+  in_main_hand: "in your main hand "

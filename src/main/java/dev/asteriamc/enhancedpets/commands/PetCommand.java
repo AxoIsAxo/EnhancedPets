@@ -203,7 +203,8 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                         } else {
                             // Player target (offline check)
                             org.bukkit.OfflinePlayer op = Bukkit.getOfflinePlayer(targetUUID);
-                            targetName = op.getName() != null ? op.getName() : "Unknown";
+                            targetName = op.getName() != null ? op.getName()
+                                    : plugin.getLanguageManager().getString("misc.unknown");
                         }
 
                         for (dev.asteriamc.enhancedpets.data.PetData pet : plugin.getPetManager()

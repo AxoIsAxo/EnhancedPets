@@ -497,7 +497,8 @@ public class PetManagerGUI {
             }
 
             batchData.setAggressiveTargetTypes(batchTypes);
-            String favoriteDisplayName = (anyFavorites ? ChatColor.GOLD + "★ " : "")
+            String favoriteDisplayName = (anyFavorites ? this.plugin.getLanguageManager().getString("misc.star_symbol")
+                    : "")
                     + this.plugin.getLanguageManager().getStringReplacements("menus.managing_header", "count",
                             String.valueOf(selectedPets.size()));
             gui.setItem(
@@ -588,14 +589,16 @@ public class PetManagerGUI {
                                 .orElse(null);
 
                         if (storedName != null) {
-                            commonTargetName = storedName + " (Unloaded)";
+                            commonTargetName = storedName
+                                    + this.plugin.getLanguageManager().getString("misc.unloaded_suffix");
                         } else {
                             // Fallback: check if it's a player
                             OfflinePlayer op = Bukkit.getOfflinePlayer(firstTarget);
                             if (op.hasPlayedBefore() || op.isOnline()) {
-                                commonTargetName = op.getName() != null ? op.getName() : "Unknown";
+                                commonTargetName = op.getName() != null ? op.getName()
+                                        : this.plugin.getLanguageManager().getString("misc.unknown");
                             } else {
-                                commonTargetName = "Unknown/Unloaded";
+                                commonTargetName = this.plugin.getLanguageManager().getString("misc.unknown_unloaded");
                             }
                         }
                     }
@@ -1426,7 +1429,7 @@ public class PetManagerGUI {
             this.plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
             this.openMainMenu(player);
         } else {
-            String title = this.plugin.getLanguageManager().getStringReplacements("menus.transfer_single_title", "name",
+            String title = this.plugin.getLanguageManager().getStringReplacements("menus.transfer_single_title", "pet",
                     petData.getDisplayName());
             if (title.length() > 32) {
                 title = title.substring(0, 29) + "...";
