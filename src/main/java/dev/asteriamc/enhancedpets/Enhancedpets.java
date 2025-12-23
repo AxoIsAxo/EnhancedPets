@@ -4,16 +4,17 @@ import dev.asteriamc.enhancedpets.commands.PetCommand;
 import dev.asteriamc.enhancedpets.config.ConfigManager;
 import dev.asteriamc.enhancedpets.gui.PetGUIListener;
 import dev.asteriamc.enhancedpets.gui.PetManagerGUI;
+import dev.asteriamc.enhancedpets.listeners.DriedGhastListener;
 import dev.asteriamc.enhancedpets.listeners.PetListener;
 import dev.asteriamc.enhancedpets.listeners.PlayerChatListener;
 import dev.asteriamc.enhancedpets.listeners.PlayerConnectionListener;
 import dev.asteriamc.enhancedpets.manager.LanguageManager;
 import dev.asteriamc.enhancedpets.manager.PetManager;
+import dev.asteriamc.enhancedpets.manager.DriedGhastTracker;
 import dev.asteriamc.enhancedpets.manager.PetStorageManager;
 import dev.asteriamc.enhancedpets.tasks.GrowthGuardTask;
 import dev.asteriamc.enhancedpets.tasks.PetTargetingTask;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
@@ -33,6 +34,7 @@ public final class Enhancedpets extends JavaPlugin {
     private BukkitTask autosaveTask;
     private PetListener petListener;
     private BukkitTask growthGuardTask;
+    private dev.asteriamc.enhancedpets.manager.DriedGhastTracker driedGhastTracker;
 
     public static Enhancedpets getInstance() {
         return instance;
@@ -54,10 +56,14 @@ public final class Enhancedpets extends JavaPlugin {
         Objects.requireNonNull(this.getCommand("pets")).setTabCompleter(petCommandExecutor);
         Objects.requireNonNull(this.getCommand("petadmin")).setExecutor(petCommandExecutor);
         Objects.requireNonNull(this.getCommand("petadmin")).setTabCompleter(petCommandExecutor);
+        Objects.requireNonNull(this.getCommand("petadmin")).setTabCompleter(petCommandExecutor);
 
+        this.driedGhastTracker = new DriedGhastTracker(this);
         this.petListener = new PetListener(this);
 
         Bukkit.getPluginManager().registerEvents(this.petListener, this);
+        Bukkit.getPluginManager().registerEvents(new DriedGhastListener(this),
+                this);
         Bukkit.getPluginManager().registerEvents(this.petGUIListener, this);
         Bukkit.getPluginManager().registerEvents(
                 new PlayerChatListener(this, this.petManager, this.guiManager, this.petGUIListener), this);
@@ -86,8 +92,12 @@ public final class Enhancedpets extends JavaPlugin {
         this.stopTargetingTask();
 
         if (this.petManager != null) {
-            this.petManager.cancelAllPendingOwnerSaves();
             this.petManager.saveAllCachedDataImmediate();
+        }
+
+        if (this.driedGhastTracker != null) {
+            this.driedGhastTracker.stopTasks();
+            this.driedGhastTracker.save();
         }
 
         Enhancedpets.getInstance().debugLog("EnhancedPets has been disabled.");
@@ -124,21 +134,20 @@ public final class Enhancedpets extends JavaPlugin {
     }
 
     public void reloadPluginConfig(CommandSender sender) {
-        sender.sendMessage(ChatColor.YELLOW + "Reloading EnhancedPets configuration...");
+        this.languageManager.sendMessage(sender, "command.reload_start");
         this.stopTargetingTask();
 
         try {
             this.configManager.loadConfig();
             this.languageManager.load();
-            sender.sendMessage(ChatColor.GREEN + "Configuration reloaded successfully.");
-            sender.sendMessage(ChatColor.GRAY + "(Pet data is now stored in JSON files and was not reloaded.)");
+            this.languageManager.sendMessage(sender, "command.reload_success");
+            this.languageManager.sendMessage(sender, "command.reload_data_notice");
         } catch (Exception var6) {
-            sender.sendMessage(
-                    ChatColor.RED + "An error occurred while reloading the configuration. Check console logs!");
+            this.languageManager.sendMessage(sender, "command.reload_error");
             this.getLogger().log(Level.SEVERE, "Error during EnhancedPets configuration reload:", var6);
         } finally {
             this.startTargetingTask();
-            sender.sendMessage(ChatColor.YELLOW + "Pet targeting task restarted.");
+            this.languageManager.sendMessage(sender, "command.reload_task_restarted");
         }
     }
 
@@ -190,6 +199,10 @@ public final class Enhancedpets extends JavaPlugin {
 
     public PetStorageManager getStorageManager() {
         return this.storageManager;
+    }
+
+    public DriedGhastTracker getDriedGhastTracker() {
+        return this.driedGhastTracker;
     }
 
     public PetManagerGUI getGuiManager() {

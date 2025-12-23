@@ -216,6 +216,7 @@ public class PlayerChatListener implements Listener {
             }
 
             petData.setExplicitTargetUUID(target.getUniqueId());
+            petData.setExplicitTargetName(target.getName());
             petData.setStationLocation(null); // Clear station if targeting
             petManager.updatePetData(petData);
 

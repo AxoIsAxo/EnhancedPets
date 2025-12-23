@@ -21,7 +21,9 @@ public class PetData {
     private int pausedAgeTicks = 0;
     private boolean dead = false;
     private Map<String, Object> metadata = new HashMap<>();
+    private String base64EntityState = null;
     private boolean protectedFromPlayers = false;
+    private CreeperBehavior creeperBehavior = CreeperBehavior.NEUTRAL;
 
     // Station Feature
     private Location stationLocation;
@@ -30,9 +32,12 @@ public class PetData {
 
     // Target Feature
     private UUID explicitTargetUUID;
+    private String explicitTargetName;
 
     // Storage Feature
     private boolean stored = false;
+
+    private boolean publicAccess = false; // Controls riding/inventory for horses etc.
 
     private String displayColor = null;
 
@@ -45,6 +50,7 @@ public class PetData {
         this.displayName = displayName;
         this.friendlyPlayers = new HashSet<>();
         this.mode = BehaviorMode.NEUTRAL;
+        this.publicAccess = false;
     }
 
     public static PetData deserialize(UUID petUUID, Map<String, Object> map) {
@@ -70,6 +76,15 @@ public class PetData {
             int pausedAgeTicks = ((Number) map.getOrDefault("pausedAgeTicks", 0)).intValue();
             boolean dead = (boolean) map.getOrDefault("dead", false);
             boolean protectedFromPlayers = (boolean) map.getOrDefault("protectedFromPlayers", false);
+            boolean publicAccess = (boolean) map.getOrDefault("publicAccess", false);
+
+            CreeperBehavior creeperBehavior = CreeperBehavior.NEUTRAL;
+            if (map.containsKey("creeperBehavior")) {
+                try {
+                    creeperBehavior = CreeperBehavior.valueOf((String) map.get("creeperBehavior"));
+                } catch (Exception ignored) {
+                }
+            }
 
             @SuppressWarnings("unchecked")
             Map<String, Object> metadata = (Map<String, Object>) map.get("metadata");
@@ -103,10 +118,15 @@ public class PetData {
             data.setDead(dead);
             data.setStored((boolean) map.getOrDefault("stored", false));
             data.setProtectedFromPlayers(protectedFromPlayers);
+            data.setPublicAccess(publicAccess);
+            data.setCreeperBehavior(creeperBehavior);
             data.setDisplayColor(displayColor);
             data.setCustomIconMaterial(customIconMaterial);
             if (metadata != null) {
                 data.setMetadata(metadata);
+            }
+            if (map.containsKey("base64EntityState")) {
+                data.setBase64EntityState((String) map.get("base64EntityState"));
             }
 
             // Station Deserialization
@@ -145,6 +165,9 @@ public class PetData {
                 } catch (Exception ignored) {
                 }
             }
+            if (map.containsKey("explicitTargetName")) {
+                data.setExplicitTargetName((String) map.get("explicitTargetName"));
+            }
 
             if (map.containsKey("aggressiveTargetTypes")) {
                 data.setAggressiveTargetTypes(new HashSet<>((List<String>) map.get("aggressiveTargetTypes")));
@@ -177,6 +200,14 @@ public class PetData {
         this.protectedFromPlayers = protectedFromPlayers;
     }
 
+    public boolean isPublicAccess() {
+        return publicAccess;
+    }
+
+    public void setPublicAccess(boolean publicAccess) {
+        this.publicAccess = publicAccess;
+    }
+
     public Map<String, Object> serialize() {
         Map<String, Object> map = new HashMap<>();
         map.put("owner", this.ownerUUID.toString());
@@ -190,8 +221,13 @@ public class PetData {
         map.put("dead", this.dead);
         map.put("stored", this.stored);
         map.put("protectedFromPlayers", this.protectedFromPlayers);
+        map.put("publicAccess", this.publicAccess);
+        map.put("creeperBehavior", this.creeperBehavior.name());
         if (this.metadata != null && !this.metadata.isEmpty()) {
             map.put("metadata", this.metadata);
+        }
+        if (this.base64EntityState != null) {
+            map.put("base64EntityState", this.base64EntityState);
         }
 
         if (this.displayColor != null) {
@@ -216,6 +252,9 @@ public class PetData {
         // Target Serialization
         if (this.explicitTargetUUID != null) {
             map.put("explicitTargetUUID", this.explicitTargetUUID.toString());
+        }
+        if (this.explicitTargetName != null) {
+            map.put("explicitTargetName", this.explicitTargetName);
         }
         map.put("aggressiveTargetTypes", new ArrayList<>(this.aggressiveTargetTypes));
 
@@ -367,6 +406,14 @@ public class PetData {
         this.explicitTargetUUID = explicitTargetUUID;
     }
 
+    public String getExplicitTargetName() {
+        return explicitTargetName;
+    }
+
+    public void setExplicitTargetName(String explicitTargetName) {
+        this.explicitTargetName = explicitTargetName;
+    }
+
     private Set<String> aggressiveTargetTypes = new HashSet<>(Arrays.asList("MOB", "ANIMAL", "PLAYER"));
 
     public Set<String> getAggressiveTargetTypes() {
@@ -375,5 +422,21 @@ public class PetData {
 
     public void setAggressiveTargetTypes(Set<String> aggressiveTargetTypes) {
         this.aggressiveTargetTypes = aggressiveTargetTypes != null ? aggressiveTargetTypes : new HashSet<>();
+    }
+
+    public String getBase64EntityState() {
+        return base64EntityState;
+    }
+
+    public void setBase64EntityState(String base64EntityState) {
+        this.base64EntityState = base64EntityState;
+    }
+
+    public CreeperBehavior getCreeperBehavior() {
+        return creeperBehavior;
+    }
+
+    public void setCreeperBehavior(CreeperBehavior creeperBehavior) {
+        this.creeperBehavior = creeperBehavior != null ? creeperBehavior : CreeperBehavior.NEUTRAL;
     }
 }

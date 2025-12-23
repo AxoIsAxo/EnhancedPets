@@ -2,6 +2,7 @@ package dev.asteriamc.enhancedpets.gui;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
 import dev.asteriamc.enhancedpets.data.BehaviorMode;
+import dev.asteriamc.enhancedpets.data.CreeperBehavior;
 import dev.asteriamc.enhancedpets.data.PetData;
 import dev.asteriamc.enhancedpets.manager.PetManager;
 import org.bukkit.Bukkit;
@@ -10,6 +11,7 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -18,23 +20,67 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.metadata.FixedMetadataValue;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PetGUIListener implements Listener {
     private final Enhancedpets plugin;
     private final PetManager petManager;
     private final PetManagerGUI guiManager;
     private final BatchActionsGUI batchActionsGUI;
-    private final Map<UUID, UUID> awaitingFriendlyInput = new HashMap<>();
-    private final Map<UUID, UUID> awaitingRenameInput = new HashMap<>();
-    private final Map<UUID, Boolean> awaitingBatchFriendlyInput = new HashMap<>();
-    private final Map<UUID, UUID> awaitingTargetInput = new HashMap<>();
-    private final Map<UUID, UUID> awaitingTargetSelection = new HashMap<>();
+    private final Map<UUID, UUID> awaitingFriendlyInput = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> awaitingRenameInput = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> awaitingBatchFriendlyInput = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> awaitingTargetInput = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> awaitingTargetSelection = new ConcurrentHashMap<>();
+    private final Map<UUID, Boolean> awaitingBatchTargetSelection = new ConcurrentHashMap<>();
+
+    // Teleport confirmation for pets with explicit targets (distance > 200 blocks)
+    private final Map<UUID, UUID> pendingTeleportConfirmation = new ConcurrentHashMap<>();
+
+    // Track when chat inputs were requested (for 10 minute timeout)
+    private final Map<UUID, Long> chatInputTimestamps = new ConcurrentHashMap<>();
+    private static final long CHAT_INPUT_TIMEOUT_MS = 10 * 60 * 1000L; // 10 minutes
 
     public PetGUIListener(Enhancedpets plugin, PetManagerGUI guiManager) {
         this.plugin = plugin;
         this.petManager = plugin.getPetManager();
         this.guiManager = guiManager;
         this.batchActionsGUI = guiManager.getBatchActionsGUI();
+
+        // Schedule periodic cleanup of expired chat inputs (every 2 minutes)
+        Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, this::cleanupExpiredChatInputs, 2400L, 2400L);
+    }
+
+    private void cleanupExpiredChatInputs() {
+        long now = System.currentTimeMillis();
+        chatInputTimestamps.entrySet().removeIf(entry -> {
+            if (now - entry.getValue() > CHAT_INPUT_TIMEOUT_MS) {
+                UUID playerId = entry.getKey();
+                // Clear all awaiting states for this player
+                awaitingFriendlyInput.remove(playerId);
+                awaitingRenameInput.remove(playerId);
+                awaitingBatchFriendlyInput.remove(playerId);
+                awaitingTargetInput.remove(playerId);
+                awaitingTargetSelection.remove(playerId);
+                awaitingBatchTargetSelection.remove(playerId);
+                pendingTeleportConfirmation.remove(playerId);
+
+                Player player = Bukkit.getPlayer(playerId);
+                if (player != null && player.isOnline()) {
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        Bukkit.getScheduler().runTask(plugin, () -> {
+                            plugin.getLanguageManager().sendMessage(player, "gui.chat_input_timeout");
+                        });
+                    });
+                }
+                return true;
+            }
+            return false;
+        });
+    }
+
+    private void trackChatInput(UUID playerId) {
+        chatInputTimestamps.put(playerId, System.currentTimeMillis());
     }
 
     public Map<UUID, UUID> getAwaitingFriendlyInputMap() {
@@ -55,6 +101,17 @@ public class PetGUIListener implements Listener {
 
     public Map<UUID, UUID> getAwaitingTargetSelectionMap() {
         return this.awaitingTargetSelection;
+    }
+
+    public Map<UUID, Boolean> getAwaitingBatchTargetSelectionMap() {
+        return this.awaitingBatchTargetSelection;
+    }
+
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (event.getInventory().getHolder() instanceof PetInventoryHolder) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler
@@ -235,6 +292,36 @@ public class PetGUIListener implements Listener {
         Set<UUID> selectedPets = batchActionsGUI.getPlayerSelections().get(player.getUniqueId());
 
         switch (action) {
+            case "adopt_leashed" -> {
+                if (petUUID == null)
+                    return;
+                Entity entity = Bukkit.getEntity(petUUID);
+
+                // Validate
+                if (entity == null || entity.isDead() || !(entity instanceof LivingEntity le) || !le.isLeashed()
+                        || !java.util.Objects.equals(le.getLeashHolder(), player) || (entity instanceof Tameable)) {
+                    plugin.getLanguageManager().sendMessage(player, "menus.adopt_fail_not_leashed");
+                    guiManager.openMainMenu(player);
+                    return;
+                }
+
+                if (petManager.isManagedPet(petUUID)) {
+                    plugin.getLanguageManager().sendMessage(player, "menus.adopt_fail_already_managed");
+                    guiManager.openMainMenu(player);
+                    return;
+                }
+
+                // Register
+                PetData newPet = petManager.registerNonTameablePet(entity, player.getUniqueId(), null);
+                if (newPet != null) {
+                    plugin.getLanguageManager().sendReplacements(player, "menus.adopt_success", "type",
+                            newPet.getDisplayName());
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+                    guiManager.openMainMenu(player);
+                } else {
+                    plugin.getLanguageManager().sendMessage(player, "menus.adopt_fail_generic");
+                }
+            }
             case "main_page" -> {
                 Integer targetPage = data.get(PetManagerGUI.PAGE_KEY, PersistentDataType.INTEGER);
                 if (targetPage != null)
@@ -398,6 +485,9 @@ public class PetGUIListener implements Listener {
         awaitingBatchFriendlyInput.remove(playerId);
         awaitingTargetInput.remove(playerId);
         awaitingTargetSelection.remove(playerId);
+        awaitingBatchTargetSelection.remove(playerId);
+        pendingTeleportConfirmation.remove(playerId);
+        chatInputTimestamps.remove(playerId);
         batchActionsGUI.clearSelections(playerId);
     }
 
@@ -570,6 +660,7 @@ public class PetGUIListener implements Listener {
             }
             case "add_batch_friendly_prompt" -> {
                 awaitingBatchFriendlyInput.put(player.getUniqueId(), true);
+                trackChatInput(player.getUniqueId());
                 player.closeInventory();
                 plugin.getLanguageManager().sendMessage(player, "gui.batch_friendly_prompt");
             }
@@ -621,6 +712,99 @@ public class PetGUIListener implements Listener {
                     plugin.getLanguageManager().sendReplacements(player, "gui.batch_protection_disabled", "count",
                             String.valueOf(petDataList.size()));
                 }
+                guiManager.openBatchManagementMenu(player, selectedPets);
+            }
+            case "batch_toggle_target_prompt" -> {
+                awaitingBatchTargetSelection.put(player.getUniqueId(), true);
+                trackChatInput(player.getUniqueId());
+                player.closeInventory();
+                plugin.getLanguageManager().sendMessage(player, "gui.target_selection_mode");
+            }
+            case "batch_target_logic" -> {
+                if (event.isRightClick()) {
+                    // Start Target Selection Mode (SAME AS batch_toggle_target_prompt)
+                    awaitingBatchTargetSelection.put(player.getUniqueId(), true);
+                    trackChatInput(player.getUniqueId());
+                    player.closeInventory();
+                    plugin.getLanguageManager().sendMessage(player, "gui.target_selection_mode");
+                } else {
+                    // Clear Targets
+                    petDataList.forEach(pd -> {
+                        pd.setExplicitTargetUUID(null);
+                        // Also clear actual entity target to stop aggression immediately
+                        Entity e = Bukkit.getEntity(pd.getPetUUID());
+                        if (e instanceof Creature c) {
+                            c.setTarget(null);
+                            if (c instanceof Wolf w)
+                                w.setAngry(false);
+                        }
+                    });
+                    petManager.saveAllPetData(petDataList);
+                    plugin.getLanguageManager().sendReplacements(player, "gui.batch_targets_cleared", "count",
+                            String.valueOf(petDataList.size()));
+                    player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1f, 1f);
+                    guiManager.openBatchManagementMenu(player, selectedPets);
+                }
+            }
+            case "batch_heal" -> {
+                int totalCost = 0;
+                int xpCostPer = plugin.getConfigManager().getHealCost();
+
+                // Calculate Cost
+                Map<LivingEntity, Double> healMap = new HashMap<>();
+
+                for (PetData pd : petDataList) {
+                    Entity e = Bukkit.getEntity(pd.getPetUUID());
+                    if (e instanceof LivingEntity le && e.isValid()) {
+                        double max = le.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
+                        double current = le.getHealth();
+                        double missing = max - current;
+
+                        if (missing > 0.5) { // Threshold to avoid micro-heals
+                            if (event.isShiftClick()) {
+                                healMap.put(le, missing);
+                                totalCost += (int) Math.ceil(missing) * xpCostPer;
+                            } else {
+                                healMap.put(le, 1.0);
+                                totalCost += xpCostPer;
+                            }
+                        }
+                    }
+                }
+
+                if (totalCost == 0) {
+                    plugin.getLanguageManager().sendMessage(player, "gui.batch_heal_already_full");
+                    guiManager.openBatchManagementMenu(player, selectedPets);
+                    break;
+                }
+
+                int playerXp = player.getTotalExperience();
+                if (playerXp < totalCost) {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.heal_no_xp",
+                            "needed", String.valueOf(totalCost),
+                            "current", String.valueOf(playerXp));
+                    return;
+                }
+
+                // Apply
+                player.giveExp(-totalCost);
+                int healedCount = 0;
+                for (Map.Entry<LivingEntity, Double> entry : healMap.entrySet()) {
+                    LivingEntity le = entry.getKey();
+                    double amount = entry.getValue();
+                    double newHealth = Math.min(le.getHealth() + amount,
+                            le.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue());
+                    le.setHealth(newHealth);
+                    healedCount++;
+                    le.getWorld().spawnParticle(org.bukkit.Particle.HEART, le.getLocation().add(0, 1, 0), 3, 0.3, 0.3,
+                            0.3);
+                }
+
+                plugin.getLanguageManager().sendReplacements(player, "gui.batch_heal_success",
+                        "count", String.valueOf(healedCount),
+                        "cost", String.valueOf(totalCost));
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 1f, 1.2f);
+
                 guiManager.openBatchManagementMenu(player, selectedPets);
             }
         }
@@ -696,24 +880,52 @@ public class PetGUIListener implements Listener {
             }
             case "teleport_pet" -> {
                 Entity petEntity = Bukkit.getEntity(petUUID);
-                if (petEntity != null && petEntity.isValid()) {
-                    // Mark as forced teleport to bypass PetListener station checks
-                    petEntity.setMetadata("force_teleport", new FixedMetadataValue(plugin, true));
-                    petEntity.teleport(player.getLocation());
-
-                    // If pet is stationed, update station location to here
-                    if (petData.getStationLocation() != null) {
-                        petData.setStationLocation(player.getLocation());
-                        petManager.updatePetData(petData);
-                        plugin.getLanguageManager().sendMessage(player, "gui.station_updated");
-                    }
-
-                    plugin.getLanguageManager().sendReplacements(player, "gui.summon_success", "pet",
-                            petData.getDisplayName());
-                } else {
+                if (petEntity == null || !petEntity.isValid()) {
                     plugin.getLanguageManager().sendReplacements(player, "gui.pet_not_found", "pet",
                             petData.getDisplayName());
+                    return;
                 }
+
+                // Target mode teleport confirmation logic
+                if (petData.getExplicitTargetUUID() != null) {
+                    Entity targetEntity = Bukkit.getEntity(petData.getExplicitTargetUUID());
+                    if (targetEntity != null && targetEntity.isValid()) {
+                        double distanceAfterTeleport = player.getLocation().distance(targetEntity.getLocation());
+
+                        if (distanceAfterTeleport > 200) {
+                            // Check if already pending confirmation
+                            UUID pendingPet = pendingTeleportConfirmation.get(player.getUniqueId());
+                            if (pendingPet != null && pendingPet.equals(petUUID)) {
+                                // Confirmed! Clear and proceed
+                                pendingTeleportConfirmation.remove(player.getUniqueId());
+                            } else {
+                                // First click - set pending and warn player
+                                pendingTeleportConfirmation.put(player.getUniqueId(), petUUID);
+                                plugin.getLanguageManager().sendReplacements(player, "gui.teleport_warn_distance",
+                                        "distance", String.format("%.0f", distanceAfterTeleport));
+                                plugin.getLanguageManager().sendMessage(player, "gui.teleport_warn_confirm");
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                // Clear any pending confirmation since we're proceeding
+                pendingTeleportConfirmation.remove(player.getUniqueId());
+
+                // Mark as forced teleport to bypass PetListener checks
+                petEntity.setMetadata("force_teleport", new FixedMetadataValue(plugin, true));
+                petEntity.teleport(player.getLocation());
+
+                // If pet is stationed, update station location to here
+                if (petData.getStationLocation() != null) {
+                    petData.setStationLocation(player.getLocation());
+                    petManager.updatePetData(petData);
+                    plugin.getLanguageManager().sendMessage(player, "gui.station_updated");
+                }
+
+                plugin.getLanguageManager().sendReplacements(player, "gui.summon_success", "pet",
+                        petData.getDisplayName());
             }
             case "free_pet" -> {
                 petManager.freePetCompletely(petUUID);
@@ -728,18 +940,24 @@ public class PetGUIListener implements Listener {
             case "rename_pet_prompt" -> {
                 if (event.isShiftClick()) {
                     String oldName = petData.getDisplayName();
-                    String newDefaultName = petManager.assignNewDefaultName(petData);
+                    // Generate default name for GUI/Data (e.g. "Happy Ghast #123")
+                    String newDefaultName = petManager.assignNewDefaultName(petData.getEntityType());
                     petData.setDisplayName(newDefaultName);
+
+                    // Reset Entity name to null (Vanilla behavior)
                     Entity petEntity = Bukkit.getEntity(petUUID);
                     if (petEntity != null) {
                         petEntity.setCustomName(null);
+                        petEntity.setCustomNameVisible(false);
                     }
                     petManager.updatePetData(petData);
+
                     plugin.getLanguageManager().sendReplacements(player, "gui.rename_reset", "old", oldName, "new",
                             newDefaultName);
                     guiManager.openPetMenu(player, petUUID);
                 } else {
                     awaitingRenameInput.put(player.getUniqueId(), petUUID);
+                    trackChatInput(player.getUniqueId());
                     player.closeInventory();
                     plugin.getLanguageManager().sendReplacements(player, "gui.rename_prompt", "pet",
                             petData.getDisplayName());
@@ -798,6 +1016,7 @@ public class PetGUIListener implements Listener {
             }
             case "add_friendly_prompt" -> {
                 awaitingFriendlyInput.put(player.getUniqueId(), petUUID);
+                trackChatInput(player.getUniqueId());
                 player.closeInventory();
                 plugin.getLanguageManager().sendReplacements(player, "gui.friendly_prompt", "pet",
                         petData.getDisplayName());
@@ -939,6 +1158,13 @@ public class PetGUIListener implements Listener {
                 }
                 guiManager.openPetMenu(player, petUUID);
             }
+            case "toggle_access" -> {
+                boolean current = petData.isPublicAccess();
+                petData.setPublicAccess(!current);
+                petManager.updatePetData(petData);
+
+                plugin.getGuiManager().openPetMenu(player, petUUID);
+            }
             case "toggle_station" -> {
                 // Station Logic Refactored: Allow config modification at any time
                 if (event.isShiftClick()) {
@@ -1049,20 +1275,41 @@ public class PetGUIListener implements Listener {
                             petData.getDisplayName());
                     guiManager.openPetMenu(player, petUUID);
                 } else {
-                    if (event.isRightClick()) {
-                        // Start Target Selection Mode
+                    if (event.isLeftClick()) {
+                        // Left Click -> Start Target Selection Mode (click entity in world)
                         player.closeInventory();
                         awaitingTargetSelection.put(player.getUniqueId(), petUUID);
+                        trackChatInput(player.getUniqueId());
 
                         plugin.getLanguageManager().sendMessage(player, "gui.target_selection_mode");
-                    } else {
-                        // Left Click -> Chat Prompt
+                    } else if (event.isRightClick()) {
+                        // Right Click -> Chat Prompt (type player name)
                         awaitingTargetInput.put(player.getUniqueId(), petUUID);
+                        trackChatInput(player.getUniqueId());
                         player.closeInventory();
                         plugin.getLanguageManager().sendReplacements(player, "gui.target_prompt", "pet",
                                 petData.getDisplayName());
                     }
                 }
+            }
+            case "cycle_creeper_behavior" -> {
+                CreeperBehavior current = petData.getCreeperBehavior();
+                CreeperBehavior next = switch (current) {
+                    case NEUTRAL -> CreeperBehavior.FLEE;
+                    case FLEE -> CreeperBehavior.IGNORE;
+                    case IGNORE -> CreeperBehavior.NEUTRAL;
+                };
+                petData.setCreeperBehavior(next);
+                petManager.updatePetData(petData);
+
+                String behaviorName = switch (next) {
+                    case NEUTRAL -> plugin.getLanguageManager().getString("menus.creeper_behavior_neutral");
+                    case FLEE -> plugin.getLanguageManager().getString("menus.creeper_behavior_flee");
+                    case IGNORE -> plugin.getLanguageManager().getString("menus.creeper_behavior_ignore");
+                };
+                plugin.getLanguageManager().sendReplacements(player, "gui.creeper_behavior_updated",
+                        "pet", petData.getDisplayName(), "behavior", behaviorName);
+                guiManager.openPetMenu(player, petUUID);
             }
             case "heal_pet" -> {
                 Entity petEntity = Bukkit.getEntity(petUUID);
@@ -1081,7 +1328,7 @@ public class PetGUIListener implements Listener {
                     return;
                 }
 
-                int xpCostPer = 100;
+                int xpCostPer = plugin.getConfigManager().getHealCost();
                 if (event.isShiftClick()) {
                     // Full Heal
                     int requiredXp = (int) Math.ceil(missingHp) * xpCostPer;
@@ -1108,7 +1355,7 @@ public class PetGUIListener implements Listener {
                     player.giveExp(-requiredXp);
                     le.setHealth(Math.min(currentHp + 1, maxHp));
                     plugin.getLanguageManager().sendReplacements(player, "gui.heal_success_single", "pet",
-                            petData.getDisplayName());
+                            petData.getDisplayName(), "cost", String.valueOf(requiredXp));
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GENERIC_EAT, 1.0f, 1.0f);
                 }
                 // Refresh GUI by reopening
@@ -1146,6 +1393,11 @@ public class PetGUIListener implements Listener {
         }
     }
 
+    private net.kyori.adventure.text.Component toComponent(String text) {
+        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(text)
+                .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
+    }
+
     private void openConfirmMenu(Player player, UUID petUUID, boolean isRevive) {
         String title = isRevive ? plugin.getLanguageManager().getString("menus.confirm_revival_title")
                 : plugin.getLanguageManager().getString("menus.confirm_removal_title");
@@ -1153,7 +1405,7 @@ public class PetGUIListener implements Listener {
                 title);
         ItemStack confirm = new ItemStack(isRevive ? plugin.getConfigManager().getReviveItem() : Material.BARRIER);
         ItemMeta meta = confirm.getItemMeta();
-        meta.setDisplayName(title);
+        meta.displayName(toComponent(title));
         meta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING,
                 isRevive ? "do_revive_pet" : "do_remove_pet");
         meta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING,
@@ -1162,7 +1414,7 @@ public class PetGUIListener implements Listener {
         gui.setItem(11, confirm);
         ItemStack cancel = new ItemStack(Material.ARROW);
         ItemMeta cancelMeta = cancel.getItemMeta();
-        cancelMeta.setDisplayName(plugin.getLanguageManager().getString("menus.cancel_btn"));
+        cancelMeta.displayName(toComponent(plugin.getLanguageManager().getString("menus.cancel_btn")));
         cancelMeta.getPersistentDataContainer().set(PetManagerGUI.ACTION_KEY, PersistentDataType.STRING,
                 "cancel_confirm");
         cancelMeta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING,

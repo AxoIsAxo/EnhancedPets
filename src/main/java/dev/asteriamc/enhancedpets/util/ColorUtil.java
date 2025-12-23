@@ -50,6 +50,20 @@ public final class ColorUtil {
     }
 
     /**
+     * Colorize a string for use as an item display name.
+     * Prepends §r (reset) to disable Minecraft's default italic styling on custom
+     * item names.
+     *
+     * @param input the raw string from config
+     * @return colored string with italics disabled, suitable for item names
+     */
+    public static String itemName(String input) {
+        if (input == null)
+            return null;
+        return "§r" + colorize(input);
+    }
+
+    /**
      * Convert section-sign colored text back to config-friendly form:
      * - Hex sequences like §x§R§R§G§G§B§B become &#RRGGBB
      * - Remaining section signs '§' become '&'

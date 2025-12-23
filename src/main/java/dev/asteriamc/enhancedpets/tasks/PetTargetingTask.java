@@ -2,13 +2,13 @@ package dev.asteriamc.enhancedpets.tasks;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
 import dev.asteriamc.enhancedpets.data.BehaviorMode;
+import dev.asteriamc.enhancedpets.data.CreeperBehavior;
 import dev.asteriamc.enhancedpets.data.PetData;
 import dev.asteriamc.enhancedpets.manager.PetManager;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
@@ -26,6 +26,9 @@ public class PetTargetingTask extends BukkitRunnable {
     private final double verticalScanRadius;
     private int rrIndex = 0;
 
+    // Track when we last saw a target for timeout purposes (30s)
+    private final java.util.Map<java.util.UUID, Long> targetLastSeen = new java.util.concurrent.ConcurrentHashMap<>();
+
     public PetTargetingTask(Enhancedpets plugin, PetManager petManager) {
         this.plugin = plugin;
         this.petManager = petManager;
@@ -36,11 +39,12 @@ public class PetTargetingTask extends BukkitRunnable {
     @Override
     public void run() {
         List<PetData> pets = new ArrayList<>();
-        // Filter pets that need active targeting logic
+        // Filter pets that need active logic (targeting or flee)
         for (PetData pd : this.petManager.getAllPetData()) {
             if (pd.getMode() == BehaviorMode.AGGRESSIVE
                     || pd.getStationLocation() != null
-                    || pd.getExplicitTargetUUID() != null) {
+                    || pd.getExplicitTargetUUID() != null
+                    || pd.getCreeperBehavior() == CreeperBehavior.FLEE) {
                 pets.add(pd);
             }
         }
@@ -59,6 +63,14 @@ public class PetTargetingTask extends BukkitRunnable {
             if (!(entity instanceof Creature petCreature) || !entity.isValid() || entity.isDead())
                 continue;
 
+            // 0. FLEE from Creepers (HIGHEST PRIORITY - Independent of other behaviors)
+            // Skip for Cats since creepers naturally flee from cats
+            if (petData.getCreeperBehavior() == CreeperBehavior.FLEE && !(entity instanceof Cat)) {
+                if (handleCreeperFlee(petCreature, petData)) {
+                    continue; // Pet is fleeing, skip other behaviors
+                }
+            }
+
             // 1. Explicit Target Handling
             if (petData.getExplicitTargetUUID() != null) {
                 handleExplicitTarget(petCreature, petData);
@@ -68,7 +80,7 @@ public class PetTargetingTask extends BukkitRunnable {
             // 2. Station Feature Handling
             if (petData.getStationLocation() != null) {
                 handleStationBehavior(petCreature, petData);
-                continue; // Skip Aggressive fallback if Statioend (Station handles its own aggression)
+                continue; // Skip Aggressive fallback if Stationed
             }
 
             // 3. Fallback: Aggressive Mode
@@ -76,6 +88,71 @@ public class PetTargetingTask extends BukkitRunnable {
                 handleAggressiveBehavior(petCreature, petData);
             }
         }
+    }
+
+    /**
+     * Handles FLEE behavior for creepers.
+     * If a creeper is within 3 blocks, the pet will pathfind away until 5+ blocks.
+     * 
+     * @return true if the pet is actively fleeing (skip other behaviors)
+     */
+    private boolean handleCreeperFlee(Creature pet, PetData petData) {
+        // Don't flee if sitting
+        if (pet instanceof Sittable s && s.isSitting()) {
+            return false;
+        }
+
+        // Find nearest creeper within 3 blocks
+        Creeper nearestCreeper = null;
+        double nearestDistSq = 9.0; // 3 blocks squared
+
+        for (Entity nearby : pet.getNearbyEntities(5, 5, 5)) {
+            if (nearby instanceof Creeper creeper) {
+                double distSq = pet.getLocation().distanceSquared(creeper.getLocation());
+                if (distSq < nearestDistSq) {
+                    nearestDistSq = distSq;
+                    nearestCreeper = creeper;
+                }
+            }
+        }
+
+        if (nearestCreeper == null) {
+            return false; // No creeper nearby, don't flee
+        }
+
+        // Check if already at safe distance (5+ blocks)
+        if (nearestDistSq >= 25.0) {
+            return false;
+        }
+
+        // Calculate flee direction (away from creeper)
+        Location petLoc = pet.getLocation();
+        Location creeperLoc = nearestCreeper.getLocation();
+        Vector fleeDir = petLoc.toVector().subtract(creeperLoc.toVector());
+
+        // Handle case where pet is exactly on creeper
+        if (fleeDir.lengthSquared() < 0.01) {
+            fleeDir = new Vector(Math.random() - 0.5, 0, Math.random() - 0.5);
+        }
+        fleeDir.normalize();
+
+        // Calculate flee destination (6 blocks away from creeper in flee direction)
+        Location fleeDestination = petLoc.clone().add(fleeDir.multiply(6));
+
+        // FIX: Don't use getHighestBlockYAt - it teleports pets to the surface from
+        // caves!
+        // Instead, find a safe floor at the pet's current Y level
+        Location safeLocation = findSafeFloorAt(fleeDestination, petLoc.getBlockY());
+        if (safeLocation == null) {
+            // No safe spot found, don't pathfind to an unsafe location
+            return false;
+        }
+
+        // Clear any current target and flee
+        pet.setTarget(null);
+        pet.getPathfinder().moveTo(safeLocation);
+
+        return true;
     }
 
     private void handleExplicitTarget(Creature pet, PetData petData) {
@@ -101,18 +178,44 @@ public class PetTargetingTask extends BukkitRunnable {
                 String tName = targetEntity.getName();
                 if (targetEntity instanceof Player p)
                     tName = p.getName();
-                owner.sendMessage(ChatColor.GREEN + "[Pet] Target " + ChatColor.RED + tName + ChatColor.GREEN
-                        + " neutralized. Returning to you.");
+                plugin.getLanguageManager().sendReplacements(owner, "event.target_neutralized_return", "target", tName);
             }
             return;
         }
 
         // Validation (Unloaded or Invalid but not dead)
+        // Validation (Unloaded or Invalid but not dead)
         if (targetEntity == null || !targetEntity.isValid()) {
-            // Target might be unloaded. We wait.
-            // Do NOT clear target here, as we want to resume hunt if they load back in.
+            // Check timeout
+            long lastSeen = targetLastSeen.getOrDefault(petData.getPetUUID(), System.currentTimeMillis());
+            if (System.currentTimeMillis() - lastSeen > 30000) { // 30 seconds
+                // TIMEOUT
+                petData.setExplicitTargetUUID(null);
+                petManager.updatePetData(petData);
+                pet.setTarget(null);
+
+                targetLastSeen.remove(petData.getPetUUID());
+
+                Player owner = Bukkit.getPlayer(petData.getOwnerUUID());
+                if (owner != null && owner.isOnline()) {
+                    String tName = petData.getExplicitTargetName();
+                    if (tName == null)
+                        tName = "Unknown";
+                    plugin.getLanguageManager().sendReplacements(owner, "event.target_timeout", "pet",
+                            petData.getDisplayName(), "target", tName);
+                }
+                // Return to owner
+                if (owner != null && owner.isOnline()) {
+                    pet.getPathfinder().moveTo(owner.getLocation());
+                }
+                return;
+            }
+            // Target might be unloaded. We wait, but don't update lastSeen.
             return;
         }
+
+        // Target IS valid here
+        targetLastSeen.put(petData.getPetUUID(), System.currentTimeMillis());
 
         if (!(targetEntity instanceof LivingEntity targetLiving))
             return;
@@ -229,6 +332,14 @@ public class PetTargetingTask extends BukkitRunnable {
             if (!validStationTarget)
                 continue;
 
+            // Creeper behavior filtering
+            if (target instanceof Creeper) {
+                CreeperBehavior cb = petData.getCreeperBehavior();
+                if (cb == CreeperBehavior.FLEE || cb == CreeperBehavior.IGNORE || cb == CreeperBehavior.NEUTRAL) {
+                    continue; // Don't auto-target creepers (NEUTRAL requires owner attack)
+                }
+            }
+
             double d = e.getLocation().distanceSquared(station);
             if (d < bestDistSq) {
                 bestDistSq = d;
@@ -309,6 +420,14 @@ public class PetTargetingTask extends BukkitRunnable {
             if (!validAggressiveTarget)
                 continue;
 
+            // Creeper behavior filtering
+            if (target instanceof Creeper) {
+                CreeperBehavior cb = petData.getCreeperBehavior();
+                if (cb == CreeperBehavior.FLEE || cb == CreeperBehavior.IGNORE || cb == CreeperBehavior.NEUTRAL) {
+                    continue; // Don't auto-target creepers (NEUTRAL requires owner attack)
+                }
+            }
+
             double distanceSq = petCreature.getLocation().distanceSquared(target.getLocation());
             if (distanceSq < bestTargetDistanceSq) {
                 bestTarget = target;
@@ -387,5 +506,49 @@ public class PetTargetingTask extends BukkitRunnable {
                 return true;
         }
         return false;
+    }
+
+    /**
+     * Finds a safe floor location at the given X/Z position, searching near the
+     * target Y level.
+     * This prevents pets from teleporting to the surface when fleeing in
+     * caves/buildings.
+     * 
+     * @param destination The target X/Z location
+     * @param targetY     The pet's current Y level to search near
+     * @return A safe standing location, or null if none found
+     */
+    private Location findSafeFloorAt(Location destination, int targetY) {
+        World world = destination.getWorld();
+        if (world == null)
+            return null;
+
+        int x = destination.getBlockX();
+        int z = destination.getBlockZ();
+
+        // Search +/- 5 blocks from the target Y level
+        for (int yOffset = 0; yOffset <= 5; yOffset++) {
+            // Try below first (more natural for fleeing), then above
+            for (int direction : new int[] { -1, 1 }) {
+                int checkY = targetY + (yOffset * direction);
+                if (checkY < world.getMinHeight() || checkY > world.getMaxHeight() - 2)
+                    continue;
+
+                org.bukkit.block.Block footBlock = world.getBlockAt(x, checkY, z);
+                org.bukkit.block.Block headBlock = world.getBlockAt(x, checkY + 1, z);
+                org.bukkit.block.Block groundBlock = world.getBlockAt(x, checkY - 1, z);
+
+                // Check: ground is solid, foot and head blocks are passable (air/non-solid)
+                if (groundBlock.getType().isSolid() &&
+                        !footBlock.getType().isSolid() &&
+                        !headBlock.getType().isSolid() &&
+                        !footBlock.isLiquid() &&
+                        !headBlock.isLiquid()) {
+                    return new Location(world, x + 0.5, checkY, z + 0.5);
+                }
+            }
+        }
+
+        return null; // No safe location found
     }
 }

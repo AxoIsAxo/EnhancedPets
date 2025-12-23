@@ -35,6 +35,16 @@ public class BatchActionsGUI {
         this.mainGui = mainGui;
     }
 
+    private net.kyori.adventure.text.Component toComponent(String text) {
+        return net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection().deserialize(text)
+                .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
+    }
+
+    private java.util.List<net.kyori.adventure.text.Component> toComponentList(java.util.List<String> texts) {
+        return texts == null ? null
+                : texts.stream().map(this::toComponent).collect(java.util.stream.Collectors.toList());
+    }
+
     public void clearSelections(UUID playerId) {
         playerSelections.remove(playerId);
     }
@@ -153,12 +163,12 @@ public class BatchActionsGUI {
 
         ItemStack nextStepButton = new ItemStack(Material.GREEN_WOOL);
         ItemMeta nextMeta = nextStepButton.getItemMeta();
-        nextMeta.setDisplayName(plugin.getLanguageManager().getString("menus.next_step"));
+        nextMeta.displayName(toComponent(plugin.getLanguageManager().getString("menus.next_step")));
         String nextStatus = selectedPets.isEmpty() ? plugin.getLanguageManager().getString("menus.next_step_error")
                 : plugin.getLanguageManager().getString("menus.next_step_success");
-        nextMeta.setLore(plugin.getLanguageManager().getStringListReplacements("menus.next_step_lore",
+        nextMeta.lore(toComponentList(plugin.getLanguageManager().getStringListReplacements("menus.next_step_lore",
                 "count", String.valueOf(selectedPets.size()),
-                "status", nextStatus));
+                "status", nextStatus)));
         nextMeta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, "open_batch_manage");
         nextMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         nextStepButton.setItemMeta(nextMeta);
@@ -176,9 +186,9 @@ public class BatchActionsGUI {
         ItemStack item = new ItemStack(mat);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(ChatColor.YELLOW + formatEntityType(type));
-            meta.setLore(plugin.getLanguageManager().getStringListReplacements("menus.type_lore", "count",
-                    String.valueOf(count)));
+            meta.displayName(toComponent(ChatColor.YELLOW + formatEntityType(type)));
+            meta.lore(toComponentList(plugin.getLanguageManager().getStringListReplacements("menus.type_lore", "count",
+                    String.valueOf(count))));
             meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, "select_pet_type");
             meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, type.name());
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
@@ -194,12 +204,12 @@ public class BatchActionsGUI {
         if (meta != null) {
             String displayName = (petData.isFavorite() ? ChatColor.GOLD + "★ " : "") + ChatColor.AQUA
                     + petData.getDisplayName();
-            meta.setDisplayName(displayName);
+            meta.displayName(toComponent(displayName));
 
             List<String> lore = plugin.getLanguageManager().getStringListReplacements("menus.pet_selection_lore",
                     "status", (isSelected ? plugin.getLanguageManager().getString("menus.status_selected")
                             : plugin.getLanguageManager().getString("menus.status_not_selected")));
-            meta.setLore(lore);
+            meta.lore(toComponentList(lore));
 
             meta.getPersistentDataContainer().set(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING,
                     petData.getPetUUID().toString());
@@ -218,7 +228,7 @@ public class BatchActionsGUI {
     private ItemStack createNavButton(Material material, String name, String action, EntityType petType, int page) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(name);
+        meta.displayName(toComponent(name));
         meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, action);
         if (petType != null) {
             meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, petType.name());
@@ -234,7 +244,7 @@ public class BatchActionsGUI {
     private ItemStack createSelectionButton(Material material, String name, String action, EntityType petType) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(name);
+        meta.displayName(toComponent(name));
         meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, action);
         meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, petType.name());
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);

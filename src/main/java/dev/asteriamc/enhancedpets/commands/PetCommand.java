@@ -2,11 +2,11 @@ package dev.asteriamc.enhancedpets.commands;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
 import dev.asteriamc.enhancedpets.gui.PetManagerGUI;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Entity;
 import org.jetbrains.annotations.NotNull;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -66,8 +66,7 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                 return true;
             }
             if (!player.hasPermission("enhancedpets.admin")) {
-                player.sendMessage(
-                        ChatColor.RED + "✖ " + ChatColor.GRAY + "You do not have permission to use this command.");
+                plugin.getLanguageManager().sendMessage(player, "command.no_permission_msg");
                 return true;
             }
             if (args.length != 1) {
@@ -101,8 +100,7 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
 
             if (sender instanceof Player player) {
                 if (!player.hasPermission("enhancedpets.use")) {
-                    player.sendMessage(
-                            ChatColor.RED + "✖ " + ChatColor.GRAY + "You do not have permission to use this command.");
+                    plugin.getLanguageManager().sendMessage(player, "command.no_permission_msg");
                     return true;
                 }
 
@@ -191,9 +189,27 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
 
                     if (targetUUID != null) {
                         int count = 0;
+                        String targetName = null;
+                        // Get target name before we loop
+                        Entity targetEntity = Bukkit.getEntity(targetUUID);
+                        if (targetEntity != null) {
+                            if (targetEntity instanceof Player p) {
+                                targetName = p.getName();
+                            } else if (targetEntity.getCustomName() != null) {
+                                targetName = targetEntity.getCustomName();
+                            } else {
+                                targetName = targetEntity.getType().name();
+                            }
+                        } else {
+                            // Player target (offline check)
+                            org.bukkit.OfflinePlayer op = Bukkit.getOfflinePlayer(targetUUID);
+                            targetName = op.getName() != null ? op.getName() : "Unknown";
+                        }
+
                         for (dev.asteriamc.enhancedpets.data.PetData pet : plugin.getPetManager()
                                 .getPetsOwnedBy(player.getUniqueId())) {
                             pet.setExplicitTargetUUID(targetUUID);
+                            pet.setExplicitTargetName(targetName);
                             plugin.getPetManager().updatePetData(pet);
                             count++;
                         }
@@ -233,7 +249,7 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
         if (args.length == 0) {
             if (sender instanceof Player player) {
                 if (!player.hasPermission("enhancedpets.use")) {
-                    player.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
+                    plugin.getLanguageManager().sendMessage(player, "command.no_permission_msg");
                     return true;
                 } else {
                     this.guiManager.clearViewerOwnerOverride(player.getUniqueId());
@@ -241,12 +257,11 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                     return true;
                 }
             } else {
-                sender.sendMessage(ChatColor.RED + "The pet GUI can only be opened by a player. Use '/" + label
-                        + " reload' to reload.");
+                plugin.getLanguageManager().sendReplacements(sender, "command.gui_player_only", "label", label);
                 return true;
             }
         } else {
-            sender.sendMessage(ChatColor.RED + "Invalid usage.");
+            plugin.getLanguageManager().sendMessage(sender, "command.invalid_usage");
             return true;
         }
     }

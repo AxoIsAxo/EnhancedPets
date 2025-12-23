@@ -122,9 +122,11 @@ Go beyond "Aggressive Mode" with a manual **lock-on** system:
 
 ### 🐙 Happy Ghast (1.21.6)
 - If your server is 1.21.6+:
-    - Right-click with a Snowball to tame (20% chance each try)
+    - Place a **Dried Ghast** block and keep it **waterlogged** for ~20 minutes (Vanilla Mechanic Unchanged, But we do track the block and its progress wohoo)
+    - When it hatches, the baby Happy Ghast is **automatically registered** as your pet
+    - Track incubation progress in the pet menu (shows remaining time)
     - Manage via the same GUI and batch tools
-    - Ride it and left-click to shoot a fireball (cooldown)
+    - Ride it with a harness once it grows up!
     - Don't torture your Happy Ghasts, Kids
 
 Note on Aggressive mode: Pets in Aggressive mode proactively look for nearby valid targets they can see and that aren't friendly or owned by you. This is not limited to "hostiles only."\

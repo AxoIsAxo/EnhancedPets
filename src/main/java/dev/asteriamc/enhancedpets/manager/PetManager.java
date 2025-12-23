@@ -4,14 +4,18 @@ import dev.asteriamc.enhancedpets.Enhancedpets;
 import dev.asteriamc.enhancedpets.data.PetData;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.LlamaInventory;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.inventory.EntityEquipment;
+import org.bukkit.util.io.BukkitObjectInputStream;
+import org.bukkit.util.io.BukkitObjectOutputStream;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +30,8 @@ public class PetManager {
     private final Map<UUID, BukkitTask> pendingOwnerSaves = new ConcurrentHashMap<>();
 
     private final java.util.Set<UUID> loadedOwners = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    // FIX: Track owners currently loading to prevent race conditions
+    private final java.util.Set<UUID> loadingOwners = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public PetManager(Enhancedpets plugin) {
         this.plugin = plugin;
@@ -130,21 +136,56 @@ public class PetManager {
 
         if (!isOwnerLoaded(ownerUUID)) {
             plugin.getLogger().fine(
-                    "Registering a pet for an offline owner (" + ownerUUID + "). Checking persistent storage first...");
-            List<PetData> offlinePets = storageManager.loadPets(ownerUUID);
-            Optional<PetData> existingData = offlinePets.stream()
-                    .filter(p -> p.getPetUUID().equals(petUUID))
-                    .findFirst();
+                    "Registering a pet for an offline owner (" + ownerUUID + "). Loading data asynchronously...");
 
-            if (existingData.isPresent()) {
-                plugin.debugLog("Found existing persistent data for offline owner's pet " + petUUID
-                        + ". Loading it into cache.");
-                PetData data = existingData.get();
-                this.petDataMap.put(petUUID, data);
+            // Create placeholder entry immediately to prevent duplicate registrations
+            final UUID finalPetUUID = petUUID;
+            final EntityType finalType = pet.getType();
+            final String placeholderName = this.formatEntityType(pet.getType())
+                    + plugin.getLanguageManager().getString("pet.loading_suffix");
 
-                return data;
+            // Check if we already have this pet cached (from previous async load)
+            if (this.petDataMap.containsKey(petUUID)) {
+                return this.petDataMap.get(petUUID);
             }
 
+            // Create temporary placeholder data
+            PetData placeholder = new PetData(petUUID, ownerUUID, pet.getType(), placeholderName);
+            this.petDataMap.put(petUUID, placeholder);
+
+            // CRITICAL: Capture metadata NOW while the entity is still loaded
+            // The async load might complete after the chunk unloads, losing variant data
+            captureMetadata(placeholder, pet);
+
+            // Load the real data asynchronously
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                List<PetData> offlinePets = storageManager.loadPets(ownerUUID);
+                Optional<PetData> existingData = offlinePets.stream()
+                        .filter(p -> p.getPetUUID().equals(finalPetUUID))
+                        .findFirst();
+
+                // Apply the loaded data on the main thread
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    if (existingData.isPresent()) {
+                        plugin.debugLog(
+                                "Async: Loaded existing persistent data for offline owner's pet " + finalPetUUID);
+                        PetData realData = existingData.get();
+                        this.petDataMap.put(finalPetUUID, realData);
+                    } else {
+                        // No existing data - keep the placeholder but give it a proper name
+                        // Metadata was already captured above, so we just update the name
+                        PetData current = this.petDataMap.get(finalPetUUID);
+                        if (current != null && current.getDisplayName()
+                                .contains(plugin.getLanguageManager().getString("pet.loading_suffix"))) {
+                            current.setDisplayName(assignNewDefaultName(finalType));
+                            plugin.debugLog("Async: Created new pet data for offline owner's pet " + finalPetUUID);
+                            queueOwnerSave(ownerUUID);
+                        }
+                    }
+                });
+            });
+
+            return placeholder;
         }
 
         int id = -1;
@@ -158,13 +199,22 @@ public class PetManager {
                 && !customName.equalsIgnoreCase(pet.getType().name().replace('_', ' '))) {
             finalName = ChatColor.stripColor(customName);
         } else if (id != -1) {
-            finalName = this.formatEntityType(pet.getType()) + " #" + id;
+            finalName = plugin.getLanguageManager().getStringReplacements("pet.default_name_format", "type",
+                    this.formatEntityType(pet.getType()), "id", String.valueOf(id));
         } else {
             finalName = this.assignNewDefaultName(pet.getType());
         }
 
         PetData data = new PetData(petUUID, ownerUUID, pet.getType(), finalName);
         this.petDataMap.put(petUUID, data);
+
+        // CRITICAL: Capture metadata immediately on registration to preserve variant
+        // data
+        // (wolf variant, cat type, horse color, etc.) This ensures newborn pets have
+        // their
+        // inherited traits saved right away, not just when they die or are stored.
+        captureMetadata(data, pet);
+
         String ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
         this.plugin.debugLog("Registered new pet: " + finalName + " (Owner: " + ownerName + ")");
         queueOwnerSave(data.getOwnerUUID());
@@ -240,22 +290,13 @@ public class PetManager {
             metadata.put("domestication", ah.getDomestication());
             metadata.put("maxDomestication", ah.getMaxDomestication());
 
-            ItemStack[] inventory = ah.getInventory().getContents();
-            List<Map<String, Object>> inventoryData = new ArrayList<>();
-            for (int i = 0; i < inventory.length; i++) {
-                if (inventory[i] != null && !inventory[i].getType().isAir()) {
-                    Map<String, Object> itemData = new HashMap<>();
-                    itemData.put("slot", i);
-                    itemData.put("item", inventory[i].serialize());
-                    inventoryData.add(itemData);
-                }
-            }
-            if (!inventoryData.isEmpty()) {
-                metadata.put("inventory", inventoryData);
-            }
+            metadata.put("maxDomestication", ah.getMaxDomestication());
 
-            if (ah instanceof ChestedHorse ch) {
-                metadata.put("hasChest", ch.isCarryingChest());
+            // Inventory is now handled by Base64 Full State Capture
+            // We only keep simple visual traits here for the GUI icons.
+
+            if (ah instanceof ChestedHorse ch && ch.isCarryingChest()) {
+                metadata.put("hasChest", true);
             }
         }
 
@@ -307,36 +348,9 @@ public class PetManager {
             metadata.put("tropPattern", t.getPattern().name());
             metadata.put("tropBodyColor", t.getBodyColor().name());
             metadata.put("tropPatternColor", t.getPatternColor().name());
-        } else if (petEntity instanceof MushroomCow m) {
-            metadata.put("moocowVariant", m.getVariant().name());
-        } else if (petEntity instanceof Panda p) {
-            metadata.put("pandaMainGene", p.getMainGene().name());
-            metadata.put("pandaHiddenGene", p.getHiddenGene().name());
-        } else if (petEntity instanceof Fox f) {
-            metadata.put("foxType", f.getFoxType().name());
-            metadata.put("isCrouching", f.isCrouching());
-            metadata.put("isSleeping", f.isSleeping());
-        } else if (petEntity instanceof TropicalFish t) {
-            metadata.put("tropPattern", t.getPattern().name());
-            metadata.put("tropBodyColor", t.getBodyColor().name());
-            metadata.put("tropPatternColor", t.getPatternColor().name());
         }
 
-        Collection<PotionEffect> effects = petEntity.getActivePotionEffects();
-        if (!effects.isEmpty()) {
-            List<Map<String, Object>> effectsData = new ArrayList<>();
-            for (PotionEffect effect : effects) {
-                Map<String, Object> effectData = new HashMap<>();
-                effectData.put("type", effect.getType().getName());
-                effectData.put("duration", effect.getDuration());
-                effectData.put("amplifier", effect.getAmplifier());
-                effectData.put("ambient", effect.isAmbient());
-                effectData.put("particles", effect.hasParticles());
-                effectData.put("icon", effect.hasIcon());
-                effectsData.add(effectData);
-            }
-            metadata.put("potionEffects", effectsData);
-        }
+        // Potion Effects are now handled by Base64 Full State Capture
 
         if (petEntity instanceof Animals animal) {
             metadata.put("loveModeTicks", animal.getLoveModeTicks());
@@ -344,12 +358,33 @@ public class PetManager {
         }
 
         data.setMetadata(metadata);
+
+        // NEW: Full State Capture
+        String fullState = captureFullEntityState(petEntity);
+        if (fullState != null) {
+            data.setBase64EntityState(fullState);
+        }
+
         plugin.debugLog("Captured metadata for dead pet: " + data.getDisplayName());
     }
 
     public void applyMetadata(Entity newPetEntity, PetData petData) {
         if (newPetEntity == null || petData == null)
             return;
+
+        // NEW: Try Base64 Application first
+        if (petData.getBase64EntityState() != null && newPetEntity instanceof LivingEntity le) {
+            boolean success = applyFullEntityState(le, petData.getBase64EntityState());
+            if (success) {
+                // We still might want to ensure Key metadata (like custom name) matches PetData
+                // wrapper if different
+                // But Base64 should hold the truth.
+                plugin.debugLog("Applied Full Base64 State to " + petData.getDisplayName());
+                return;
+            }
+        }
+
+        // FALLBACK: Legacy Metadata Application
         Map<String, Object> metadata = petData.getMetadata();
         if (metadata == null || metadata.isEmpty())
             return;
@@ -663,14 +698,6 @@ public class PetManager {
      * }
      */
 
-    private boolean executeCommand(String command) {
-        try {
-            return Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     public PetData updatePetId(PetData oldData, UUID newId) {
         if (oldData == null || newId == null)
             return null;
@@ -845,7 +872,8 @@ public class PetManager {
         int id = this.storageManager.getNextPetId();
         String typeName = this.formatEntityType(type);
         this.storageManager.incrementAndSaveNextPetId();
-        return typeName + " #" + id;
+        return plugin.getLanguageManager().getStringReplacements("pet.default_name_format", "type", typeName, "id",
+                String.valueOf(id));
     }
 
     private String formatEntityType(EntityType type) {
@@ -862,6 +890,16 @@ public class PetManager {
 
     public boolean isOwnerLoaded(UUID ownerUUID) {
         return loadedOwners.contains(ownerUUID);
+    }
+
+    /**
+     * Checks if the owner's pet data is currently being loaded from disk.
+     * Use this in conjunction with isOwnerLoaded to prevent race conditions.
+     * 
+     * @return true if the owner's data is in the process of loading
+     */
+    public boolean isOwnerLoading(UUID ownerUUID) {
+        return loadingOwners.contains(ownerUUID);
     }
 
     private void mergeSaveOwner(UUID ownerUUID) {
@@ -985,11 +1023,17 @@ public class PetManager {
 
     public void loadPetsForPlayer(UUID ownerUUID) {
         cancelPendingOwnerSave(ownerUUID);
+
+        // FIX: Mark as loading BEFORE async task, not after
+        // This prevents race conditions where GUI opens during load
+        loadingOwners.add(ownerUUID);
+
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             List<PetData> loadedPets = storageManager.loadPets(ownerUUID);
             Bukkit.getScheduler().runTask(plugin, () -> {
                 loadedPets.forEach(pet -> petDataMap.put(pet.getPetUUID(), pet));
-                loadedOwners.add(ownerUUID);
+                loadingOwners.remove(ownerUUID); // Done loading
+                loadedOwners.add(ownerUUID); // Now fully loaded
                 plugin.debugLog("Loaded " + loadedPets.size() + " pets for " + ownerUUID);
             });
         });
@@ -997,15 +1041,40 @@ public class PetManager {
 
     public void unloadPetsForPlayer(UUID ownerUUID) {
         cancelPendingOwnerSave(ownerUUID);
+
+        // FIX: If still loading, wait for it to complete before unloading
+        // to prevent data corruption
+        loadingOwners.remove(ownerUUID);
+
         List<PetData> petsToSave = getPetsOwnedBy(ownerUUID);
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> storageManager.savePets(ownerUUID, petsToSave));
+
+        // FIX: Only save if we have data to save (prevents overwriting with empty)
+        if (!petsToSave.isEmpty()) {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> storageManager.savePets(ownerUUID, petsToSave));
+        }
+
         petsToSave.forEach(pet -> petDataMap.remove(pet.getPetUUID()));
         loadedOwners.remove(ownerUUID);
         plugin.debugLog("Unloaded " + petsToSave.size() + " pets for " + ownerUUID);
     }
 
+    /**
+     * Evicts cached pet data for an offline owner.
+     * This is called when an offline owner's last pet is unloaded from a chunk.
+     * Does NOT save data since offline pets shouldn't have uncommitted changes.
+     */
+    public void evictOfflineOwnerData(UUID ownerUUID) {
+        if (ownerUUID == null || isOwnerLoaded(ownerUUID)) {
+            return; // Don't evict for online owners
+        }
+
+        List<PetData> offlinePets = getPetsOwnedBy(ownerUUID);
+        offlinePets.forEach(pet -> petDataMap.remove(pet.getPetUUID()));
+        plugin.debugLog("Evicted " + offlinePets.size() + " cached pets for offline owner " + ownerUUID);
+    }
+
     public PetData registerNonTameablePet(Entity entity, UUID ownerUUID, String displayName) {
-        if (entity == null || !entity.isValid() || ownerUUID == null) {
+        if (entity == null || entity.isDead() || ownerUUID == null) {
             this.plugin.getLogger().log(Level.WARNING, "Attempted to register an invalid non-tameable pet entity: {0}",
                     entity != null ? entity.getUniqueId() : "null");
             return null;
@@ -1018,13 +1087,24 @@ public class PetManager {
                     : this.assignNewDefaultName(entity.getType());
             PetData data = new PetData(petUUID, ownerUUID, entity.getType(), finalName);
             this.petDataMap.put(petUUID, data);
+
+            // Capture metadata immediately for variant/state data
+            if (entity instanceof LivingEntity le) {
+                captureMetadata(data, le);
+
+                // Enforce persistence for non-tameable pets
+                le.setRemoveWhenFarAway(false);
+            }
+            // Do NOT forcefully name the entity. Let it remain vanilla unless renamed by
+            // user.
+            // entity.setCustomName(...);
+
             String ownerName = Bukkit.getOfflinePlayer(ownerUUID).getName();
             this.plugin.debugLog("Registered new non-tameable pet: " + finalName + " (Owner: " + ownerName + ")");
 
             queueOwnerSave(ownerUUID);
             return data;
         }
-
     }
 
     public void markPetDeadOffline(UUID ownerUUID, UUID petUUID, EntityType type, String displayName,
@@ -1043,8 +1123,10 @@ public class PetManager {
                     if (p.getEntityType() == null)
                         p.setEntityType(type);
                     if (p.getDisplayName() == null || p.getDisplayName().isEmpty()
-                            || "Unknown Pet".equalsIgnoreCase(p.getDisplayName())) {
-                        p.setDisplayName(displayName != null ? displayName : "Unknown Pet");
+                            || plugin.getLanguageManager().getString("pet.unknown_name")
+                                    .equalsIgnoreCase(p.getDisplayName())) {
+                        p.setDisplayName(displayName != null ? displayName
+                                : plugin.getLanguageManager().getString("pet.unknown_name"));
                     }
                     found = true;
                     break;
@@ -1052,7 +1134,7 @@ public class PetManager {
             }
             if (!found) {
                 PetData newData = new PetData(petUUID, ownerUUID, type,
-                        displayName != null ? displayName : "Unknown Pet");
+                        displayName != null ? displayName : plugin.getLanguageManager().getString("pet.unknown_name"));
                 newData.setDead(true);
                 if (metadata != null && !metadata.isEmpty()) {
                     newData.setMetadata(new java.util.HashMap<>(metadata));
@@ -1077,117 +1159,390 @@ public class PetManager {
         });
     }
 
-    private static class CommandOutputCapture implements CommandSender {
-        private final StringBuilder output = new StringBuilder();
+    private String captureFullEntityState(LivingEntity entity) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            BukkitObjectOutputStream boos = new BukkitObjectOutputStream(baos);
 
-        @Override
-        public void sendMessage(String message) {
-            output.append(message).append("\n");
-        }
+            Map<String, Object> state = new HashMap<>();
 
-        @Override
-        public void sendMessage(String[] messages) {
-            for (String message : messages) {
-                sendMessage(message);
+            // 1. Core
+            state.put("health", entity.getHealth());
+            state.put("remainingAir", entity.getRemainingAir());
+            state.put("fallDistance", entity.getFallDistance());
+            state.put("fireTicks", entity.getFireTicks());
+            state.put("customName", entity.getCustomName());
+            state.put("customNameVisible", entity.isCustomNameVisible());
+            state.put("isGlowing", entity.isGlowing());
+            state.put("isInvulnerable", entity.isInvulnerable());
+            state.put("isSilent", entity.isSilent());
+            state.put("hasAI", entity.hasAI());
+            state.put("canPickupItems", entity.getCanPickupItems());
+            state.put("collidable", entity.isCollidable());
+            state.put("gliding", entity.isGliding());
+            state.put("swimming", entity.isSwimming());
+
+            // 2. Attributes
+            Map<String, Double> attributes = new HashMap<>();
+            for (Attribute attr : Attribute.values()) {
+                org.bukkit.attribute.AttributeInstance instance = entity.getAttribute(attr);
+                if (instance != null) {
+                    attributes.put(attr.name(), instance.getBaseValue());
+                }
             }
-        }
+            state.put("attributes", attributes);
 
-        public String getOutput() {
-            return output.toString();
-        }
+            // 3. Potion Effects
+            state.put("potionEffects", new ArrayList<>(entity.getActivePotionEffects()));
 
-        @Override
-        public String getName() {
-            return "VariantCapture";
-        }
+            // 4. Equipment
+            EntityEquipment eq = entity.getEquipment();
+            if (eq != null) {
+                Map<String, Object> equipment = new HashMap<>();
+                if (eq.getHelmet() != null)
+                    equipment.put("helmet", eq.getHelmet().serialize());
+                if (eq.getChestplate() != null)
+                    equipment.put("chestplate", eq.getChestplate().serialize());
+                if (eq.getLeggings() != null)
+                    equipment.put("leggings", eq.getLeggings().serialize());
+                if (eq.getBoots() != null)
+                    equipment.put("boots", eq.getBoots().serialize());
+                if (eq.getItemInMainHand() != null)
+                    equipment.put("mainHand", eq.getItemInMainHand().serialize());
+                if (eq.getItemInOffHand() != null)
+                    equipment.put("offHand", eq.getItemInOffHand().serialize());
+                state.put("equipment", equipment);
+            }
 
-        @Override
-        public boolean isOp() {
-            return true;
-        }
+            // 5. Special Type Data
+            Map<String, Object> typeData = new HashMap<>();
+            if (entity instanceof Ageable a) {
+                typeData.put("age", a.getAge());
+                typeData.put("isAdult", a.isAdult());
+                typeData.put("ageLock", a.getAgeLock());
+            }
+            if (entity instanceof Tameable t) {
+                typeData.put("isTamed", t.isTamed());
+                if (t.getOwner() != null)
+                    typeData.put("ownerUUID", t.getOwner().getUniqueId().toString());
+            }
+            if (entity instanceof Sittable s) {
+                typeData.put("isSitting", s.isSitting());
+            }
+            if (entity instanceof Steerable s) {
+                typeData.put("hasSaddle", s.hasSaddle());
+            }
+            if (entity instanceof ChestedHorse ch) {
+                typeData.put("hasChest", ch.isCarryingChest());
+            }
 
-        @Override
-        public void setOp(boolean value) {
-        }
+            // Variants
+            if (entity instanceof Cat c) {
+                typeData.put("catType", c.getCatType().name());
+                typeData.put("collarColor", c.getCollarColor().name());
+            }
+            if (entity instanceof Wolf w) {
+                typeData.put("collarColor", w.getCollarColor().name());
+                typeData.put("isAngry", w.isAngry());
+                String v = WolfVariantUtil.getVariantName(w);
+                if (v != null)
+                    typeData.put("wolfVariant", v);
+            }
+            if (entity instanceof Parrot p) {
+                typeData.put("parrotVariant", p.getVariant().name());
+            }
+            if (entity instanceof Axolotl a) {
+                typeData.put("axolotlVariant", a.getVariant().name());
+                typeData.put("isPlayingDead", a.isPlayingDead());
+            }
+            if (entity instanceof Rabbit r) {
+                typeData.put("rabbitType", r.getRabbitType().name());
+            }
+            if (entity instanceof Llama l) {
+                typeData.put("llamaColor", l.getColor().name());
+                typeData.put("llamaStrength", l.getStrength());
+                if (l.getInventory().getDecor() != null)
+                    typeData.put("llamaDecor", l.getInventory().getDecor().serialize());
+            }
+            if (entity instanceof Horse h) {
+                typeData.put("horseColor", h.getColor().name());
+                typeData.put("horseStyle", h.getStyle().name());
+            }
+            if (entity instanceof MushroomCow mc) {
+                typeData.put("mooshroomVariant", mc.getVariant().name());
+            }
+            if (entity instanceof Panda p) {
+                typeData.put("pandaMain", p.getMainGene().name());
+                typeData.put("pandaHidden", p.getHiddenGene().name());
+            }
+            if (entity instanceof Fox f) {
+                typeData.put("foxType", f.getFoxType().name());
+                typeData.put("isCrouching", f.isCrouching());
+                typeData.put("isSleeping", f.isSleeping());
+            }
+            if (entity instanceof TropicalFish t) {
+                typeData.put("tropPattern", t.getPattern().name());
+                typeData.put("tropBodyColor", t.getBodyColor().name());
+                typeData.put("tropPatternColor", t.getPatternColor().name());
+            }
+            if (entity instanceof AbstractHorse ah) {
+                typeData.put("domestication", ah.getDomestication());
+                typeData.put("maxDomestication", ah.getMaxDomestication());
+                typeData.put("jumpStrength", ah.getJumpStrength());
 
-        @Override
-        public boolean hasPermission(String name) {
-            return true;
-        }
+                // Inventory
+                List<Map<String, Object>> invItems = new ArrayList<>();
+                ItemStack[] contents = ah.getInventory().getContents();
+                for (int i = 0; i < contents.length; i++) {
+                    if (contents[i] != null && !contents[i].getType().isAir()) {
+                        Map<String, Object> slotMap = new HashMap<>();
+                        slotMap.put("s", i);
+                        slotMap.put("i", contents[i].serialize());
+                        invItems.add(slotMap);
+                    }
+                }
+                typeData.put("horseInventory", invItems);
+            }
 
-        @Override
-        public boolean hasPermission(org.bukkit.permissions.Permission perm) {
-            return true;
-        }
+            state.put("typeData", typeData);
 
-        @Override
-        public boolean isPermissionSet(String name) {
-            return true;
-        }
-
-        @Override
-        public boolean isPermissionSet(org.bukkit.permissions.Permission perm) {
-            return true;
-        }
-
-        @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(org.bukkit.plugin.Plugin plugin) {
+            boos.writeObject(state);
+            boos.close();
+            return Base64.getEncoder().encodeToString(baos.toByteArray());
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error capturing entity state: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
+    }
 
-        @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(org.bukkit.plugin.Plugin plugin, String name,
-                boolean value) {
-            return null;
-        }
+    private boolean applyFullEntityState(LivingEntity entity, String base64) {
+        try {
+            byte[] bytes = Base64.getDecoder().decode(base64);
+            ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+            BukkitObjectInputStream bois = new BukkitObjectInputStream(bais);
 
-        @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(org.bukkit.plugin.Plugin plugin, int ticks) {
-            return null;
-        }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> state = (Map<String, Object>) bois.readObject();
+            bois.close();
 
-        @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(org.bukkit.plugin.Plugin plugin, String name,
-                boolean value, int ticks) {
-            return null;
-        }
+            // 1. Core
+            if (state.containsKey("health"))
+                entity.setHealth(Math.min((double) state.get("health"),
+                        entity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue()));
+            if (state.containsKey("remainingAir"))
+                entity.setRemainingAir((int) state.get("remainingAir"));
+            if (state.containsKey("fallDistance"))
+                entity.setFallDistance(((Number) state.get("fallDistance")).floatValue());
+            if (state.containsKey("fireTicks"))
+                entity.setFireTicks((int) state.get("fireTicks"));
+            if (state.containsKey("customName"))
+                entity.setCustomName((String) state.get("customName"));
+            if (state.containsKey("customNameVisible"))
+                entity.setCustomNameVisible((boolean) state.get("customNameVisible"));
+            if (state.containsKey("isGlowing"))
+                entity.setGlowing((boolean) state.get("isGlowing"));
+            if (state.containsKey("isInvulnerable"))
+                entity.setInvulnerable((boolean) state.get("isInvulnerable"));
+            if (state.containsKey("isSilent"))
+                entity.setSilent((boolean) state.get("isSilent"));
+            if (state.containsKey("hasAI"))
+                entity.setAI((boolean) state.get("hasAI"));
+            if (state.containsKey("canPickupItems"))
+                entity.setCanPickupItems((boolean) state.get("canPickupItems"));
+            if (state.containsKey("collidable"))
+                entity.setCollidable((boolean) state.get("collidable"));
+            if (state.containsKey("gliding"))
+                entity.setGliding((boolean) state.get("gliding"));
+            if (state.containsKey("swimming"))
+                entity.setSwimming((boolean) state.get("swimming"));
 
-        @Override
-        public void removeAttachment(org.bukkit.permissions.PermissionAttachment attachment) {
-        }
+            // 2. Attributes
+            if (state.containsKey("attributes")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Double> attributes = (Map<String, Double>) state.get("attributes");
+                for (Map.Entry<String, Double> entry : attributes.entrySet()) {
+                    org.bukkit.attribute.AttributeInstance instance = entity
+                            .getAttribute(Attribute.valueOf(entry.getKey()));
+                    if (instance != null) {
+                        instance.setBaseValue(entry.getValue());
+                    }
+                }
+                // Re-apply health after attribute update (specifically Max Health)
+                if (state.containsKey("health")) {
+                    double max = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+                    entity.setHealth(Math.min((double) state.get("health"), max));
+                }
+            }
 
-        @Override
-        public void recalculatePermissions() {
-        }
+            // 3. Potion Effects
+            // Clear existing first? Maybe not needed as spawn is fresh.
+            if (state.containsKey("potionEffects")) {
+                @SuppressWarnings("unchecked")
+                List<PotionEffect> effects = (List<PotionEffect>) state.get("potionEffects");
+                for (PotionEffect pe : effects) {
+                    entity.addPotionEffect(pe);
+                }
+            }
 
-        @Override
-        public Set<org.bukkit.permissions.PermissionAttachmentInfo> getEffectivePermissions() {
-            return new HashSet<>();
-        }
+            // 4. Equipment
+            if (state.containsKey("equipment") && entity.getEquipment() != null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> eqMap = (Map<String, Object>) state.get("equipment");
+                if (eqMap.containsKey("helmet"))
+                    entity.getEquipment().setHelmet(ItemStack.deserialize((Map<String, Object>) eqMap.get("helmet")));
+                if (eqMap.containsKey("chestplate"))
+                    entity.getEquipment()
+                            .setChestplate(ItemStack.deserialize((Map<String, Object>) eqMap.get("chestplate")));
+                if (eqMap.containsKey("leggings"))
+                    entity.getEquipment()
+                            .setLeggings(ItemStack.deserialize((Map<String, Object>) eqMap.get("leggings")));
+                if (eqMap.containsKey("boots"))
+                    entity.getEquipment().setBoots(ItemStack.deserialize((Map<String, Object>) eqMap.get("boots")));
+                if (eqMap.containsKey("mainHand"))
+                    entity.getEquipment()
+                            .setItemInMainHand(ItemStack.deserialize((Map<String, Object>) eqMap.get("mainHand")));
+                if (eqMap.containsKey("offHand"))
+                    entity.getEquipment()
+                            .setItemInOffHand(ItemStack.deserialize((Map<String, Object>) eqMap.get("offHand")));
+            }
 
-        @Override
-        public org.bukkit.Server getServer() {
-            return Bukkit.getServer();
-        }
+            // 5. Type Data
+            if (state.containsKey("typeData")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> typeData = (Map<String, Object>) state.get("typeData");
 
-        @Override
-        public void sendMessage(UUID sender, String message) {
-            sendMessage(message);
-        }
+                if (entity instanceof Ageable a) {
+                    if (typeData.containsKey("age"))
+                        a.setAge((int) typeData.get("age"));
+                    if (typeData.containsKey("ageLock"))
+                        a.setAgeLock((boolean) typeData.get("ageLock"));
+                }
+                if (entity instanceof Tameable t) {
+                    if (typeData.containsKey("isTamed"))
+                        t.setTamed((boolean) typeData.get("isTamed"));
+                    // Owner is usually re-applied by PetManager logic, but we can try here if
+                    // needed
+                }
+                if (entity instanceof Sittable s && typeData.containsKey("isSitting")) {
+                    s.setSitting((boolean) typeData.get("isSitting"));
+                }
+                if (entity instanceof Steerable s && typeData.containsKey("hasSaddle")
+                        && (boolean) typeData.get("hasSaddle")) {
+                    // s.setSaddle(true); // Deprecated/Not universal? AbstractHorse uses Inventory
+                }
 
-        @Override
-        public void sendMessage(UUID sender, String[] messages) {
-            sendMessage(messages);
-        }
+                if (entity instanceof ChestedHorse ch && typeData.containsKey("hasChest")) {
+                    ch.setCarryingChest((boolean) typeData.get("hasChest"));
+                }
 
-        @Override
-        public CommandSender.Spigot spigot() {
-            return new CommandSender.Spigot();
-        }
+                if (entity instanceof Cat c) {
+                    if (typeData.containsKey("catType"))
+                        c.setCatType(Cat.Type.valueOf((String) typeData.get("catType")));
+                    if (typeData.containsKey("collarColor"))
+                        c.setCollarColor(DyeColor.valueOf((String) typeData.get("collarColor")));
+                }
+                if (entity instanceof Wolf w) {
+                    if (typeData.containsKey("collarColor"))
+                        w.setCollarColor(DyeColor.valueOf((String) typeData.get("collarColor")));
+                    if (typeData.containsKey("isAngry"))
+                        w.setAngry((boolean) typeData.get("isAngry"));
 
-        @Override
-        public net.kyori.adventure.text.Component name() {
-            return net.kyori.adventure.text.Component.text("VariantCapture");
+                    // "The Delay Trick": Apply variant 2 ticks later to prevent server overwrite on
+                    // spawn
+                    if (typeData.containsKey("wolfVariant")) {
+                        String variant = (String) typeData.get("wolfVariant");
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            WolfVariantUtil.setVariant(w, variant);
+                        }, 2L);
+                    }
+                }
+                if (entity instanceof Parrot p && typeData.containsKey("parrotVariant")) {
+                    p.setVariant(Parrot.Variant.valueOf((String) typeData.get("parrotVariant")));
+                }
+                if (entity instanceof Axolotl a) {
+                    if (typeData.containsKey("axolotlVariant"))
+                        a.setVariant(Axolotl.Variant.valueOf((String) typeData.get("axolotlVariant")));
+                    if (typeData.containsKey("isPlayingDead"))
+                        a.setPlayingDead((boolean) typeData.get("isPlayingDead"));
+                }
+                if (entity instanceof Rabbit r && typeData.containsKey("rabbitType")) {
+                    r.setRabbitType(Rabbit.Type.valueOf((String) typeData.get("rabbitType")));
+                }
+                if (entity instanceof Llama l) {
+                    if (typeData.containsKey("llamaColor"))
+                        l.setColor(Llama.Color.valueOf((String) typeData.get("llamaColor")));
+                    if (typeData.containsKey("llamaStrength"))
+                        l.setStrength((int) typeData.get("llamaStrength"));
+                    if (typeData.containsKey("llamaDecor"))
+                        l.getInventory()
+                                .setDecor(ItemStack.deserialize((Map<String, Object>) typeData.get("llamaDecor")));
+                }
+                if (entity instanceof Horse h) {
+                    if (typeData.containsKey("horseColor"))
+                        h.setColor(Horse.Color.valueOf((String) typeData.get("horseColor")));
+                    if (typeData.containsKey("horseStyle"))
+                        h.setStyle(Horse.Style.valueOf((String) typeData.get("horseStyle")));
+                }
+                if (entity instanceof MushroomCow mc && typeData.containsKey("mooshroomVariant")) {
+                    mc.setVariant(MushroomCow.Variant.valueOf((String) typeData.get("mooshroomVariant")));
+                }
+                if (entity instanceof Panda p) {
+                    if (typeData.containsKey("pandaMain"))
+                        p.setMainGene(Panda.Gene.valueOf((String) typeData.get("pandaMain")));
+                    if (typeData.containsKey("pandaHidden"))
+                        p.setHiddenGene(Panda.Gene.valueOf((String) typeData.get("pandaHidden")));
+                }
+                if (entity instanceof Fox f) {
+                    if (typeData.containsKey("foxType"))
+                        f.setFoxType(Fox.Type.valueOf((String) typeData.get("foxType")));
+                    if (typeData.containsKey("isCrouching"))
+                        f.setCrouching((boolean) typeData.get("isCrouching"));
+                    if (typeData.containsKey("isSleeping"))
+                        f.setSleeping((boolean) typeData.get("isSleeping"));
+                }
+                if (entity instanceof TropicalFish t) {
+                    if (typeData.containsKey("tropPattern"))
+                        t.setPattern(TropicalFish.Pattern.valueOf((String) typeData.get("tropPattern")));
+                    if (typeData.containsKey("tropBodyColor"))
+                        t.setBodyColor(DyeColor.valueOf((String) typeData.get("tropBodyColor")));
+                    if (typeData.containsKey("tropPatternColor"))
+                        t.setPatternColor(DyeColor.valueOf((String) typeData.get("tropPatternColor")));
+                }
+                if (entity instanceof AbstractHorse ah) {
+                    if (typeData.containsKey("domestication"))
+                        ah.setDomestication((int) typeData.get("domestication"));
+                    if (typeData.containsKey("maxDomestication"))
+                        ah.setMaxDomestication((int) typeData.get("maxDomestication"));
+                    if (typeData.containsKey("jumpStrength"))
+                        ah.setJumpStrength((double) typeData.get("jumpStrength"));
+
+                    if (typeData.containsKey("horseInventory")) {
+                        List<Map<String, Object>> invItems = (List<Map<String, Object>>) typeData.get("horseInventory");
+                        for (Map<String, Object> iMap : invItems) {
+                            ah.getInventory().setItem((int) iMap.get("s"),
+                                    ItemStack.deserialize((Map<String, Object>) iMap.get("i")));
+                        }
+                    }
+                }
+            }
+
+            // 6. REVIVAL OVERRIDES (Reset bad states)
+            // We want to restore attributes (like Max Health), but we want the pet to be
+            // ALIVE.
+            // So we force full health, extinguish fire, and reset air.
+            if (entity.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null) {
+                entity.setHealth(entity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+            }
+            entity.setFireTicks(0);
+            entity.setRemainingAir(entity.getMaximumAir());
+            entity.setFallDistance(0);
+
+            return true;
+        } catch (Exception e) {
+            plugin.getLogger().severe("Error restoring entity state from Base64: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
     }
 

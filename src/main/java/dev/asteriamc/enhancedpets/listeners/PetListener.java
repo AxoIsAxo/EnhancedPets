@@ -2,6 +2,7 @@ package dev.asteriamc.enhancedpets.listeners;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
 import dev.asteriamc.enhancedpets.data.BehaviorMode;
+import dev.asteriamc.enhancedpets.data.CreeperBehavior;
 import dev.asteriamc.enhancedpets.data.PetData;
 import dev.asteriamc.enhancedpets.manager.PetManager;
 import org.bukkit.Bukkit;
@@ -13,19 +14,15 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.*;
-import org.bukkit.event.player.PlayerAnimationEvent;
-import org.bukkit.event.player.PlayerAnimationType;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
-import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.event.entity.EntityTeleportEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
@@ -34,8 +31,6 @@ public class PetListener implements Listener {
     private final PetManager petManager;
     private final ShiftClickTracker shiftTracker = new ShiftClickTracker();
     private final Map<UUID, PendingClick> pending = new ConcurrentHashMap<>();
-    private final Map<UUID, Long> ghastMountTime = new HashMap<>();
-    private final Map<UUID, Long> ghastFireballCooldown = new HashMap<>();
 
     public PetListener(Enhancedpets plugin) {
         this.plugin = plugin;
@@ -66,8 +61,6 @@ public class PetListener implements Listener {
 
     public void forgetPlayer(UUID playerId) {
         pending.remove(playerId);
-        ghastMountTime.remove(playerId);
-        ghastFireballCooldown.remove(playerId);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -77,15 +70,18 @@ public class PetListener implements Listener {
         if (this.petManager.isManagedPet(entity.getUniqueId()) && entity instanceof LivingEntity livingEntity) {
             UUID petUUID = entity.getUniqueId();
             PetData data = this.petManager.getPetData(petUUID);
-            String name = data != null ? data.getDisplayName() : "Unknown Pet";
+            String name = data != null ? data.getDisplayName()
+                    : plugin.getLanguageManager().getString("pet.unknown_name");
 
             // Notify Owner
             if (data != null) {
                 Player owner = Bukkit.getPlayer(data.getOwnerUUID());
                 if (owner != null && owner.isOnline()) {
                     org.bukkit.Location loc = entity.getLocation();
-                    String locStr = String.format("x=%d, y=%d, z=%d", loc.getBlockX(), loc.getBlockY(),
-                            loc.getBlockZ());
+                    String locStr = plugin.getLanguageManager().getStringReplacements("misc.location_short",
+                            "x", String.valueOf(loc.getBlockX()),
+                            "y", String.valueOf(loc.getBlockY()),
+                            "z", String.valueOf(loc.getBlockZ()));
                     plugin.getLanguageManager().sendReplacements(owner, "event.death", "pet", name, "location", locStr);
                     owner.playSound(owner.getLocation(), org.bukkit.Sound.ENTITY_WITHER_DEATH, 0.5f, 0.5f);
                 }
@@ -100,12 +96,63 @@ public class PetListener implements Listener {
             String fallbackName = entity.getCustomName();
             if (fallbackName != null)
                 fallbackName = ChatColor.stripColor(fallbackName);
-            if (fallbackName == null || fallbackName.isEmpty())
-                fallbackName = formatEntityType(entity.getType());
+            if (fallbackName == null || fallbackName.isEmpty()) {
+                // Append short UUID for uniqueness
+                String shortId = petUUID.toString().substring(0, 4);
+                fallbackName = plugin.getLanguageManager().getStringReplacements("pet.fallback_name_format", "type",
+                        formatEntityType(entity.getType()), "id", shortId);
+            }
             PetData snapshot = new PetData(petUUID, ownerUUID, entity.getType(), fallbackName);
             this.plugin.getPetManager().captureMetadata(snapshot, le);
             this.plugin.getPetManager().markPetDeadOffline(ownerUUID, petUUID, entity.getType(), fallbackName,
                     snapshot.getMetadata());
+        }
+
+        // Fix: Target Neutralized Logic
+        // If the checking entity was a target of any pet, clear it
+        UUID deadUUID = entity.getUniqueId();
+        for (PetData petData : this.petManager.getAllPetData()) {
+            if (deadUUID.equals(petData.getExplicitTargetUUID())) {
+                petData.setExplicitTargetUUID(null);
+                petData.setStationLocation(null); // Usually stationing clears target, but if target dies, we just reset
+                this.petManager.updatePetData(petData);
+
+                Player owner = Bukkit.getPlayer(petData.getOwnerUUID());
+                if (owner != null && owner.isOnline()) {
+                    this.plugin.getLanguageManager().sendReplacements(owner, "event.target_neutralized", "pet",
+                            petData.getDisplayName(), "target", entity.getName());
+                    owner.playSound(owner.getLocation(), org.bukkit.Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 1.0f);
+                }
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        if (event.getEntity() instanceof Creeper creeper) {
+            UUID creeperUUID = creeper.getUniqueId();
+
+            // Check if this creeper was a target for any pet
+            for (PetData petData : this.petManager.getAllPetData()) {
+                if (creeperUUID.equals(petData.getExplicitTargetUUID())) {
+                    petData.setExplicitTargetUUID(null);
+                    petData.setStationLocation(null);
+                    this.petManager.updatePetData(petData);
+
+                    Player owner = Bukkit.getPlayer(petData.getOwnerUUID());
+                    if (owner != null && owner.isOnline()) {
+                        this.plugin.getLanguageManager().sendReplacements(owner, "event.target_neutralized", "pet",
+                                petData.getDisplayName(), "target", "Creeper");
+                        owner.playSound(owner.getLocation(), org.bukkit.Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 1.0f);
+                    }
+
+                    // Stop the pet from attacking
+                    Entity petEntity = Bukkit.getEntity(petData.getPetUUID());
+                    if (petEntity instanceof Creature c) {
+                        c.setTarget(null);
+                    }
+                }
+            }
         }
     }
 
@@ -140,32 +187,17 @@ public class PetListener implements Listener {
         if (event.getEntity() instanceof Tameable pet && this.petManager.isManagedPet(pet.getUniqueId())) {
             PetData data = this.petManager.getPetData(pet.getUniqueId());
             if (data != null) {
-                // If pet is stationed or has an explicit target, prevent it from teleporting to
-                // owner
-                // Usually owner-teleport happens with Cause.UNKNOWN or sometimes
-                // PLUGIN/ENDER_PEARL depending on server version/fork.
-                // We want to allow teleports if they are explicitly done by our plugin (e.g.
-                // GUI summon).
-                // GUI summon likely uses PLUGIN cause. We might need a flag in PetData or a
-                // metadata tag to allow "Force Teleport".
-                // For now, let's block UNKNOWN which is the common "teleport to owner because
-                // too far" cause in vanilla.
-                // Also block PLUGIN if it's not our explicit force.
-                // Actually, the easiest way to block "teleport to owner" without blocking "GUI
-                // summon" is to check distance to owner?
-                // No, "teleport to owner" happens when owner is far.
-                // Let's assume our GUI summon uses standard teleport(), which is PLUGIN.
-                // Creating a "just teleported" set might be needed if we want to allow GUI
-                // teleports but block others.
-                // But typically, simply blocking UNKNOWN covers vanilla following behavior.
+                // Check for forced teleport (e.g. from GUI summon) - always allow
+                if (pet.hasMetadata("force_teleport")) {
+                    pet.removeMetadata("force_teleport", plugin);
+                    return; // Allow teleport
+                }
 
-                if (data.getStationLocation() != null || data.getExplicitTargetUUID() != null) {
-                    // Check for forced teleport (e.g. from GUI summon)
-                    if (pet.hasMetadata("force_teleport")) {
-                        pet.removeMetadata("force_teleport", plugin);
-                        return; // Allow teleport
-                    }
+                // Stationed pets: Allow teleport - the GUI summon updates station location
+                // We don't block stationed pets here anymore.
 
+                // Explicit Target: Block natural teleport to owner if targeting something
+                if (data.getExplicitTargetUUID() != null) {
                     // Block teleport if changing world OR distance is significant (> 8 blocks)
                     if (event.getFrom().getWorld() != event.getTo().getWorld() ||
                             event.getFrom().distanceSquared(event.getTo()) > 64) {
@@ -193,6 +225,44 @@ public class PetListener implements Listener {
                         this.petManager.registerPet(pet);
                     }
                 }, 1L);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onChunkUnload(ChunkUnloadEvent event) {
+        // Cache eviction for offline owners: if an offline owner's last pet unloads,
+        // clear their cached data
+        Chunk chunk = event.getChunk();
+        Set<UUID> offlineOwnersInChunk = new HashSet<>();
+
+        for (Entity entity : chunk.getEntities()) {
+            if (this.petManager.isManagedPet(entity.getUniqueId())) {
+                PetData data = this.petManager.getPetData(entity.getUniqueId());
+                if (data != null && !this.petManager.isOwnerLoaded(data.getOwnerUUID())) {
+                    offlineOwnersInChunk.add(data.getOwnerUUID());
+                }
+            }
+        }
+
+        // For each offline owner, check if they have any remaining pets in loaded
+        // chunks
+        for (UUID offlineOwner : offlineOwnersInChunk) {
+            boolean hasLoadedPets = false;
+            for (PetData pet : this.petManager.getPetsOwnedBy(offlineOwner)) {
+                Entity petEntity = Bukkit.getEntity(pet.getPetUUID());
+                // If any pet exists and is in a loaded chunk (not in this unloading chunk),
+                // keep data
+                if (petEntity != null && petEntity.isValid() && !petEntity.getLocation().getChunk().equals(chunk)) {
+                    hasLoadedPets = true;
+                    break;
+                }
+            }
+
+            if (!hasLoadedPets) {
+                // Evict all data for this offline owner
+                this.petManager.evictOfflineOwnerData(offlineOwner);
+                this.plugin.debugLog("Evicted cached pet data for offline owner: " + offlineOwner);
             }
         }
     }
@@ -275,14 +345,18 @@ public class PetListener implements Listener {
                             } else if (target instanceof Player && petData.isProtectedFromPlayers()) {
                                 event.setTarget(null);
                                 event.setCancelled(true);
-                            } else if (pet instanceof Wolf && target instanceof Creeper
-                                    && this.plugin.getConfigManager().getDogCreeperBehavior().equals("FLEE")) {
-                                event.setTarget(null);
-                                event.setCancelled(true);
-                            } else {
-                                if (pet instanceof Cat && this.plugin.getConfigManager().isCatsAttackHostiles()
-                                        && target instanceof Monster) {
-
+                            } else if (target instanceof Creeper) {
+                                // Per-pet creeper behavior
+                                CreeperBehavior cb = petData.getCreeperBehavior();
+                                if (cb == CreeperBehavior.FLEE || cb == CreeperBehavior.IGNORE) {
+                                    // Don't target creepers in FLEE or IGNORE mode
+                                    event.setTarget(null);
+                                    event.setCancelled(true);
+                                } else if (cb == CreeperBehavior.NEUTRAL) {
+                                    // NEUTRAL: Only attack if owner attacked the creeper (handled elsewhere)
+                                    // Block automatic targeting here
+                                    event.setTarget(null);
+                                    event.setCancelled(true);
                                 }
                             }
                         }
@@ -300,6 +374,8 @@ public class PetListener implements Listener {
         // Target Selection Mode Handler
         if (damager instanceof Player player) {
             Map<UUID, UUID> awaitingTarget = plugin.getPetGUIListener().getAwaitingTargetSelectionMap();
+            Map<UUID, Boolean> awaitingBatchTarget = plugin.getPetGUIListener().getAwaitingBatchTargetSelectionMap();
+
             if (awaitingTarget.containsKey(player.getUniqueId())) {
                 UUID petUUID = awaitingTarget.get(player.getUniqueId());
                 event.setCancelled(true);
@@ -311,10 +387,6 @@ public class PetListener implements Listener {
                         return;
                     }
 
-                    petData.setExplicitTargetUUID(victim.getUniqueId());
-                    petData.setStationLocation(null);
-                    petManager.updatePetData(petData);
-
                     String tName = victim.getName();
                     if (victim instanceof Player p)
                         tName = p.getName();
@@ -323,6 +395,11 @@ public class PetListener implements Listener {
                     else
                         tName = victim.getType().name();
 
+                    petData.setExplicitTargetUUID(victim.getUniqueId());
+                    petData.setExplicitTargetName(tName);
+                    petData.setStationLocation(null);
+                    petManager.updatePetData(petData);
+
                     plugin.getLanguageManager().sendReplacements(player, "event.target_locked", "pet",
                             petData.getDisplayName(), "target", tName);
 
@@ -330,6 +407,70 @@ public class PetListener implements Listener {
                     awaitingTarget.remove(player.getUniqueId());
                 }
                 return;
+            } else if (awaitingBatchTarget.containsKey(player.getUniqueId())) {
+                event.setCancelled(true);
+                if (!isValidSelectionTarget(victim)) {
+                    plugin.getLanguageManager().sendMessage(player, "event.target_selection_invalid");
+                    return;
+                }
+
+                Set<UUID> selectedPets = plugin.getGuiManager().getBatchActionsGUI().getPlayerSelections()
+                        .get(player.getUniqueId());
+                if (selectedPets != null && !selectedPets.isEmpty()) {
+                    int count = 0;
+                    for (UUID pid : selectedPets) {
+                        PetData pd = petManager.getPetData(pid);
+                        if (pd != null && plugin.getGuiManager().canAttack(pd.getEntityType())) {
+                            String tName = victim.getName();
+                            if (victim instanceof Player p)
+                                tName = p.getName();
+                            else if (victim.getCustomName() != null)
+                                tName = victim.getCustomName();
+                            else
+                                tName = victim.getType().name();
+
+                            pd.setExplicitTargetUUID(victim.getUniqueId());
+                            pd.setExplicitTargetName(tName);
+                            pd.setStationLocation(null);
+                            petManager.updatePetData(pd);
+                            count++;
+                        }
+                    }
+                    String tName = victim.getName();
+                    if (victim instanceof Player p)
+                        tName = p.getName();
+                    else if (victim.getCustomName() != null)
+                        tName = victim.getCustomName();
+                    else
+                        tName = victim.getType().name();
+
+                    plugin.getLanguageManager().sendReplacements(player, "event.batch_target_locked", "count",
+                            String.valueOf(count), "target", tName);
+                    plugin.getGuiManager().openBatchManagementMenu(player, selectedPets);
+                }
+                awaitingBatchTarget.remove(player.getUniqueId());
+                return;
+            }
+
+            // NEUTRAL Creeper Behavior: When player attacks a creeper, pets with NEUTRAL
+            // mode target it
+            if (victim instanceof Creeper creeper) {
+                for (PetData petData : petManager.getPetsOwnedBy(player.getUniqueId())) {
+                    if (petData.getCreeperBehavior() != CreeperBehavior.NEUTRAL)
+                        continue;
+                    if (petData.getMode() == BehaviorMode.PASSIVE)
+                        continue;
+                    if (petData.isDead() || petData.isStored())
+                        continue;
+
+                    Entity petEntity = Bukkit.getEntity(petData.getPetUUID());
+                    if (petEntity instanceof Creature petCreature && petEntity.isValid()) {
+                        // Only trigger if pet is reasonably close (within 32 blocks)
+                        if (petCreature.getLocation().distanceSquared(creeper.getLocation()) <= 1024) {
+                            petCreature.setTarget(creeper);
+                        }
+                    }
+                }
             }
         }
 
@@ -435,25 +576,28 @@ public class PetListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent e) {
         Player player = e.getPlayer();
-        Entity target = e.getRightClicked();
-        ItemStack itemInHand = player.getInventory().getItem(e.getHand());
+        Entity targetEntity = e.getRightClicked();
 
-        if (target != null && target.getType().name().equalsIgnoreCase("HAPPY_GHAST") &&
-                itemInHand != null && itemInHand.getType() == Material.SNOWBALL) {
-            e.setCancelled(true);
-            if (!petManager.isManagedPet(target.getUniqueId())) {
-                if (Math.random() < 0.2) {
-                    String defaultName = petManager.assignNewDefaultName(target.getType());
-                    petManager.registerNonTameablePet(target, player.getUniqueId(), defaultName);
-                    plugin.getLanguageManager().sendMessage(player, "event.ghast_tame_success");
-                } else {
-                    plugin.getLanguageManager().sendMessage(player, "event.ghast_tame_fail");
+        // [Security] Access Control for Managed Pets
+        if (petManager.isManagedPet(targetEntity.getUniqueId())) {
+            PetData pd = petManager.getPetData(targetEntity.getUniqueId());
+            if (pd != null) {
+                boolean isAllowed = pd.isPublicAccess() ||
+                        pd.getOwnerUUID().equals(player.getUniqueId()) ||
+                        pd.isFriendlyPlayer(player.getUniqueId()) ||
+                        player.hasPermission("enhancedpets.admin");
+
+                if (!isAllowed) {
+                    e.setCancelled(true);
+                    // Only send message if they are interacting with a rideable/inventory entity
+                    // to avoid spamming for simple right-clicks on non-interactable pets?
+                    // Actually, right-clicking usually implies intent.
+                    plugin.getLanguageManager().sendMessage(player, "event.ride_denied");
+                    return;
                 }
-            } else {
-                plugin.getLanguageManager().sendMessage(player, "event.ghast_already_tamed");
             }
-            return;
         }
+
         if (!plugin.getConfigManager().isShiftDoubleClickGUI())
             return;
         ItemStack item = e.getHand() == EquipmentSlot.HAND
@@ -469,13 +613,32 @@ public class PetListener implements Listener {
         if (!p.isSneaking())
             return;
 
-        Entity targetEntity = e.getRightClicked();
-        if (!(targetEntity instanceof Tameable pet))
+        // targetEntity is already defined at start of method.
+        // Entity targetEntity = e.getRightClicked();
+
+        // Check if it's a tameable pet OR a managed non-tameable pet (like Happy Ghast)
+        boolean isTameablePet = false;
+        boolean isNonTameableManagedPet = false;
+        UUID petOwnerUUID = null;
+
+        if (targetEntity instanceof Tameable pet && pet.isTamed()) {
+            isTameablePet = true;
+            petOwnerUUID = pet.getOwnerUniqueId();
+        } else if (petManager.isManagedPet(targetEntity.getUniqueId())) {
+            // Non-tameable managed pet (e.g., Happy Ghast)
+            isNonTameableManagedPet = true;
+            var petData = petManager.getPetData(targetEntity.getUniqueId());
+            if (petData != null) {
+                petOwnerUUID = petData.getOwnerUUID();
+            }
+        }
+
+        if (!isTameablePet && !isNonTameableManagedPet)
             return;
-        if (!pet.isTamed())
+        if (petOwnerUUID == null)
             return;
 
-        boolean isOwner = pet.getOwnerUniqueId() != null && pet.getOwnerUniqueId().equals(p.getUniqueId());
+        boolean isOwner = petOwnerUUID.equals(p.getUniqueId());
         boolean adminOverride = !isOwner && p.hasPermission("enhancedpets.admin");
         if (!isOwner && !adminOverride)
             return;
@@ -487,9 +650,10 @@ public class PetListener implements Listener {
 
         if (prev != null && !prev.isExpired() && prev.entity.equals(targetEntity)) {
             pending.remove(uuid);
+            final UUID finalPetOwnerUUID = petOwnerUUID;
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (adminOverride) {
-                    plugin.getGuiManager().setViewerOwnerOverride(p.getUniqueId(), pet.getOwnerUniqueId());
+                    plugin.getGuiManager().setViewerOwnerOverride(p.getUniqueId(), finalPetOwnerUUID);
                 }
                 plugin.getGuiManager().openPetMenu(p, targetEntity.getUniqueId());
             });
@@ -513,42 +677,48 @@ public class PetListener implements Listener {
         }, 5L);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onVehicleEnter(VehicleEnterEvent event) {
-        if (event.getEntered() instanceof Player player
-                && event.getVehicle().getType().name().equalsIgnoreCase("HAPPY_GHAST")) {
-            ghastMountTime.put(player.getUniqueId(), System.currentTimeMillis());
-        }
-    }
-
     @EventHandler(priority = EventPriority.LOW)
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         Map<UUID, UUID> awaitingTarget = plugin.getPetGUIListener().getAwaitingTargetSelectionMap();
+        Map<UUID, Boolean> awaitingBatchTarget = plugin.getPetGUIListener().getAwaitingBatchTargetSelectionMap();
 
-        if (!awaitingTarget.containsKey(player.getUniqueId()))
+        if (!awaitingTarget.containsKey(player.getUniqueId()) && !awaitingBatchTarget.containsKey(player.getUniqueId()))
             return;
 
         if (event.getAction().name().contains("RIGHT_CLICK")) {
+            boolean isBatch = awaitingBatchTarget.containsKey(player.getUniqueId());
             UUID petUUID = awaitingTarget.remove(player.getUniqueId());
-            event.setCancelled(true);
-            player.sendMessage(ChatColor.YELLOW + "Target selection cancelled.");
+            awaitingBatchTarget.remove(player.getUniqueId());
 
-            if (petManager.getPetData(petUUID) != null) {
+            event.setCancelled(true);
+            plugin.getLanguageManager().sendMessage(player, "gui.target_selection_cancelled");
+
+            if (isBatch) {
+                Set<UUID> selectedPets = plugin.getGuiManager().getBatchActionsGUI().getPlayerSelections()
+                        .get(player.getUniqueId());
+                if (selectedPets != null) {
+                    plugin.getGuiManager().openBatchManagementMenu(player, selectedPets);
+                } else {
+                    plugin.getGuiManager().openMainMenu(player);
+                }
+            } else if (petUUID != null && petManager.getPetData(petUUID) != null) {
                 plugin.getGuiManager().openPetMenu(player, petUUID);
             }
         } else if (event.getAction().name().contains("LEFT_CLICK")) {
             event.setCancelled(true);
             // Raytrace because they didn't hit an entity directly (or logic handled here)
 
+            boolean isBatch = awaitingBatchTarget.containsKey(player.getUniqueId());
             UUID petUUID = awaitingTarget.get(player.getUniqueId());
+
             org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceEntities(
                     player.getEyeLocation(),
                     player.getEyeLocation().getDirection(),
                     50,
                     e -> e instanceof LivingEntity
                             && !e.getUniqueId().equals(player.getUniqueId())
-                            && !e.getUniqueId().equals(petUUID));
+                            && (petUUID == null || !e.getUniqueId().equals(petUUID)));
 
             if (result != null && result.getHitEntity() != null) {
                 Entity target = result.getHitEntity();
@@ -558,26 +728,68 @@ public class PetListener implements Listener {
                     return;
                 }
 
-                // Success
-                awaitingTarget.remove(player.getUniqueId());
-                PetData petData = petManager.getPetData(petUUID);
-                if (petData != null) {
-                    petData.setExplicitTargetUUID(target.getUniqueId());
-                    petData.setStationLocation(null);
-                    petManager.updatePetData(petData);
+                if (isBatch) {
+                    awaitingBatchTarget.remove(player.getUniqueId());
+                    Set<UUID> selectedPets = plugin.getGuiManager().getBatchActionsGUI().getPlayerSelections()
+                            .get(player.getUniqueId());
+                    if (selectedPets != null && !selectedPets.isEmpty()) {
+                        int count = 0;
+                        for (UUID pid : selectedPets) {
+                            PetData pd = petManager.getPetData(pid);
+                            if (pd != null && plugin.getGuiManager().canAttack(pd.getEntityType())) {
+                                String tName = target.getName();
+                                if (target instanceof Player p)
+                                    tName = p.getName();
+                                else if (target.getCustomName() != null)
+                                    tName = target.getCustomName();
+                                else
+                                    tName = target.getType().name();
 
-                    String tName = target.getName();
-                    if (target instanceof Player p)
-                        tName = p.getName();
-                    else if (target.getCustomName() != null)
-                        tName = target.getCustomName();
-                    else
-                        tName = target.getType().name();
+                                pd.setExplicitTargetUUID(target.getUniqueId());
+                                pd.setExplicitTargetName(tName);
+                                pd.setStationLocation(null);
+                                petManager.updatePetData(pd);
+                                count++;
+                            }
+                        }
+                        String tName = target.getName();
+                        if (target instanceof Player p)
+                            tName = p.getName();
+                        else if (target.getCustomName() != null)
+                            tName = target.getCustomName();
+                        else
+                            tName = target.getType().name();
 
-                    plugin.getLanguageManager().sendReplacements(player, "event.target_locked", "pet",
-                            petData.getDisplayName(), "target", tName);
+                        plugin.getLanguageManager().sendReplacements(player, "event.batch_target_locked", "count",
+                                String.valueOf(count), "target", tName);
+                        plugin.getGuiManager().openBatchManagementMenu(player, selectedPets);
+                    } else {
+                        plugin.getLanguageManager().sendMessage(player, "gui.batch_no_selection");
+                        plugin.getGuiManager().openMainMenu(player);
+                    }
+                } else {
+                    // Success Single
+                    awaitingTarget.remove(player.getUniqueId());
+                    PetData petData = petManager.getPetData(petUUID);
+                    if (petData != null) {
+                        String tName = target.getName();
+                        if (target instanceof Player p)
+                            tName = p.getName();
+                        else if (target.getCustomName() != null)
+                            tName = target.getCustomName();
+                        else
+                            tName = target.getType().name();
 
-                    plugin.getGuiManager().openPetMenu(player, petUUID);
+                        petData.setExplicitTargetUUID(target.getUniqueId());
+                        petData.setExplicitTargetName(tName);
+                        petData.setStationLocation(null);
+                        petManager.updatePetData(petData);
+
+                        plugin.getLanguageManager().sendReplacements(player, "event.target_locked", "pet",
+                                petData.getDisplayName(), "target", tName);
+
+                        plugin.getGuiManager().openPetMenu(player, petUUID);
+                    }
                 }
             } else {
                 plugin.getLanguageManager().sendMessage(player, "event.target_selection_none");
@@ -621,39 +833,27 @@ public class PetListener implements Listener {
         return false;
     }
 
-    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
-    public void onPlayerAnimation(PlayerAnimationEvent event) {
-        if (event.getAnimationType() != PlayerAnimationType.ARM_SWING)
-            return;
-        Player player = event.getPlayer();
-        if (!plugin.getConfigManager().isHappyGhastFireballEnabled()) {
-            return;
-        }
-        Entity vehicle = player.getVehicle();
-        if (vehicle == null || !vehicle.getType().name().equalsIgnoreCase("HAPPY_GHAST"))
-            return;
-        PetData petData = petManager.getPetData(vehicle.getUniqueId());
-        if (petData == null || !petData.getOwnerUUID().equals(player.getUniqueId()))
-            return;
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onVehicleEnter(VehicleEnterEvent event) {
+        if (event.getEntered() instanceof Player player && event.getVehicle() instanceof LivingEntity vehicle) {
+            if (petManager.isManagedPet(vehicle.getUniqueId())) {
+                PetData petData = petManager.getPetData(vehicle.getUniqueId());
+                if (petData != null) {
+                    // Check access
+                    if (petData.isPublicAccess())
+                        return; // Open to all
+                    if (petData.getOwnerUUID().equals(player.getUniqueId()))
+                        return; // Owner
+                    if (petData.isFriendlyPlayer(player.getUniqueId()))
+                        return; // Friendly (Trusted)
+                    if (player.hasPermission("enhancedpets.admin"))
+                        return; // Admin
 
-        if (ghastMountTime.containsKey(player.getUniqueId())) {
-            long mountTime = ghastMountTime.get(player.getUniqueId());
-            if (System.currentTimeMillis() - mountTime < 1000)
-                return;
-            ghastMountTime.remove(player.getUniqueId());
+                    event.setCancelled(true);
+                    plugin.getLanguageManager().sendMessage(player, "event.ride_denied");
+                }
+            }
         }
-        long now = System.currentTimeMillis();
-        if (ghastFireballCooldown.containsKey(player.getUniqueId())) {
-            long last = ghastFireballCooldown.get(player.getUniqueId());
-            if (now - last < 1000)
-                return;
-        }
-        ghastFireballCooldown.put(player.getUniqueId(), now);
-        Fireball fireball = ((LivingEntity) vehicle).launchProjectile(Fireball.class,
-                player.getLocation().getDirection().normalize().multiply(1.5));
-        fireball.setShooter(player);
-        fireball.setYield(1.5f);
-        fireball.setIsIncendiary(true);
     }
 
     private static final class PendingClick {

@@ -1,14 +1,5 @@
 # Configuration for EnhancedPets
 
-# Should cats actively attack any nearby hostile mob?
-cats-attack-hostiles: false
-
-# How should dogs react to creepers?
-# NEUTRAL: Vanilla behavior (ignore unless owner is attacked by creeper).
-# ATTACK: Dogs will actively target and attack creepers.
-# FLEE: Dogs will try to run away from nearby creepers and won't attack them.
-dog-creeper-behavior: NEUTRAL # Can be NEUTRAL, ATTACK, or FLEE
-
 # Re-enable pre-1.14 Ocelot taming?
 # If true, right-clicking an untamed adult Ocelot with raw Cod or Salmon
 # will consume the fish and transform the Ocelot into a tamed Cat.
@@ -18,14 +9,15 @@ ocelot-taming-legacy-style: false # Default to false to maintain vanilla behavio
 # If true, right-clicking within a window of 250ms on your OWN pet will open the GUI/
 shift-doubleclick-pet-gui: true
 
-# Allow players riding the custom "Happy Ghast" pet to shoot fireballs?
-# If true, players can left-click while riding their ghast to shoot a small fireball.
-happy-ghast-fireball: true
+
 
 # Setup the item for reviving a pet.
 revive-item: NETHER_STAR
 revive-item-amount: 1
 revive-item-require-mainhand: true
+# Cost (in XP levels) to heal 1 HP of a pet. Default is 100 XP points (not levels, points).
+# Wait, the code says "XP" generally refers to total experience points.
+pet-heal-cost: 100
 
 #Require advanced logs? want to check if there's a bug?
 #Enable this to receive tons of helpful messages from the plugin in the server console

@@ -33,13 +33,55 @@ public class LanguageManager {
         }
         langConfig = YamlConfiguration.loadConfiguration(langFile);
 
-        // Load defaults from internal resource if keys are missing
+        // MIGRATION: Fix wrongly-nested pet/misc sections (they should be at root, not
+        // under menus)
+        boolean migrated = false;
+        if (langConfig.contains("menus.pet") && !langConfig.contains("pet")) {
+            // pet section is wrongly nested under menus - move it to root
+            var petSection = langConfig.getConfigurationSection("menus.pet");
+            if (petSection != null) {
+                for (String key : petSection.getKeys(false)) {
+                    langConfig.set("pet." + key, petSection.get(key));
+                }
+                langConfig.set("menus.pet", null);
+                migrated = true;
+                plugin.getLogger().info("Migrated 'pet' section from menus.pet to root level.");
+            }
+        }
+        if (langConfig.contains("menus.misc") && !langConfig.contains("misc")) {
+            var miscSection = langConfig.getConfigurationSection("menus.misc");
+            if (miscSection != null) {
+                for (String key : miscSection.getKeys(false)) {
+                    langConfig.set("misc." + key, miscSection.get(key));
+                }
+                langConfig.set("menus.misc", null);
+                migrated = true;
+                plugin.getLogger().info("Migrated 'misc' section from menus.misc to root level.");
+            }
+        }
+        if (migrated) {
+            save();
+        }
+
+        // Load defaults from internal resource and merge any missing keys
         try (java.io.InputStream defStream = plugin.getResource("language.yml")) {
             if (defStream != null) {
-                langConfig.setDefaults(
-                        YamlConfiguration.loadConfiguration(new InputStreamReader(defStream, StandardCharsets.UTF_8)));
-                langConfig.options().copyDefaults(true);
-                save(); // Save any new defaults to disk
+                FileConfiguration defaults = YamlConfiguration.loadConfiguration(
+                        new InputStreamReader(defStream, StandardCharsets.UTF_8));
+
+                // Explicitly add any missing keys from defaults to user config
+                boolean updated = false;
+                for (String key : defaults.getKeys(true)) {
+                    if (!langConfig.contains(key)) {
+                        langConfig.set(key, defaults.get(key));
+                        updated = true;
+                    }
+                }
+
+                if (updated) {
+                    save();
+                    plugin.getLogger().info("Updated language.yml with new keys from plugin.");
+                }
             }
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "Could not load default language.yml", e);

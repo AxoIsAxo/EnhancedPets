@@ -9,10 +9,22 @@ command:
     - "&c✖ &7Player '&e%player%&7' does not exist."
   reload_no_perm:
     - "&c✖ &7You do not have permission to reload."
+  no_permission_msg: "&c✖ &7You do not have permission to use this command."
+  invalid_usage: "&c✖ &7Invalid usage."
+  gui_player_only: "&c✖ &7The pet GUI can only be opened by a player. Use '/%label% reload' to reload."
+  reload_start: "&e⚠ &7Reloading EnhancedPets configuration..."
+  reload_success: "&a✔ &7Configuration reloaded successfully."
+  reload_data_notice: "&7(Pet data is now stored in JSON files and was not reloaded.)"
+  reload_error: "&c✖ &7An error occurred while reloading the configuration. Check console logs!"
+  reload_task_restarted: "&bℹ &7Pet targeting task restarted."
   station_invalid_radius:
     - "&c✖ &7Invalid radius."
+  event_ride_denied:
+    - "&c✖ &7You are not allowed to ride this pet!"
   station_success:
     - "&a✔ &7Stationed &b%count% &7pets at your location (Radius: &b%radius%&7)."
+  sit_success:
+    - "&a✔ &7Held &b%count% &7pets at your location."
   unstation_success:
     - "&a✔ &7Released &b%count% &7pets from station."
   target_usage:
@@ -170,6 +182,8 @@ gui:
     - "&e✖ &b%pet% &e is no longer stationed."
   target_cleared:
     - "&e⚠ &7Cleared target for &b%pet%&7."
+  creeper_behavior_updated:
+    - "&a✔ &7Set &b%pet%&7's creeper behavior to &e%behavior%&7."
   target_selection_mode:
     - "&6=== Target Selection Mode ==="
     - "&eLeft-Click &f an entity to set as target."
@@ -186,7 +200,16 @@ gui:
   heal_success_full:
     - "&a✔ &7Fully healed &b%pet% &7for &b%xp% XP&7!"
   heal_success_single:
-    - "&a✔ &7Healed &b%pet% &7for 1 HP (&b100 XP&7)."
+    - "&a✔ &7Healed &b%pet% &7for 1 HP (&b%cost% XP&7)."
+  batch_targets_cleared:
+    - "&a✔ &7Cleared targets for &b%count% &7pets."
+  batch_heal_already_full:
+    - "&a✔ &7All selected pets are already healthy!"
+  batch_heal_success:
+    - "&a✔ &7Healed &b%count% &7pets for &b%cost% XP&7."
+  batch_active_targets: "&7Some pets have active targets."
+  batch_all_active_targets: "&7All pets have active targets."
+  batch_common_target: "&7Common Target: &c%target%"
   store_already:
     - "&e⚠ &b%pet% &7is already stored."
   store_nearby_only: "&cPet must be nearby (loaded) to store it!"
@@ -196,6 +219,9 @@ gui:
   standing_state: "standing"
   store_success_prompt:
     - "&6✦ &7Stored &b%pet%&6. Use &f/pet withdraw &6to retrieve it."
+  chat_input_timeout: "&7[EnhancedPets] Chat input timed out after 10 minutes."
+  teleport_warn_distance: "&e⚠ This pet is hunting a target %distance% blocks away. Teleporting will put it far from its target."
+  teleport_warn_confirm: "&eClick teleport again to confirm."
 event:
   death:
     - ""
@@ -205,18 +231,22 @@ event:
     - ""
   target_locked:
     - "&a✔ &7Locked target for &b%pet%&7: &c%target%"
+  target_neutralized:
+    - "&a✔ &7Target neutralized for &b%pet%&7!"
+  target_neutralized_return:
+    - "&a✔ &7[Pet] Target &c%target% &7neutralized. Returning to you."
+  target_timeout:
+    - "&e⚠ &b%pet%&7's target &c%target% &7was lost (Timeout). Returning."
+  batch_target_locked:
+    - "&a✔ &7Target locked for &b%count% &7pets: &c%target%"
   hp_danger:
     - "&4☠ &cDANGER: &b%pet% &cIS NEAR DEATH! (<5%)"
   hp_critical:
     - "&c⚠ &6CRITICAL: &b%pet% &6depends on you! (<10% HP)"
   hp_warning:
     - "&e⚠ &7Warning: &b%pet% &7is below 25% health."
-  ghast_tame_success:
-    - "&a✔ &7You have tamed this Happy Ghast! It is now your pet."
-  ghast_tame_fail:
-    - "&e⚠ &7The Happy Ghast resisted your taming attempt."
-  ghast_already_tamed:
-    - "&bℹ &7This Happy Ghast is already registered as a pet."
+  ghast_placed_tracking: "&aIncubator active! Keep the Dried Ghast waterlogged for ~20m."
+  ghastling_hatched: "&d&lYour Happy Ghast has hatched from the incubator!"
   target_selection_cancelled:
     - "&bℹ &7Target selection cancelled."
   target_selection_invalid:
@@ -248,6 +278,8 @@ chat:
     - "&a✔ &7Added &b%player% &7to &b%pet%&7's friendly list."
   friendly_batch_success:
     - "&a✔ &7Added &b%player% &7to &b%count% &7pets' friendly lists."
+  target_selection_cancelled:
+    - "&e⚠ &7Target selection cancelled."
   target_cancel:
     - "&bℹ &7Cancelled setting target."
   target_set:
@@ -259,8 +291,8 @@ menus:
   target_current: "&7Current: &f%target%"
   target_click_lore:
     - ""
-    - "&eLeft-Click: &7Type Player Name"
-    - "&eRight-Click: &7Target Entity in Sight"
+    - "&eLeft-Click: &7Target Entity in Sight"
+    - "&eRight-Click: &7Type Player Name"
   target_none: "None"
   unloaded_unknown: "&7Unloaded/Unknown"
 
@@ -298,7 +330,7 @@ menus:
   heal_lore:
     - "&cHealth: &f%health% / %max_health%"
     - ""
-    - "&7Cost: &b100 XP &7per HP"
+    - "&7Cost: &b%cost% XP &7per HP"
     - ""
     - "&eLeft-Click: &7Heal 1 HP"
     - "&eShift-Click: &7Full Heal (&b%cost% XP&7)"
@@ -418,6 +450,7 @@ menus:
     - "&7players even when aggressive."
   header_friendly_count: "&a%count% Friendly Player%s%"
   header_baby: "&dBaby"
+  header_breed_cooldown: "&e⏳ Breed Cooldown: &f%time%"
   header_instructions:
     - ""
     - "&eLeft-click: Customize Display"
@@ -436,8 +469,12 @@ menus:
     - "&7Protection: %status%"
   pet_item_lore_friendly:
     - "&a%count% Friendly Player%s%"
+  pet_item_lore_managed:
+    - "&a%count% Trusted Rider%s%"
   pet_item_lore_baby:
     - "&dBaby"
+  pet_item_lore_breed_cooldown:
+    - "&e⏳ Breed Cooldown: &f%time%"
   pet_item_lore_station:
     - ""
     - "&e⚑ STATIONED"
@@ -511,6 +548,16 @@ menus:
     - "&7Clears targets for all selected pets."
   enable_protection: "&aEnable Mutual Non-Aggression"
   disable_protection: "&eDisable Mutual Non-Aggression"
+  batch_heal_title: "&aBatch Heal"
+  batch_heal_lore:
+    - "&7Heal your selected pets."
+    - ""
+    - "&7Cost: &b%cost% XP &7per 1 HP"
+    - ""
+    - "&eLeft-Click &7to heal 1 HP"
+    - "&eShift-Click &7to heal FULL"
+  batch_clear_targets_action: "&eLeft-Click to &cCLEAR &etargets"
+  batch_set_targets_action: "&eRight-Click to set &aNEW &etarget"
   protection_lore:
     - "&7Current: %status%"
     - ""
@@ -599,6 +646,24 @@ menus:
     - "&7Pet attacks nearby hostiles"
     - "&7proactively (if possible)."
 
+  # Creeper Behavior
+  creeper_behavior_title: "&eCreeper Behavior"
+  creeper_behavior_neutral: "&aNeutral"
+  creeper_behavior_flee: "&cFlee"
+  creeper_behavior_ignore: "&8Ignore"
+  creeper_behavior_lore:
+    - "&7Current: %status%"
+    - ""
+    - "&aNeutral: &7Attack if you attack first"
+    - "&cFlee: &7Run away from creepers"
+    - "&8Ignore: &7Completely ignore creepers"
+    - ""
+    - "&eClick to cycle."
+  creeper_behavior_cat_note:
+    - "&b(Creepers naturally flee from cats)"
+  creeper_behavior_updated:
+    - "&a✔ &7Set &b%pet%&7's creeper behavior to &e%behavior%&7."
+
   # Storage UI
   store_pet_title: "&3Store Pets"
   store_pet_item_name: "&eStore &b%name%"
@@ -607,6 +672,22 @@ menus:
     - ""
     - "&eClick to store this pet."
   no_active_pets: "&cNo Active Pets to Store"
+
+  # Riding / Access
+  toggle_access: "&6Public Access"
+  toggle_access_lore:
+    - "&7Current: %status%"
+    - ""
+    - "&7When Public: &aAnyone can ride/interact."
+    - "&7When Private: &cOwner & Friendlies only."
+    - ""
+    - "&eClick to toggle."
+  access_public: "&aPublic"
+  access_private: "&cPrivate (Trusted Only)"
+  manage_trusted_riders: "&aManage Trusted Riders"
+  manage_trusted_riders_lore:
+    - "&7Manage who can ride & access inventory."
+
   withdraw_pet_title: "&3Withdraw Pets"
   withdraw_pet_item_name: "&eWithdraw &b%name%"
   withdraw_pet_item_lore:
@@ -641,6 +722,14 @@ menus:
     - ""
     - "&eClick to toggle all babies"
 
+  # Target Management
+  manage_targets: "&cManage Targets"
+  set_target: "&eSet Target"
+  target_click_lore:
+    - ""
+    - "&eLeft-Click: &7Target Entity in Sight"
+    - "&eRight-Click: &7Type Player Name"
+
   # Targets strings
   target_everything: "Everything"
   target_mobs_players: "Mobs & Players"
@@ -650,3 +739,46 @@ menus:
   target_mobs_only: "Mobs Only"
   target_animals_only: "Animals Only"
   target_custom: "Custom"
+
+  # Adoption
+  adopt_fail_not_leashed: "&cTarget is not leashed by you!"
+  adopt_fail_already_managed: "&cThis entity is already a managed pet!"
+  adopt_success: "&aSuccessfully adopted &e%type%&a!"
+  adopt_fail_generic: "&cFailed to adopt entity."
+
+  # Adoption & Incubator GUI
+  adoption_offer:
+    title: "&d&lAdoption Offer: &f%type%"
+    status: "&7Status: &aLeashed & Ready"
+    click_lore:
+      - ""
+      - "&eClick to adopt this"
+      - "&eentity as your pet!"
+      - ""
+    uuid: "&8UUID: %uuid%..."
+
+  incubator:
+    title: "&d&lIncubating Happy Ghast"
+    block_not_found: "&c⚠ Block not found!"
+    block_not_found_lore: "&7The block may have been broken or transformed."
+    waterlogged_yes: "&a✓ Waterlogged: &fYes"
+    waterlogged_no: "&c✗ Waterlogged: &fNo"
+    waterlogged_warn: "&e⚠ Block must be waterlogged to hatch!"
+    location: "&7Location: &f%world%, %x%, %y%, %z%"
+    time_not_incubating: "&7Time: &cNot incubating"
+    add_water: "&7(Add water to start!)"
+    time_soon: "&a~1 minute remaining!"
+    hatching_soon: "&7(Hatching soon...)"
+    est_time: "&eEst. time: &f~%min%m %sec%s"
+    tick_speed: "&8(randomTickSpeed: %speed%)"
+
+  # End of menus section
+
+pet:
+  loading_suffix: " (Loading...)"
+  default_name_format: "%type% #%id%"
+  fallback_name_format: "%type% (%id%)"
+  unknown_name: "Unknown Pet"
+
+misc:
+  location_short: "x=%x%, y=%y%, z=%z%"
