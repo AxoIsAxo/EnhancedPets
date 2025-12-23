@@ -193,16 +193,18 @@ public class PetListener implements Listener {
                     return; // Allow teleport
                 }
 
-                // Stationed pets: Allow teleport - the GUI summon updates station location
-                // We don't block stationed pets here anymore.
+                // Block vanilla teleport for STATIONED pets
+                // They should stay at their station unless explicitly teleported via GUI
+                if (data.getStationLocation() != null) {
+                    event.setCancelled(true);
+                    return;
+                }
 
-                // Explicit Target: Block natural teleport to owner if targeting something
+                // Block vanilla teleport for pets with EXPLICIT TARGET
+                // They should stay hunting their target unless explicitly teleported via GUI
                 if (data.getExplicitTargetUUID() != null) {
-                    // Block teleport if changing world OR distance is significant (> 8 blocks)
-                    if (event.getFrom().getWorld() != event.getTo().getWorld() ||
-                            event.getFrom().distanceSquared(event.getTo()) > 64) {
-                        event.setCancelled(true);
-                    }
+                    event.setCancelled(true);
+                    return;
                 }
             }
         }
