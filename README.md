@@ -1,12 +1,13 @@
-# ✨ EnhancedPets — Enhanced Pet System ✨
+# EnhancedPets — Enhanced Pet System
 
-![Version](https://img.shields.io/badge/Version-v1.2.0-blue.svg)
+![Version](https://img.shields.io/badge/Version-v1.3.0-blue.svg)
 ![Compatibility](https://img.shields.io/badge/MC%20Version-1.17%E2%80%941.21.x-orange.svg)
 ![Java](https://img.shields.io/badge/Java-17%2B-RED)
 ![Discord Support](https://img.shields.io/discord/b7BVkJ56mR?label=Discord&logo=discord&color=7289DA)
 
 > Enhance the vanilla pet experience now without mental gymnastics!\
 > Wolves, cats, parrots, and more — but smarter, friendlier, and easier to manage.
+> By Easier i mean navigate through 19338798 (Hyperbolic) Menus to manage your pet's very Soul :D :D
 
 Thanks to:
 - cystol
@@ -14,158 +15,254 @@ Thanks to:
 
 ---
 
-## 📚 Overview
+## Trust me bro, you want this.
+### Source: This summary
 
 EnhancedPets makes vanilla pets actually useful and pleasant to manage. Players get a clean GUI, quick actions, and batch tools; admins get simple config, autosaving, and resilient storage.
 
 - Player-friendly: intuitive menus, shift-double right-click to open pet GUI, safe confirmations
-- Admin-friendly: flat JSON storage per player, autosave, quick config reload, migration from legacy config
+- Admin-friendly: flat JSON storage per player, autosave, quick config reload
 - Devs who keep uttering bad jokes periodically at your service (Use the Issues section)
 
 ---
 
-## 💡 Feature Highlights
+## Features 
 
-### 💎 Pet Modes
-### 💎 Pet Modes
-- **Passive, Neutral, Aggressive** — switch instantly from the GUI (Left-Click).
-- **Aggressive Mode Config:** Fine-tune what your pet targets in Aggressive mode!
-    - **Shift-Left-Click:** Toggle Mob targeting.
-    - **Right-Click:** Toggle Animal targeting.
-    - **Shift-Right-Click:** Toggle Player targeting.
-- AKA 'we vibe', 'default', and 'try me.'
+### Pet Modes
+Switch behavior instantly from the GUI:
+- **Passive** — "we vibe"
+- **Neutral** — default vanilla behavior
+- **Aggressive** — "try me"
 
-### 🧭 Teleport & Calm
-- Summon any pet to you
-- Clear targets/anger with a click
+**Aggressive Mode Target Configuration:**
+Each pet remembers what it should target in Aggressive mode. Configure via clicks on the Aggressive button:
+- **Shift-Left-Click:** Toggle Mob targeting
+- **Right-Click:** Toggle Animal targeting
+- **Shift-Right-Click:** Toggle Player targeting
 
-### 🏕️ Stationing System (Guard Duty) — NEW!
-Your pets can now be assigned to **guard a specific location**:
-- **Station Here:** Anchor pets to a location using the Campfire icon in the GUI or `/pet station [radius]`.
-- **Smart Leashing:** Pets will guard the area but automatically return to the station if they wander too far (1.5x the radius).
-- **Customizable Guard Radius:** Cycle the guarding radius between 5m and 25m (Shift-click the station button).
-- **Target Filtering:** Cycle what the pet guards against: Mobs Only, Animals Only, Players Only, Mobs & Animals, Mobs & Players, or Everything (Right-click the station button).
-- **Auto-Sit:** Pets will automatically sit when they return to their station and there are no enemies.
-- **Pre-Configuration:** You can set the radius and targets *before* activating station mode for precise control!
-
-### 🎯 Explicit Targeting System (The Hunt) — NEW!
-Go beyond "Aggressive Mode" with a manual **lock-on** system:
-- **Manual Lock-on:** Use the Crossbow icon in the GUI or `/pet target <playername|mob>` to force your pets to hunt a specific entity.
-- **Target Selection Mode:** Right-click the Target button in the GUI to enter selection mode. Then, simply Left-Click an entity in the world to lock on (or Right-Click to cancel).
-- **Raytracing:** Using the `/pet target mob` command allows you to lock onto a mob just by looking at it.
-- **Enhanced Navigation:** Hunting pets get a **Speed Boost** and use advanced long-range pathfinding (over 20 blocks) to track targets.
-- **Visual Effects:** Hunting pets spawn **Soul Fire Flame** particles to show they are on a "mission."
-- **Kill Confirmation:** The owner gets a notification and a sound effect when their specific target is neutralized, and the pet returns.
-
-### ❤️‍🩹 XP-Based Healing System — NEW!
-- **Healing via XP:** Pets can now be healed using the owner's experience points (Golden Apple icon in the GUI).
-- **Costs:** It costs **100 XP per 1 HP** (half heart).
-- **Bulk Healing:** Shift-clicking the heal button performs a "Full Heal," calculating the total XP cost automatically.
-
-### 📦 Pet Storage (The "Ender-Pet" System) — NEW!
-- **Store:** You can completely despawn a pet and store it "in the cloud" (Ender Chest icon in the GUI or `/pet store`).
-- **Withdraw:** Use `/pet withdraw` or the dedicated GUI to spawn your stored pets back into the world.
-- **Persistence:** All metadata (variants, health, colors, collar color, inventory) is preserved while the pet is stored.
-- Stored pets appear in the main menu with a Chest icon.
-
-### 🏷️ Rename (with validation)
-- Rename via chat (A–Z, 0–9, _ and -), or reset to a clean default if invalid
-- **Reset Mechanic:** Shift-click the "Rename" button to automatically reset to a generated default name (e.g., "Wolf #42").
-- **Automatic Name Sync:** If you rename a pet in-game with a standard Name Tag, the plugin detects this and updates the GUI name to match!
-
-### ⭐ Favorites
-- Pin pets you care about — favorites bubble to the top
-- *You should use this on all your pets lest you a monster*
-
-### 🪑 Sit / Stand
-- Toggle sitting for sittable pets (wolves, cats)
-- More micromanagement for our dear users
-
-### 🌱 Baby Growth Control
-- Pause baby growth (per-pet and batch); protected by a guard task
-
-### 👥 Friendly Players (Whitelist)
-- Add players your pet should never attack; manage per-pet or in batch
-- Apes together stronk
-
-### 🤝 Mutual Non-Aggression
-- Upon enabling this, pets won't attack players (even in aggressive mode)
-- In return, players can't hurt said pets (through direct attacks)
-- **Owner Exception:** Owners can still damage their own protected pets.
-- Peace treaty goes hard! Use this feature irresponsibly... unless dog army
-
-### 🎨 Pet Display Customization
-- **Custom Icons:** Set any item in your hand as your pet's display icon in the GUI! (Shift-click to reset).
-- **16 Name Colors:** Pick a unique color for each pet's display name from a full 16-color picker menu! (Shift-click to reset).
-
-### 🧺 Batch Actions
-### 🧺 Batch Actions
-- Select a type (e.g., Wolves) → pick pets → manage your army:
-    - **Mass Mode:** Set all to Passive, Neutral, or Aggressive.
-    - **Utility:** Mass Sit/Stand, Teleport, or Calm.
-    - **Growth:** Pause/Resume growth for all babies.
-    - **Management:** Toggle Favorites, Mutual Protection, or Manage Friendlies.
-    - **Ownership:** Mass Transfer to another player or Release (Free).
-
-### 🪦 Dead Pet Flow
-- When a pet dies, it stays in the GUI as a skeleton skull
-- Revive with a Nether Star (metadata restoration like collar color, variants, health, etc.), or delete permanently
-
-### 🧭 Scan & Sync
-- Button to scan loaded chunks for your previously unmanaged tamed pets and add them
-
-### 💾 Robust Storage
-- Per-player JSON files; automatic autosave (every 2 minutes); one-time migration from legacy config.yml
-
-### 🔁 Reload Safe
-- `/pets reload` updates config and transparently restarts internal tasks
-
-### 🐙 Happy Ghast (1.21.6)
-- If your server is 1.21.6+:
-    - Place a **Dried Ghast** block and keep it **waterlogged** for ~20 minutes (Vanilla Mechanic Unchanged, But we do track the block and its progress wohoo)
-    - When it hatches, the baby Happy Ghast is **automatically registered** as your pet
-    - Track incubation progress in the pet menu (shows remaining time)
-    - Manage via the same GUI and batch tools
-    - Ride it with a harness once it grows up!
-    - Don't torture your Happy Ghasts, Kids
-
-Note on Aggressive mode: Pets in Aggressive mode proactively look for nearby valid targets they can see and that aren't friendly or owned by you. This is not limited to "hostiles only."\
-Note on other stuff: Passive Aggressive mode is in the works and will be released if you don't fix your lifestyle
+Example: Want your wolf to attack only players and mobs, but leave animals alone? Toggle off Animals. The button shows current targets with colored indicators.
 
 ---
 
-## 🖼️ Screens & UX
-Everything beautifully designed to match aesthetic and usability (Real)
+### Creeper Behavior (Per-Pet)
+Each pet can have its own reaction to those green walking bombs:
+- **Neutral:** Default. Pets only attack creepers if you hit one first (like vanilla wolves).
+- **Flee:** Pets actively run away from creepers within 3 blocks. They won't attack creepers under any circumstance.
+- **Ignore:** Creepers become invisible to your pet's AI. No attacking, no fleeing, just vibes.
 
-- Main menu shows all your pets, sorted by favorites → type → name/ID
-- Per-pet management screen with quick actions and safety confirmations
-- Batch menus for type selection, pet selection, and mass-management
+Access via the Creeper Head button in the pet menu. Cycles through: Neutral > Flee > Ignore > Neutral...
 
-(Images coming soon!) (Maybe GIFs)
-
----
-
-## ⚙️ Installation
-
-Prebuilt releases
-1. Download the latest enhancedpets.jar
-2. Drop it into plugins/
-3. Restart your server
-
-Build from source (Maven)
-1. git clone https://github.com/AxoIsAxo/EnhancedPets.git
-2. cd EnhancedPets
-3. mvn clean install
-4. Copy target/enhancedpets-xxx.jar to plugins/
-5. Restart your server
-
-Requirements
-- Java 17+
-- Spigot/Paper 1.17–1.21.x (some new features—like wolf variants—are best on 1.21+)
+*(Note: Cats are inherently feared by creepers in vanilla, so Flee has no additional effect on them. They're already winning.)*
 
 ---
 
-## ⌨️ Commands & Permissions
+### Leash Adoption (Non-Tameable Pets)
+Got a cool mob on a leash? Make it yours.
+
+When you open the pet menu, any leashed non-tameable entity near you appears as an "adoption offer." Click to register it as your pet. Works for:
+- Llamas (non-trader)
+- Any leashaeable mob that isn't already tameable
+
+The leash stays, but now you can manage them through the GUI like any other pet. Finally, a use for that random cow you've been dragging around for 3000 blocks.
+
+---
+
+### Public Access (Rideable Pets)
+For horses, llamas, striders, Happy Ghasts and other rideable friends:
+
+- **Public Access ON:** Anyone can ride and access the inventory. Party bus mode.
+- **Public Access OFF:** Only you and your trusted players (from Friendly list) can interact. VIP access only.
+
+Toggle via the Eye of Ender button in the pet menu. Unauthorized riders get denied with a message.
+
+---
+
+### Stationing System (Guard Duty) (This is the official good boy feature)
+Anchor pets to guard a specific location:
+
+**How it works:**
+1. Left-click the Campfire button to station the pet at your current location
+2. Or use `/pet station [radius]` to station all your pets
+
+**Configuration (can be set BEFORE or AFTER stationing):**
+- **Shift-click:** Cycle guard radius (5m, 10m, 15m, 20m, 25m)
+- **Right-click:** Cycle target types through 7 combinations:
+  - Mobs Only
+  - Animals Only
+  - Players Only
+  - Mobs & Players
+  - Mobs & Animals
+  - Players & Animals
+  - Everything
+
+**Behavior:**
+- Pets attack valid targets within the station radius
+- If pets wander past 1.5x the radius, they auto-return
+- When no targets exist, pets sit at the station point
+- Summoning a stationed pet updates the station to your new location
+
+---
+
+### Explicit Targeting (The Hunt) (A.K.A. The Assassin Mode)
+Go beyond Aggressive mode with manual lock-on:
+
+**Single Pet:**
+- Left-click Crossbow button: Enter target selection mode. Left-click an entity in the world to lock on, right-click to cancel.
+- Right-click Crossbow button: Chat prompt to type a player name.
+- If a target is already set, clicking clears it.
+
+**Command:** `/pet target <playername|mob>` — locks all your pets onto a target. Use "mob" to raytrace whatever you're looking at.
+
+**Hunting Behavior:**
+- Pets get Speed II boost when target is >20 blocks away
+- Soul Fire Flame particles spawn on hunting pets (so you know they're on the job)
+- Long-range pathfinding for distant targets
+- Kill confirmation: Sound + message when target is neutralized
+- 30-second timeout if target is unloaded/unreachable
+
+Your personal wolf hit squad, essentially.
+
+---
+
+### XP-Based Healing
+Heal pets using your experience points:
+
+- **Click:** Heal 1 HP (cost: configurable, default 100 XP points per HP)
+- **Shift-Click:** Full heal (calculates total cost automatically)
+
+Indicated by the Golden Apple button. If you're broke on XP, the game tells you how much more you need.
+
+---
+
+### Pet Storage (Ender-Pet System)
+Despawn pets and store them "in the cloud":
+
+- **Store:** Ender Chest button in pet menu, or `/pet store`
+- **Withdraw:** `/pet withdraw` opens a GUI of stored pets
+
+Stored pets appear in the main menu with a chest icon overlay. All metadata (variants, health, colors, collar color, inventory for horses) is preserved.
+
+Perfect for keeping your favorite wolf safe while you explore the End.
+
+---
+
+### Rename (with validation)
+- Click Name Tag button: Type new name in chat (A–Z, 0–9, _, -)
+- Shift-Click: Reset to default generated name (e.g., "Wolf #42")
+
+If you rename a pet in-game with a standard Name Tag, the plugin auto-syncs the GUI name.
+
+---
+
+### Favorites
+Star button toggles favorite status. Favorites bubble to the top of the list.
+
+*You should use this on all your pets lest you a monster*
+
+---
+
+### Sit / Stand
+Feather button toggles sitting for sittable pets (wolves, cats, etc.)
+
+More micromanagement for our dear users.
+
+---
+
+### Baby Growth Control
+Cake button pauses/resumes baby growth. A background task enforces this even across restarts.
+
+---
+
+### Friendly Players (Whitelist)
+Add players your pet should never attack, even in Aggressive mode. Per-pet or batch.
+
+Cuz apes together stronk.
+
+---
+
+### Mutual Non-Aggression (Protection Toggle)
+Shield button. When enabled:
+- Pet won't attack players (even in Aggressive mode)
+- Players can't hurt the pet (direct attacks blocked)
+- Owner exception: You can still damage your own protected pets
+
+Peace treaty goes hard! Use this feature irresponsibly... unless dog army.
+
+---
+
+### Pet Display Customization
+- **Icon:** Hold any item in main hand, click the GUI item to set it as the pet's display icon. Shift-click to reset.
+- **Color:** Pick from 16 colors for the pet's display name. Shift-click to reset.
+
+---
+
+### Batch Actions
+Select pets by type, then manage your army:
+
+1. Open Batch menu (Hopper button in main menu)
+2. Pick a pet type (e.g., Wolves)
+3. Select/deselect individual pets or use Select All/None
+4. Open batch management
+
+**Available Batch Actions:**
+- **Modes:** Set all to Passive/Neutral/Aggressive (with same click-config as single pet)
+- **Sit/Stand:** Toggle sitting state
+- **Teleport:** Summon all to you
+- **Calm:** Clear targets and anger
+- **Growth Pause:** Pause/resume baby growth
+- **Favorites:** Mark/unmark all as favorites
+- **Protection:** Toggle mutual protection
+- **Friendly Players:** Add/remove from whitelist across all selected
+- **Targeting:** Enter target selection mode for batch
+- **Transfer:** Transfer all selected to another player
+- **Free:** Release all selected (with confirmation)
+- **Heal:** XP-heal all selected (click = 1HP each, shift = full heal all)
+- **Remove Dead:** Permanently delete all dead pets of the selected type
+
+---
+
+### Dead Pet Necromancy (not literal)
+When a pet dies:
+- Shows in GUI as a skull icon
+- Click for options: Revive (costs configurable item) or Remove permanently
+- Revival restores metadata: collar color, variants, health, inventory
+
+Death notifications include sound and location info.
+
+---
+
+### Scan & Sync
+Compass button scans loaded chunks for your unmanaged tamed pets and registers them.
+
+Helps if you tamed animals before installing the plugin.
+
+---
+
+### Happy Ghast (1.21.6+)
+If your server is 1.21.6+:
+- Place a Dried Ghast block and keep it waterlogged (~20 minutes vanilla mechanic)
+- The plugin tracks the block and its placer
+- When it hatches, the baby Happy Ghast is auto-registered as your pet
+- Track incubation progress in the main menu (special item shows remaining time)
+- Manage via the same GUI and batch tools
+- Rideable once grown
+
+Don't torture your Happy Ghasts, Kids.
+- Yes we do not allow you to use happy ghasts are fireball throwing machines cuz its AGAINST the LLLLLLLLLLLore
+
+---
+
+### HP Notifications
+When your pet takes damage:
+- **25% HP:** Warning message
+- **10% HP:** Critical warning + ping sound
+- **5% HP:** DANGER + louder ping
+
+You'll know when to panic.
+
+---
+
+## Commands & Permissions
 
 ### Commands
 **Aliases:** `/pet`, `/mypets`, `/ep`
@@ -190,121 +287,100 @@ Requirements
 | `enhancedpets.admin` | Use `/petadmin` and Shift+Double Right-Click any pet to manage it. | `op` |
 
 ### Quick Tips
-- **Shift + double right-click** your own tamed pet to open its GUI instantly (configurable).
-- **Admins** with `enhancedpets.admin` can Shift + double right-click *any* pet on the server to manage it.
+- **Shift + double right-click** your own tamed pet to open its GUI instantly (configurable)
+- **Admins** with `enhancedpets.admin` can Shift + double right-click *any* pet on the server to manage it
 
 ---
 
-## 🛠️ Config
+## Config
 
-Default config.yml
+**Default `config.yml`**
 
 ```yml
 # Configuration for EnhancedPets
 
-# Should cats actively attack any nearby hostile mob?
-cats-attack-hostiles: false
-
-# How should dogs react to creepers?
-# NEUTRAL: Vanilla behavior (ignore unless owner is attacked by creeper).
-# ATTACK: Dogs will actively target and attack creepers.
-# FLEE: Dogs will try to run away from nearby creepers and won't attack them.
-dog-creeper-behavior: NEUTRAL # Can be NEUTRAL, ATTACK, or FLEE
-
 # Re-enable pre-1.14 Ocelot taming?
 # If true, right-clicking an untamed adult Ocelot with raw Cod or Salmon
 # will consume the fish and transform the Ocelot into a tamed Cat.
-ocelot-taming-legacy-style: false # Default to false to maintain vanilla behavior
+ocelot-taming-legacy-style: false
 
-# NEW: Shift double right-click any pet you own to open its GUI?
-# If true, right-clicking within a window of 250ms on your OWN pet will open the GUI/
+# Shift double right-click any pet you own to open its GUI?
 shift-doubleclick-pet-gui: true
 
-# Allow players riding the custom "Happy Ghast" pet to shoot fireballs?
-# If true, players can left-click while riding their ghast to shoot a small fireball.
-happy-ghast-fireball: true
-
-# Setup the item for reviving a pet.
+# Item required to revive dead pets
 revive-item: NETHER_STAR
+revive-item-amount: 1
+revive-item-require-mainhand: true
 
-#Require advanced logs? want to check if there's a bug?
-#Enable this to receive tons of helpful messages from the plugin in the server console
+# Cost (in XP points, not levels) to heal 1 HP of a pet
+pet-heal-cost: 100
+
+# Enable debug logs in console
 debug: false
 
 #END OF CONFIGURATION
 ```
 
-Notes
-- `/pets reload` reloads configuration (pet data is stored in JSON and not reloaded)
-- On enable, the plugin will migrate any old inline "pet-data" from config.yml into playerdata/*.json (one-time)
+**Notes:**
+- Creeper behavior is configured **per-pet** via the GUI, not globally.
+- Per-player JSON storage in `playerdata/<uuid>.json`.
+- Autosave runs every 2 minutes.
 
 ---
 
-## 🔍 Data & Autosave
-Meticulously Tested to ensure loss only where no one is looking (jk its pretty good)
+## What gets restored on revive/withdraw?
 
-- Each player's pets are saved in plugins/EnhancedPets/playerdata/<player-uuid>.json
-- Autosave runs asynchronously every 2 minutes
-- Saves are also debounced per owner when changes happen (quick, safe, and grouped)
-
----
-
-## 🧪 What gets restored on revive/withdraw?
-
-Everything that can be seen of course, The pets are brought back to life in their prior glory.
-When a dead pet is revived or a stored pet is withdrawn, EnhancedPets restores everything it can!:
+When a dead pet is revived or a stored pet is withdrawn, everything possible is restored:
 
 <details>
   <summary><b>Click at your own discretion: may cause questions about nature of existence and recreation leading to lack of authenticity</b></summary>
 
-- **Age and sitting state**
-- **Custom name + visibility**
-- **Health / max health**
-- **Wolf collar color + 1.21+ variant (via registry)**
-- **Cat type, collar color, lying down**
-- **Parrot variant**
-- **Major horse/llama traits (movement, color, strength, inventory, saddle, armor, chest, etc.)**
-- **Axolotl, Rabbit, Sheep, Frog variants**
-- **Fox type**
-- **And more!**
+- Age and sitting state
+- Custom name + visibility
+- Health / max health
+- Wolf collar color + 1.21+ variant
+- Cat type, collar color, lying down
+- Parrot variant
+- Horse/llama traits (movement, color, strength, inventory, saddle, armor, chest, etc.)
+- Axolotl, Rabbit, Sheep, Frog variants
+- Fox type
+- And more!
 
 Should you find an attribute you feel is yet to be etched in our restoration list, I humbly request you to let us know post-haste
 </details>
 
-
-
 ---
 
-## 🧠 Tips for Players
+## Tips for Players
 
-- Use **Favorites (★)** to quickly pin your main companions to the TOP
+- Use **Favorites** to pin main companions to top
 - Use **Batch Actions** to handle big stables in seconds
-- Use **Station** to set up guard dogs at your base entrance!
-- Use **Target** to send your wolf army after a specific enemy!
-- Use **Store/Withdraw** to keep your pets safe when exploring dangerous areas.
-- "Scan for My Pets" helps if you tamed animals before installing the plugin (Use every 10 seconds to prove OCD (medically certified))
-- Reviving costs a **Nether Star** — plan accordingly!
-- Healing costs **XP** — a full heal on a damaged pet can be expensive!
+- Use **Station** to set up guard dogs at your base entrance
+- Use **Target** to send your wolf army after a specific enemy
+- Use **Store/Withdraw** to keep pets safe when exploring dangerous areas
+- "Scan for My Pets" helps if you tamed animals before installing the plugin (use every 10 seconds to prove OCD)
+- Reviving costs a Nether Star by default — plan accordingly
+- Healing costs XP — a full heal on a damaged pet can be expensive
 
 ---
 
-## ⚠️ Known Notes
+## Known Notes
 
-- Aggressive mode defaults to attacking all hostile mobs, but can be configured to target Players, Animals, or Mobs specifically via the GUI.
-- The config option "ocelot-taming-legacy-style" is reserved for future expansion
+- Aggressive mode proactively targets valid entities. Configure what counts as "valid" via the target toggles.
 - Station and Target modes are mutually exclusive. Setting a target clears the station, and vice-versa.
+- The `ocelot-taming-legacy-style` option re-enables pre-1.14 style Ocelot taming.
 
 ---
 
-## 🤝 Support
+## Support
 
 - Questions, ideas, or need help? Join our Discord: https://discord.gg/b7BVkJ56mR (WE NEED YOU PEEPS)
 
 ---
 
-## 🙌 Credits
+## Credits
 
 - Code & design: cystol, AxoIsAxo
-- Community feedback and testing: You 💙
+- Community feedback and testing: You
 
 Bring your pets to life — slightly more effectively than vanilla.
