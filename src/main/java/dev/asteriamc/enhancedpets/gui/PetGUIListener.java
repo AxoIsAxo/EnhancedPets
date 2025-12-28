@@ -305,7 +305,8 @@ public class PetGUIListener implements Listener {
                     return;
                 }
 
-                if (petManager.isManagedPet(petUUID)) {
+                // Check if already managed by ANY player (online or offline)
+                if (petManager.isPetRegisteredAnywhere(petUUID)) {
                     plugin.getLanguageManager().sendMessage(player, "menus.adopt_fail_already_managed");
                     guiManager.openMainMenu(player);
                     return;
@@ -941,8 +942,34 @@ public class PetGUIListener implements Listener {
             case "rename_pet_prompt" -> {
                 if (event.isShiftClick()) {
                     String oldName = petData.getDisplayName();
-                    // Generate default name for GUI/Data (e.g. "Happy Ghast #123")
-                    String newDefaultName = petManager.assignNewDefaultName(petData.getEntityType());
+                    
+                    // Use the stored initial ID (priority), fallback to parsing from name for legacy pets
+                    int petId = petData.getInitialPetId();
+                    
+                    if (petId <= 0) {
+                        // Legacy migration: try to extract ID from the old name (e.g., "Wolf #42" -> 42)
+                        int hashIdx = oldName.lastIndexOf('#');
+                        if (hashIdx != -1 && hashIdx < oldName.length() - 1) {
+                            try {
+                                petId = Integer.parseInt(oldName.substring(hashIdx + 1).trim());
+                                // Save the extracted ID for future use
+                                petData.setInitialPetId(petId);
+                            } catch (NumberFormatException ignored) {
+                            }
+                        }
+                    }
+                    
+                    String newDefaultName;
+                    if (petId > 0) {
+                        // Use the permanent ID
+                        newDefaultName = petManager.assignDefaultNameWithId(petData.getEntityType(), petId);
+                    } else {
+                        // Last resort: generate a new ID and store it
+                        petId = petManager.getNextPetIdAndIncrement();
+                        petData.setInitialPetId(petId);
+                        newDefaultName = petManager.assignDefaultNameWithId(petData.getEntityType(), petId);
+                    }
+                    
                     petData.setDisplayName(newDefaultName);
 
                     // Reset Entity name to null (Vanilla behavior)
@@ -1390,6 +1417,36 @@ public class PetGUIListener implements Listener {
                 player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ENDER_CHEST_CLOSE, 1.0f, 1.0f);
                 player.closeInventory();
                 guiManager.openMainMenu(player);
+            }
+            case "withdraw_pet" -> {
+                if (!petData.isStored()) {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.withdraw_not_stored", "pet",
+                            petData.getDisplayName());
+                    return;
+                }
+
+                // Respawn the pet
+                LivingEntity newPet = (LivingEntity) player.getWorld().spawnEntity(
+                        player.getLocation(), petData.getEntityType());
+
+                // Update Pet Data with new UUID
+                PetData newData = petManager.updatePetId(petData, newPet.getUniqueId());
+
+                if (newPet instanceof Tameable t) {
+                    org.bukkit.OfflinePlayer actualOwner = Bukkit.getOfflinePlayer(newData.getOwnerUUID());
+                    t.setOwner(actualOwner);
+                    t.setTamed(true);
+                }
+
+                petManager.applyMetadata(newPet, newData);
+
+                newData.setStored(false);
+                petManager.updatePetData(newData);
+
+                plugin.getLanguageManager().sendReplacements(player, "gui.withdraw_success", "pet",
+                        newData.getDisplayName());
+                player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ENDER_CHEST_OPEN, 1.0f, 1.0f);
+                guiManager.openPetMenu(player, newData.getPetUUID());
             }
         }
     }

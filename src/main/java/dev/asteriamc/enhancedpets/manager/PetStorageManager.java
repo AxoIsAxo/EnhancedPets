@@ -176,6 +176,50 @@ public class PetStorageManager {
     }
 
 
+    /**
+     * Checks if a pet UUID is registered to ANY player (online or offline).
+     * Scans all player storage files. This is used to prevent stealing pets via leash adoption.
+     * 
+     * @param petUUID The pet's UUID to check
+     * @return true if the pet is registered to any player
+     */
+    public boolean isPetRegisteredGlobally(UUID petUUID) {
+        if (petUUID == null) return false;
+        
+        String targetUUID = petUUID.toString();
+        File[] playerFiles = playerDataFolder.listFiles((dir, name) -> name.endsWith(".json"));
+        
+        if (playerFiles == null) return false;
+        
+        for (File playerFile : playerFiles) {
+            try {
+                String json = Files.readString(playerFile.toPath());
+                // Quick string check before full parse (optimization)
+                if (!json.contains(targetUUID)) {
+                    continue;
+                }
+                
+                // Full parse to confirm
+                Type listType = new TypeToken<ArrayList<HashMap<String, Object>>>() {}.getType();
+                List<Map<String, Object>> serializedPets = gson.fromJson(json, listType);
+                
+                if (serializedPets == null) continue;
+                
+                for (Map<String, Object> petMap : serializedPets) {
+                    if (petMap.containsKey("petUUID") && targetUUID.equals(petMap.get("petUUID"))) {
+                        return true;
+                    }
+                }
+            } catch (IOException | com.google.gson.JsonSyntaxException e) {
+                // Skip corrupted files
+                plugin.getLogger().fine("Skipping file during global pet check: " + playerFile.getName());
+            }
+        }
+        
+        return false;
+    }
+
+
     public int getNextPetId() {
         return this.dataConfig.getInt("next-pet-id", 1);
     }

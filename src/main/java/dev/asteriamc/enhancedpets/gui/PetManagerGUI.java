@@ -212,7 +212,7 @@ public class PetManagerGUI {
                     .map(e -> (LivingEntity) e)
                     .filter(LivingEntity::isLeashed)
                     .filter(e -> Objects.equals(e.getLeashHolder(), player))
-                    .filter(e -> !this.petManager.isManagedPet(e.getUniqueId()))
+                    .filter(e -> !this.petManager.isPetRegisteredAnywhere(e.getUniqueId()))
                     .filter(e -> !(e instanceof Tameable))
                     .sorted(Comparator.comparingDouble(e -> e.getLocation().distanceSquared(player.getLocation())))
                     .forEach(le -> allItems.add(this.createAdoptionItem(le)));
@@ -1359,14 +1359,20 @@ public class PetManagerGUI {
                         this.createActionButton(Material.ARROW,
                                 this.plugin.getLanguageManager().getString("menus.back_to_list"), "back_to_main", null,
                                 null));
+                // Store/Withdraw toggle button
+                boolean isStored = petData.isStored();
                 gui.setItem(
                         bottomRowStart + 6,
                         this.createActionButton(
-                                Material.ENDER_CHEST,
-                                this.plugin.getLanguageManager().getString("menus.store_pet"),
-                                "store_pet",
+                                isStored ? Material.CHEST : Material.ENDER_CHEST,
+                                isStored
+                                        ? this.plugin.getLanguageManager().getString("menus.withdraw_pet")
+                                        : this.plugin.getLanguageManager().getString("menus.store_pet"),
+                                isStored ? "withdraw_pet" : "store_pet",
                                 petData.getPetUUID(),
-                                this.plugin.getLanguageManager().getStringList("menus.store_lore")));
+                                isStored
+                                        ? this.plugin.getLanguageManager().getStringList("menus.withdraw_lore")
+                                        : this.plugin.getLanguageManager().getStringList("menus.store_lore")));
                 gui.setItem(
                         bottomRowStart + 8,
                         this.createActionButton(

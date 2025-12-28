@@ -64,6 +64,8 @@ gui:
     - "&c✖ &7This pet is not in storage."
   withdraw_success:
     - "&a✔ &7Withdrew &b%pet%&7!"
+  withdraw_not_stored:
+    - "&e⚠ &b%pet% &7is not currently stored."
   favorite_added:
     - "&6★ &7Marked &b%pet% &7as favorite!"
   favorite_removed:
@@ -340,6 +342,11 @@ menus:
     - "&7Use &f/pet withdraw &7to get it back."
     - ""
     - "&eClick to store."
+  withdraw_pet: "&aWithdraw Pet"
+  withdraw_lore:
+    - "&7Summons your stored pet."
+    - ""
+    - "&eClick to withdraw."
   free_pet: "&cFree This Pet"
   free_pet_lore:
     - "&cPermanently release this pet."

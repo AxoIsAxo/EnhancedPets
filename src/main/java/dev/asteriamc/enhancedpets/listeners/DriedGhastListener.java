@@ -118,8 +118,8 @@ public class DriedGhastListener implements Listener {
                     // It transformed!
                     plugin.debugLog("Block transformed! Registering pet for owner " + entry.getPlacerUUID());
 
-                    String defaultName = petManager.assignNewDefaultName(event.getEntityType());
-                    var registeredPet = petManager.registerNonTameablePet(entity, entry.getPlacerUUID(), defaultName);
+                    // Let registerNonTameablePet generate the name and ID together
+                    var registeredPet = petManager.registerNonTameablePet(entity, entry.getPlacerUUID(), null);
 
                     if (registeredPet != null) {
                         plugin.debugLog(

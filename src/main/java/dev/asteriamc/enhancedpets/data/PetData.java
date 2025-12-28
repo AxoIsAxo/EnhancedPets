@@ -43,6 +43,9 @@ public class PetData {
 
     private String customIconMaterial = null;
 
+    // Permanent ID assigned at first taming - never changes
+    private int initialPetId = -1;
+
     public PetData(UUID petUUID, UUID ownerUUID, EntityType entityType, String displayName) {
         this.petUUID = petUUID;
         this.ownerUUID = ownerUUID;
@@ -127,6 +130,27 @@ public class PetData {
             }
             if (map.containsKey("base64EntityState")) {
                 data.setBase64EntityState((String) map.get("base64EntityState"));
+            }
+            
+            // Initial Pet ID (permanent, never changes)
+            // For existing pets without this field, try to extract from name or generate new
+            if (map.containsKey("initialPetId")) {
+                data.setInitialPetId(((Number) map.get("initialPetId")).intValue());
+            } else {
+                // Migration: try to extract ID from displayName (e.g., "Wolf #42" -> 42)
+                int extractedId = -1;
+                int hashIdx = name.lastIndexOf('#');
+                if (hashIdx != -1 && hashIdx < name.length() - 1) {
+                    try {
+                        extractedId = Integer.parseInt(name.substring(hashIdx + 1).trim());
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+                if (extractedId > 0) {
+                    data.setInitialPetId(extractedId);
+                }
+                // If still -1, it will be assigned when pet is next accessed/used
+                // (handled by getInitialPetId consumers)
             }
 
             // Station Deserialization
@@ -257,6 +281,11 @@ public class PetData {
             map.put("explicitTargetName", this.explicitTargetName);
         }
         map.put("aggressiveTargetTypes", new ArrayList<>(this.aggressiveTargetTypes));
+        
+        // Initial Pet ID (permanent, never changes)
+        if (this.initialPetId > 0) {
+            map.put("initialPetId", this.initialPetId);
+        }
 
         return map;
     }
@@ -372,6 +401,14 @@ public class PetData {
     public void setCustomIconMaterial(String customIconMaterial) {
         this.customIconMaterial = (customIconMaterial != null && !customIconMaterial.isEmpty()) ? customIconMaterial
                 : null;
+    }
+
+    public int getInitialPetId() {
+        return initialPetId;
+    }
+
+    public void setInitialPetId(int initialPetId) {
+        this.initialPetId = initialPetId;
     }
 
     public Location getStationLocation() {
