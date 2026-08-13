@@ -7,6 +7,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 public class ConfigManager {
 
+    public static final String REVIVE_ITEM_PATH = "revive-item";
     private static final Material DEFAULT_REVIVE_ITEM = Material.NETHER_STAR;
 
     private final Enhancedpets plugin;
@@ -32,11 +33,11 @@ public class ConfigManager {
         this.shiftdoubleclickgui = this.config.getBoolean("shift-doubleclick-pet-gui", true);
 
         String reviveItemString = this.config.getString("revive-item", DEFAULT_REVIVE_ITEM.name());
-        for (Material material : Material.values()) {
-            if (material.name().equalsIgnoreCase(reviveItemString)) {
-                this.reviveItem = material;
-                break;
-            }
+        Material matched = Material.matchMaterial(reviveItemString);
+        if (matched != null) {
+            this.reviveItem = matched;
+        } else {
+            this.reviveItem = DEFAULT_REVIVE_ITEM;
         }
 
         this.reviveItemAmount = this.config.getInt("revive-item-amount", 1);

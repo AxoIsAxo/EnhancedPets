@@ -10,6 +10,12 @@ ocelot-taming-legacy-style: false # Default to false to maintain vanilla behavio
 shift-doubleclick-pet-gui: true
 
 
+# Setup the item for reviving a pet.
+# Change NETHER_STAR to any valid Minecraft material (e.g., NETHERITE_SCRAP, DIRT)
+revive-item: NETHER_STAR
+revive-item-amount: 1
+revive-item-require-mainhand: true
+
 
 # Setup the item for reviving a pet.
 revive-item: NETHER_STAR
