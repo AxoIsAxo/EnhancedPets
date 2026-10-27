@@ -62,6 +62,8 @@ gui:
     - "&a✔ &7Stored &b%pet%&7."
   withdraw_fail:
     - "&c✖ &7This pet is not in storage."
+  spawn_failed:
+    - "&c✖ &7Could not spawn this pet. Its data has been left unchanged."
   withdraw_success:
     - "&a✔ &7Withdrew &b%pet%&7!"
   withdraw_not_stored:

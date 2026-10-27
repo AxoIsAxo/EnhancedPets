@@ -2,6 +2,7 @@ package dev.asteriamc.enhancedpets.gui;
 
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.jetbrains.annotations.Nullable;
 
 public class PetInventoryHolder implements InventoryHolder {
     private final MenuType menuType;
@@ -15,6 +16,7 @@ public class PetInventoryHolder implements InventoryHolder {
     }
 
     @Override
+    @Nullable
     public Inventory getInventory() {
         return null;
     }

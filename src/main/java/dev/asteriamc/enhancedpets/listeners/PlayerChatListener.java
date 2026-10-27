@@ -75,14 +75,14 @@ public class PlayerChatListener implements Listener {
     }
 
     private void handleRenameInput(Player player, String input, UUID petContextUUID) {
-        if (input.equalsIgnoreCase("cancel")) {
+        String newName = input.trim();
+        if (newName.equalsIgnoreCase("cancel")) {
             plugin.getLanguageManager().sendMessage(player, "chat.rename_cancel");
             this.plugin.getServer().getScheduler().runTask(this.plugin,
                     () -> this.guiManager.openPetMenu(player, petContextUUID));
             return;
         }
 
-        String newName = input.trim();
         this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
             PetData petData = this.petManager.getPetData(petContextUUID);
             if (petData == null) {
@@ -112,7 +112,8 @@ public class PlayerChatListener implements Listener {
     }
 
     private void handleSingleFriendlyInput(Player player, String input, UUID petContextUUID) {
-        if (input.equalsIgnoreCase("cancel")) {
+        String trimmed = input.trim();
+        if (trimmed.equalsIgnoreCase("cancel")) {
             plugin.getLanguageManager().sendMessage(player, "chat.friendly_cancel");
 
             this.plugin.getServer().getScheduler().runTask(this.plugin,
@@ -128,16 +129,17 @@ public class PlayerChatListener implements Listener {
                 return;
             }
 
-            OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(input);
+            OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(trimmed);
             if (!targetPlayer.hasPlayedBefore() && !targetPlayer.isOnline()) {
-                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", input);
+                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", trimmed);
                 this.guiListener.getAwaitingFriendlyInputMap().put(player.getUniqueId(), petContextUUID);
                 plugin.getLanguageManager().sendMessage(player, "chat.try_again");
                 return;
             }
 
             UUID targetUUID = targetPlayer.getUniqueId();
-            String targetName = targetPlayer.getName() != null ? targetPlayer.getName() : input;
+            String targetName = targetPlayer.getName() != null ? targetPlayer.getName() : trimmed;
+
             if (targetUUID.equals(petData.getOwnerUUID())) {
                 plugin.getLanguageManager().sendMessage(player, "chat.friendly_owner");
             } else if (petData.isFriendlyPlayer(targetUUID)) {
@@ -160,7 +162,8 @@ public class PlayerChatListener implements Listener {
             return;
         }
 
-        if (input.equalsIgnoreCase("cancel")) {
+        String trimmed = input.trim();
+        if (trimmed.equalsIgnoreCase("cancel")) {
             plugin.getLanguageManager().sendMessage(player, "chat.friendly_cancel");
             this.plugin.getServer().getScheduler().runTask(this.plugin,
                     () -> this.guiManager.openBatchFriendlyPlayerMenu(player, selectedPets, 0));
@@ -168,16 +171,16 @@ public class PlayerChatListener implements Listener {
         }
 
         this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
-            OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(input);
+            OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(trimmed);
             if (!targetPlayer.hasPlayedBefore() && !targetPlayer.isOnline()) {
-                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", input);
+                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", trimmed);
                 this.guiListener.getAwaitingBatchFriendlyInputMap().put(player.getUniqueId(), true);
                 plugin.getLanguageManager().sendMessage(player, "chat.try_again");
                 return;
             }
 
             UUID targetUUID = targetPlayer.getUniqueId();
-            String targetName = targetPlayer.getName() != null ? targetPlayer.getName() : input;
+            String targetName = targetPlayer.getName() != null ? targetPlayer.getName() : trimmed;
             int addCount = 0;
             for (UUID petUUID : selectedPets) {
                 PetData petData = this.petManager.getPetData(petUUID);
@@ -199,7 +202,8 @@ public class PlayerChatListener implements Listener {
     }
 
     private void handleTargetInput(Player player, String input, UUID petContextUUID) {
-        if (input.equalsIgnoreCase("cancel")) {
+        String trimmed = input.trim();
+        if (trimmed.equalsIgnoreCase("cancel")) {
             plugin.getLanguageManager().sendMessage(player, "chat.target_cancel");
             plugin.getServer().getScheduler().runTask(plugin,
                     () -> this.guiManager.openPetMenu(player, petContextUUID));
@@ -213,9 +217,9 @@ public class PlayerChatListener implements Listener {
                 return;
             }
 
-            OfflinePlayer target = Bukkit.getOfflinePlayer(input);
+            OfflinePlayer target = Bukkit.getOfflinePlayer(trimmed);
             if (!target.hasPlayedBefore() && !target.isOnline()) {
-                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", input);
+                plugin.getLanguageManager().sendReplacements(player, "chat.player_not_found", "player", trimmed);
                 guiListener.getAwaitingTargetInputMap().put(player.getUniqueId(), petContextUUID);
                 plugin.getLanguageManager().sendMessage(player, "chat.try_again");
                 return;

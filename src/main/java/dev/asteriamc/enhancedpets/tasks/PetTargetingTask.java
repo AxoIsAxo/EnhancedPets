@@ -225,10 +225,31 @@ public class PetTargetingTask extends BukkitRunnable {
         }
 
         // Target IS valid here
-        targetLastSeen.put(petData.getPetUUID(), System.currentTimeMillis());
-
         if (!(targetEntity instanceof LivingEntity targetLiving))
             return;
+
+        if (targetLiving.getWorld() != pet.getWorld()) {
+            // The target changed worlds. Never call distanceSquared across worlds;
+            // treat the contract as expired instead.
+            petData.setExplicitTargetUUID(null);
+            petData.setStationLocation(null);
+            petManager.updatePetData(petData);
+            pet.setTarget(null);
+            targetLastSeen.remove(petData.getPetUUID());
+
+            Player owner = Bukkit.getPlayer(petData.getOwnerUUID());
+            if (owner != null && owner.isOnline()) {
+                String targetName = petData.getExplicitTargetName();
+                if (targetName == null) {
+                    targetName = "Unknown";
+                }
+                plugin.getLanguageManager().sendReplacements(owner, "event.target_timeout", "pet",
+                        petData.getDisplayName(), "target", targetName);
+            }
+            return;
+        }
+
+        targetLastSeen.put(petData.getPetUUID(), System.currentTimeMillis());
 
         // Player Target Check: Path Chunks Loaded
         if (targetLiving instanceof Player) {

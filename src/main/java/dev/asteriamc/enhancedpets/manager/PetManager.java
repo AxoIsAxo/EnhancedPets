@@ -46,6 +46,15 @@ public class PetManager {
         return (o instanceof Number) ? ((Number) o).doubleValue() : null;
     }
 
+    public static double getMaxHealth(LivingEntity entity) {
+        org.bukkit.attribute.AttributeInstance attribute = entity
+                .getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        if (attribute != null && attribute.getValue() > 0) {
+            return attribute.getValue();
+        }
+        return Math.max(1.0, entity.getHealth());
+    }
+
     private void cancelPendingOwnerSave(UUID ownerUUID) {
         if (ownerUUID == null)
             return;
@@ -101,6 +110,15 @@ public class PetManager {
 
         if (this.petDataMap.containsKey(petUUID)) {
             return this.petDataMap.get(petUUID);
+        }
+
+        int storedPetId = -1;
+        if (pet.getPersistentDataContainer().has(PET_ID_KEY, PersistentDataType.INTEGER)) {
+            Integer idValue = pet.getPersistentDataContainer().get(PET_ID_KEY, PersistentDataType.INTEGER);
+            if (idValue != null) {
+                storedPetId = idValue;
+            }
+            pet.getPersistentDataContainer().remove(PET_ID_KEY);
         }
 
         // 1. Ghost Busting: Check specifically for "Dead" pets that match this live one
@@ -166,7 +184,7 @@ public class PetManager {
             // Create temporary placeholder data
             PetData placeholder = new PetData(petUUID, ownerUUID, pet.getType(), placeholderName);
             // Placeholder gets a reserved ID now, to be used when finalized
-            final int reservedId = getNextPetIdAndIncrement();
+            final int reservedId = storedPetId > 0 ? storedPetId : getNextPetIdAndIncrement();
             placeholder.setInitialPetId(reservedId);
             this.petDataMap.put(petUUID, placeholder);
 
@@ -211,12 +229,7 @@ public class PetManager {
             return placeholder;
         }
 
-        int id = -1;
-        if (pet.getPersistentDataContainer().has(PET_ID_KEY, PersistentDataType.INTEGER)) {
-            id = pet.getPersistentDataContainer().get(PET_ID_KEY, PersistentDataType.INTEGER);
-            pet.getPersistentDataContainer().remove(PET_ID_KEY);
-        }
-        
+        int id = storedPetId;
         String customName = pet.getCustomName();
         String finalName;
         int initialId;
@@ -225,8 +238,8 @@ public class PetManager {
                 && !customName.equalsIgnoreCase(pet.getType().name().replace('_', ' '))) {
             // Has a custom name - still need to assign an initial ID for reset purposes
             finalName = ChatColor.stripColor(customName);
-            initialId = (id != -1) ? id : getNextPetIdAndIncrement();
-        } else if (id != -1) {
+            initialId = (id > 0) ? id : getNextPetIdAndIncrement();
+        } else if (id > 0) {
             // Has a pre-existing ID from before (e.g., freed pet being re-tamed)
             finalName = assignDefaultNameWithId(pet.getType(), id);
             initialId = id;
@@ -281,8 +294,10 @@ public class PetManager {
                             }
 
                             // Case 2: Not managed. Register it.
-                            registerPet(pet);
-                            newPetsFound++;
+                            PetData registered = registerPet(pet);
+                            if (registered != null) {
+                                newPetsFound++;
+                            }
                         }
                     }
                 }
@@ -320,14 +335,20 @@ public class PetManager {
         }
 
         metadata.put("health", petEntity.getHealth());
-        metadata.put("maxHealth", petEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getBaseValue());
+        org.bukkit.attribute.AttributeInstance maxHealthAttr = petEntity
+                .getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        if (maxHealthAttr != null) {
+            metadata.put("maxHealth", maxHealthAttr.getBaseValue());
+        }
 
         if (petEntity instanceof AbstractHorse ah) {
             metadata.put("jumpStrength", ah.getJumpStrength());
-            metadata.put("movementSpeed", ah.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).getBaseValue());
+            org.bukkit.attribute.AttributeInstance speedAttr = ah
+                    .getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
+            if (speedAttr != null) {
+                metadata.put("movementSpeed", speedAttr.getBaseValue());
+            }
             metadata.put("domestication", ah.getDomestication());
-            metadata.put("maxDomestication", ah.getMaxDomestication());
-
             metadata.put("maxDomestication", ah.getMaxDomestication());
 
             // Inventory is now handled by Base64 Full State Capture
@@ -371,8 +392,9 @@ public class PetManager {
         } else if (petEntity instanceof Rabbit r) {
             metadata.put("rabbitType", r.getRabbitType().name());
         } else if (petEntity instanceof Sheep s) {
-            if (s.getColor() != null)
-                metadata.put("sheepColor", s.getColor().name());
+            DyeColor sheepColor = s.getColor();
+            if (sheepColor != null)
+                metadata.put("sheepColor", sheepColor.name());
         } else if (petEntity instanceof MushroomCow m) {
             metadata.put("moocowVariant", m.getVariant().name());
         } else if (petEntity instanceof Panda p) {
@@ -392,7 +414,8 @@ public class PetManager {
 
         if (petEntity instanceof Animals animal) {
             metadata.put("loveModeTicks", animal.getLoveModeTicks());
-            metadata.put("breedCause", animal.getBreedCause() != null ? animal.getBreedCause().toString() : null);
+            java.util.UUID breedCause = animal.getBreedCause();
+            metadata.put("breedCause", breedCause != null ? breedCause.toString() : null);
         }
 
         data.setMetadata(metadata);
@@ -456,15 +479,16 @@ public class PetManager {
         if (!isRevival && metadata.containsKey("health") && newPetEntity instanceof LivingEntity le) {
             Double health = asDouble(metadata.get("health"));
             if (health != null && health > 0) {
-                le.setHealth(Math.min(health, le.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue()));
+                le.setHealth(Math.min(health, getMaxHealth(le)));
             }
         }
 
         if (metadata.containsKey("maxHealth") && newPetEntity instanceof LivingEntity le) {
             Double max = asDouble(metadata.get("maxHealth"));
             if (max != null && max > 0) {
-                if (le.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null) {
-                    le.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(max);
+                org.bukkit.attribute.AttributeInstance maxHealth = le.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+                if (maxHealth != null) {
+                    maxHealth.setBaseValue(max);
                 }
                 if (!isRevival) {
                     le.setHealth(Math.min(max, le.getHealth()));
@@ -478,8 +502,10 @@ public class PetManager {
                 ah.setJumpStrength(jump);
 
             Double speed = asDouble(metadata.get("movementSpeed"));
-            if (speed != null && speed > 0 && ah.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED) != null) {
-                ah.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(speed);
+            org.bukkit.attribute.AttributeInstance speedAttribute = ah
+                    .getAttribute(Attribute.GENERIC_MOVEMENT_SPEED);
+            if (speed != null && speed > 0 && speedAttribute != null) {
+                speedAttribute.setBaseValue(speed);
             }
 
             Integer dom = asInt(metadata.get("domestication"));
@@ -803,10 +829,63 @@ public class PetManager {
         // Register new mapping
         this.petDataMap.put(newData.getPetUUID(), newData);
 
-        // Queue save
-        queueOwnerSave(newData.getOwnerUUID());
+        // Persist the replacement. For an offline owner we must remove the old
+        // record explicitly; a merge-save would put it straight back.
+        UUID ownerUUID = newData.getOwnerUUID();
+        if (isOwnerLoaded(ownerUUID)) {
+            queueOwnerSave(ownerUUID);
+        } else {
+            cancelPendingOwnerSave(ownerUUID);
+            final UUID oldPetUUID = oldData.getPetUUID();
+            Bukkit.getScheduler().runTaskAsynchronously(plugin,
+                    () -> storageManager.replacePetRecord(ownerUUID, oldPetUUID, newData));
+        }
 
         return newData;
+    }
+
+    /**
+     * Transfers ownership of one or more pets, keeping the old owner's storage
+     * file in sync even when that owner is offline.
+     */
+    public void transferPets(Collection<PetData> pets, UUID newOwnerUUID) {
+        if (pets == null || pets.isEmpty() || newOwnerUUID == null) {
+            return;
+        }
+
+        Map<UUID, Set<UUID>> removedByOldOwner = new HashMap<>();
+        for (PetData pet : pets) {
+            if (pet == null) {
+                continue;
+            }
+            UUID oldOwner = pet.getOwnerUUID();
+            if (oldOwner != null && !oldOwner.equals(newOwnerUUID)) {
+                removedByOldOwner.computeIfAbsent(oldOwner, k -> new HashSet<>()).add(pet.getPetUUID());
+            }
+
+            pet.setOwnerUUID(newOwnerUUID);
+            this.petDataMap.put(pet.getPetUUID(), pet);
+
+            Entity entity = Bukkit.getEntity(pet.getPetUUID());
+            if (entity instanceof Tameable tameable && entity.isValid()) {
+                tameable.setOwner(Bukkit.getOfflinePlayer(newOwnerUUID));
+                tameable.setTamed(true);
+            }
+        }
+
+        for (Map.Entry<UUID, Set<UUID>> entry : removedByOldOwner.entrySet()) {
+            UUID oldOwner = entry.getKey();
+            Set<UUID> removedIds = entry.getValue();
+            if (isOwnerLoaded(oldOwner)) {
+                queueOwnerSave(oldOwner);
+            } else {
+                cancelPendingOwnerSave(oldOwner);
+                Bukkit.getScheduler().runTaskAsynchronously(plugin,
+                        () -> storageManager.removePetRecords(oldOwner, removedIds));
+            }
+        }
+
+        queueOwnerSave(newOwnerUUID);
     }
 
     public void revivePet(PetData oldData, LivingEntity newPetEntity) {
@@ -914,12 +993,12 @@ public class PetManager {
         if (pet instanceof Fox fox) {
             // Foxes can have up to 2 trusted players
             // If first slot is empty or doesn't contain owner, set them as first trusted
-            if (fox.getFirstTrustedPlayer() == null ||
-                    !ownerUUID.equals(fox.getFirstTrustedPlayer().getUniqueId())) {
+            AnimalTamer firstTrusted = fox.getFirstTrustedPlayer();
+            AnimalTamer secondTrusted = fox.getSecondTrustedPlayer();
+            if (firstTrusted == null || !ownerUUID.equals(firstTrusted.getUniqueId())) {
 
                 // Check if already in second slot
-                if (fox.getSecondTrustedPlayer() != null &&
-                        ownerUUID.equals(fox.getSecondTrustedPlayer().getUniqueId())) {
+                if (secondTrusted != null && ownerUUID.equals(secondTrusted.getUniqueId())) {
                     // Already trusted, nothing to do
                     return;
                 }
@@ -984,7 +1063,14 @@ public class PetManager {
 
             plugin.debugLog("Completely removing pet: " + removedData.getDisplayName() + " (UUID: " + petUUID + ")");
 
-            queueOwnerSave(removedData.getOwnerUUID());
+            UUID ownerUUID = removedData.getOwnerUUID();
+            if (isOwnerLoaded(ownerUUID)) {
+                queueOwnerSave(ownerUUID);
+            } else {
+                cancelPendingOwnerSave(ownerUUID);
+                Bukkit.getScheduler().runTaskAsynchronously(plugin,
+                        () -> storageManager.removePetRecords(ownerUUID, Collections.singleton(petUUID)));
+            }
         }
     }
 
@@ -1006,9 +1092,7 @@ public class PetManager {
      * Use this when you need to store the ID separately (e.g., in PetData.initialPetId).
      */
     public int getNextPetIdAndIncrement() {
-        int id = this.storageManager.getNextPetId();
-        this.storageManager.incrementAndSaveNextPetId();
-        return id;
+        return this.storageManager.getNextPetIdAndIncrement();
     }
 
     /**
@@ -1057,18 +1141,9 @@ public class PetManager {
             return;
         }
 
-        List<PetData> existing = storageManager.loadPets(ownerUUID);
-        java.util.Map<UUID, PetData> merged = new java.util.LinkedHashMap<>();
-
-        for (PetData p : existing)
-            merged.put(p.getPetUUID(), p);
-
-        for (PetData p : current)
-            merged.put(p.getPetUUID(), p);
-
-        storageManager.savePets(ownerUUID, new java.util.ArrayList<>(merged.values()));
-        plugin.getLogger().fine("mergeSaveOwner: merged (" + current.size() + " in-memory) into (" + existing.size()
-                + " existing) for owner " + ownerUUID);
+        storageManager.mergePets(ownerUUID, current);
+        plugin.getLogger().fine("mergeSaveOwner: merged " + current.size() + " in-memory pets for owner "
+                + ownerUUID);
     }
 
     public void queueOwnerSave(UUID ownerUUID) {
@@ -1136,16 +1211,7 @@ public class PetManager {
             if (isOwnerLoaded(owner)) {
                 storageManager.savePets(owner, list);
             } else {
-
-                List<PetData> existing = storageManager.loadPets(owner);
-                java.util.Map<UUID, PetData> merged = new java.util.LinkedHashMap<>();
-
-                for (PetData p : existing)
-                    merged.put(p.getPetUUID(), p);
-
-                for (PetData p : list)
-                    merged.put(p.getPetUUID(), p);
-                storageManager.savePets(owner, new java.util.ArrayList<>(merged.values()));
+                storageManager.mergePets(owner, list);
             }
         });
         plugin.debugLog("Saved all cached pet data (merge-safe) for " + petsByOwner.size() + " players (immediate).");
@@ -1174,12 +1240,26 @@ public class PetManager {
         loadingOwners.add(ownerUUID);
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            List<PetData> loadedPets = storageManager.loadPets(ownerUUID);
+            List<PetData> loadedPets;
+            try {
+                loadedPets = storageManager.loadPets(ownerUUID);
+            } catch (RuntimeException ex) {
+                plugin.getLogger().log(Level.SEVERE, "Unexpected error loading pets for " + ownerUUID, ex);
+                loadedPets = new ArrayList<>();
+            }
+
+            final List<PetData> finalLoadedPets = loadedPets;
             Bukkit.getScheduler().runTask(plugin, () -> {
-                loadedPets.forEach(pet -> petDataMap.put(pet.getPetUUID(), pet));
-                loadingOwners.remove(ownerUUID); // Done loading
+                // If unloadPetsForPlayer ran while we were reading the file, the
+                // player is no longer online: discard this result instead of
+                // re-caching stale data.
+                if (!loadingOwners.remove(ownerUUID)) {
+                    plugin.debugLog("Discarding pet load for " + ownerUUID + " because it was unloaded.");
+                    return;
+                }
+                finalLoadedPets.forEach(pet -> petDataMap.put(pet.getPetUUID(), pet));
                 loadedOwners.add(ownerUUID); // Now fully loaded
-                plugin.debugLog("Loaded " + loadedPets.size() + " pets for " + ownerUUID);
+                plugin.debugLog("Loaded " + finalLoadedPets.size() + " pets for " + ownerUUID);
             });
         });
     }
@@ -1268,42 +1348,72 @@ public class PetManager {
         }
     }
 
-    public void markPetDeadOffline(UUID ownerUUID, UUID petUUID, EntityType type, String displayName,
-            Map<String, Object> metadata) {
-        if (ownerUUID == null || petUUID == null)
+    public void markPetDead(PetData snapshot) {
+        if (snapshot == null || snapshot.getOwnerUUID() == null || snapshot.getPetUUID() == null) {
             return;
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            List<PetData> pets = storageManager.loadPets(ownerUUID);
-            boolean found = false;
-            for (PetData p : pets) {
-                if (p.getPetUUID().equals(petUUID)) {
-                    p.setDead(true);
-                    if (metadata != null && !metadata.isEmpty()) {
-                        p.setMetadata(new java.util.HashMap<>(metadata));
-                    }
-                    if (p.getEntityType() == null)
-                        p.setEntityType(type);
-                    if (p.getDisplayName() == null || p.getDisplayName().isEmpty()
-                            || plugin.getLanguageManager().getString("pet.unknown_name")
-                                    .equalsIgnoreCase(p.getDisplayName())) {
-                        p.setDisplayName(displayName != null ? displayName
-                                : plugin.getLanguageManager().getString("pet.unknown_name"));
-                    }
-                    found = true;
-                    break;
-                }
+        }
+        UUID ownerUUID = snapshot.getOwnerUUID();
+        UUID petUUID = snapshot.getPetUUID();
+
+        PetData existing = this.petDataMap.get(petUUID);
+        if (existing != null) {
+            existing.setDead(true);
+            existing.setMetadata(snapshot.getMetadata());
+            existing.setBase64EntityState(snapshot.getBase64EntityState());
+            if (existing.getEntityType() == null) {
+                existing.setEntityType(snapshot.getEntityType());
             }
-            if (!found) {
-                PetData newData = new PetData(petUUID, ownerUUID, type,
-                        displayName != null ? displayName : plugin.getLanguageManager().getString("pet.unknown_name"));
-                newData.setDead(true);
-                if (metadata != null && !metadata.isEmpty()) {
-                    newData.setMetadata(new java.util.HashMap<>(metadata));
-                }
-                pets.add(newData);
+            if (existing.getDisplayName() == null || existing.getDisplayName().isEmpty()) {
+                existing.setDisplayName(snapshot.getDisplayName());
             }
-            storageManager.savePets(ownerUUID, pets);
-        });
+            updatePetData(existing);
+            return;
+        }
+
+        if (isOwnerLoaded(ownerUUID)) {
+            // Owner data is in memory, so add the record here. Otherwise the next
+            // autosave would overwrite the dead record written to disk.
+            snapshot.setDead(true);
+            this.petDataMap.put(petUUID, snapshot);
+            queueOwnerSave(ownerUUID);
+        } else {
+            markPetDeadOffline(snapshot);
+        }
+    }
+
+    /**
+     * Spawns a pet entity at a location, validating that the entity type is a
+     * living entity. Returns null (and logs) when spawning is not possible.
+     */
+    public LivingEntity spawnPetAt(Location location, EntityType type) {
+        if (location == null || location.getWorld() == null || type == null) {
+            return null;
+        }
+        Class<?> entityClass = type.getEntityClass();
+        if (entityClass == null || !LivingEntity.class.isAssignableFrom(entityClass)) {
+            plugin.getLogger().warning("Cannot spawn pet of type " + type + ": not a living entity.");
+            return null;
+        }
+        try {
+            Entity spawned = location.getWorld().spawnEntity(location, type);
+            if (spawned instanceof LivingEntity living) {
+                living.setRemoveWhenFarAway(false);
+                return living;
+            }
+            spawned.remove();
+        } catch (Exception ex) {
+            plugin.getLogger().log(Level.WARNING, "Could not spawn pet of type " + type, ex);
+        }
+        return null;
+    }
+
+    public void markPetDeadOffline(PetData snapshot) {
+        if (snapshot == null || snapshot.getOwnerUUID() == null || snapshot.getPetUUID() == null) {
+            return;
+        }
+        UUID ownerUUID = snapshot.getOwnerUUID();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin,
+                () -> storageManager.markPetDead(ownerUUID, snapshot));
     }
 
     public void removePetRecord(UUID petUUID) {
@@ -1313,11 +1423,14 @@ public class PetManager {
         UUID ownerUUID = removed != null ? removed.getOwnerUUID() : null;
         if (ownerUUID == null)
             return;
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            List<PetData> pets = storageManager.loadPets(ownerUUID);
-            pets.removeIf(p -> p.getPetUUID().equals(petUUID));
-            storageManager.savePets(ownerUUID, pets);
-        });
+
+        if (isOwnerLoaded(ownerUUID)) {
+            queueOwnerSave(ownerUUID);
+        } else {
+            cancelPendingOwnerSave(ownerUUID);
+            Bukkit.getScheduler().runTaskAsynchronously(plugin,
+                    () -> storageManager.removePetRecords(ownerUUID, Collections.singleton(petUUID)));
+        }
     }
 
     private String captureFullEntityState(LivingEntity entity) {
@@ -1365,18 +1478,24 @@ public class PetManager {
             EntityEquipment eq = entity.getEquipment();
             if (eq != null) {
                 Map<String, Object> equipment = new HashMap<>();
-                if (eq.getHelmet() != null && !eq.getHelmet().getType().isAir())
-                    equipment.put("helmet", eq.getHelmet().serialize());
-                if (eq.getChestplate() != null && !eq.getChestplate().getType().isAir())
-                    equipment.put("chestplate", eq.getChestplate().serialize());
-                if (eq.getLeggings() != null && !eq.getLeggings().getType().isAir())
-                    equipment.put("leggings", eq.getLeggings().serialize());
-                if (eq.getBoots() != null && !eq.getBoots().getType().isAir())
-                    equipment.put("boots", eq.getBoots().serialize());
-                if (eq.getItemInMainHand() != null && !eq.getItemInMainHand().getType().isAir())
-                    equipment.put("mainHand", eq.getItemInMainHand().serialize());
-                if (eq.getItemInOffHand() != null && !eq.getItemInOffHand().getType().isAir())
-                    equipment.put("offHand", eq.getItemInOffHand().serialize());
+                ItemStack helmet = eq.getHelmet();
+                if (helmet != null && !helmet.getType().isAir())
+                    equipment.put("helmet", helmet.serialize());
+                ItemStack chestplate = eq.getChestplate();
+                if (chestplate != null && !chestplate.getType().isAir())
+                    equipment.put("chestplate", chestplate.serialize());
+                ItemStack leggings = eq.getLeggings();
+                if (leggings != null && !leggings.getType().isAir())
+                    equipment.put("leggings", leggings.serialize());
+                ItemStack boots = eq.getBoots();
+                if (boots != null && !boots.getType().isAir())
+                    equipment.put("boots", boots.serialize());
+                ItemStack mainHand = eq.getItemInMainHand();
+                if (mainHand != null && !mainHand.getType().isAir())
+                    equipment.put("mainHand", mainHand.serialize());
+                ItemStack offHand = eq.getItemInOffHand();
+                if (offHand != null && !offHand.getType().isAir())
+                    equipment.put("offHand", offHand.serialize());
 
                 // BODY slot (1.20.5+ for wolf armor, etc.)
                 try {
@@ -1402,8 +1521,9 @@ public class PetManager {
             }
             if (entity instanceof Tameable t) {
                 typeData.put("isTamed", t.isTamed());
-                if (t.getOwner() != null)
-                    typeData.put("ownerUUID", t.getOwner().getUniqueId().toString());
+                AnimalTamer entityOwner = t.getOwner();
+                if (entityOwner != null)
+                    typeData.put("ownerUUID", entityOwner.getUniqueId().toString());
             }
             if (entity instanceof Sittable s) {
                 typeData.put("isSitting", s.isSitting());
@@ -1466,8 +1586,10 @@ public class PetManager {
             if (entity instanceof Llama l) {
                 typeData.put("llamaColor", l.getColor().name());
                 typeData.put("llamaStrength", l.getStrength());
-                if (l.getInventory().getDecor() != null)
-                    typeData.put("llamaDecor", l.getInventory().getDecor().serialize());
+                ItemStack decor = l.getInventory().getDecor();
+                if (decor != null) {
+                    typeData.put("llamaDecor", decor.serialize());
+                }
             }
             if (entity instanceof Horse h) {
                 typeData.put("horseColor", h.getColor().name());
@@ -1533,11 +1655,10 @@ public class PetManager {
 
             // 1. Core
             if (!isRevival && state.containsKey("health")) {
-                double storedHealth = (double) state.get("health");
+                double storedHealth = ((Number) state.get("health")).doubleValue();
                 // Fix: Don't kill the pet if stored health is 0 (e.g. captured on death)
                 if (storedHealth > 0) {
-                    entity.setHealth(Math.min(storedHealth,
-                            entity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue()));
+                    entity.setHealth(Math.min(storedHealth, getMaxHealth(entity)));
                 }
             }
             if (state.containsKey("remainingAir"))
@@ -1572,6 +1693,9 @@ public class PetManager {
                 @SuppressWarnings("unchecked")
                 Map<String, Double> attributes = (Map<String, Double>) state.get("attributes");
                 for (Map.Entry<String, Double> entry : attributes.entrySet()) {
+                    if (entry.getKey() == null || entry.getValue() == null) {
+                        continue;
+                    }
                     try {
                         Attribute attr = Attribute.valueOf(entry.getKey());
                         org.bukkit.attribute.AttributeInstance instance = entity.getAttribute(attr);
@@ -1583,14 +1707,14 @@ public class PetManager {
                             }
                             instance.setBaseValue(val);
                         }
-                    } catch (IllegalArgumentException | NullPointerException ignored) {
+                    } catch (IllegalArgumentException ignored) {
                         // Ignore invalid attributes from old saves
                     }
                 }
                 // Re-apply health after attribute update (specifically Max Health)
                 if (!isRevival && state.containsKey("health")) {
-                    double max = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
-                    double loadHealth = (double) state.get("health");
+                    double max = getMaxHealth(entity);
+                    double loadHealth = ((Number) state.get("health")).doubleValue();
                     // Safety: Never load a pet with <= 0 health (causes instant death loop)
                     if (loadHealth <= 0)
                         loadHealth = 1.0;
@@ -1792,7 +1916,7 @@ public class PetManager {
             // ALIVE.
             // So we force full health, extinguish fire, and reset air.
             if (entity.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null) {
-                entity.setHealth(entity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+                entity.setHealth(getMaxHealth(entity));
             }
             entity.setFireTicks(0);
             entity.setRemainingAir(entity.getMaximumAir());

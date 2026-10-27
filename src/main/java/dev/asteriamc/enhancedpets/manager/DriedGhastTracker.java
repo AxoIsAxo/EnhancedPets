@@ -9,13 +9,16 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class DriedGhastTracker {
@@ -23,6 +26,8 @@ public class DriedGhastTracker {
     private final Map<String, DriedGhastEntry> trackedBlocks = new ConcurrentHashMap<>();
     private final File storageFile;
     private final Gson gson;
+    private final Object saveLock = new Object();
+    private final AtomicBoolean saveScheduled = new AtomicBoolean(false);
     private BukkitTask waterlogCheckTask;
 
     public DriedGhastTracker(Enhancedpets plugin) {
@@ -38,16 +43,25 @@ public class DriedGhastTracker {
     }
 
     private String key(Location loc) {
+        if (loc == null || loc.getWorld() == null) {
+            throw new IllegalArgumentException("Dried ghast location must have a world");
+        }
         return key(loc.getWorld(), loc.getBlockX(), loc.getBlockY(), loc.getBlockZ());
     }
 
     public void track(Location loc, UUID placerUUID) {
+        if (loc == null || loc.getWorld() == null || placerUUID == null) {
+            return;
+        }
         String k = key(loc);
         trackedBlocks.put(k, new DriedGhastEntry(placerUUID, loc, System.currentTimeMillis()));
         saveAsync();
     }
 
     public void remove(Location loc) {
+        if (loc == null || loc.getWorld() == null) {
+            return;
+        }
         trackedBlocks.remove(key(loc));
         saveAsync();
     }
@@ -57,16 +71,24 @@ public class DriedGhastTracker {
     }
 
     public List<DriedGhastEntry> getEntriesForPlayer(UUID playerUUID) {
+        if (playerUUID == null) {
+            return new ArrayList<>();
+        }
         return trackedBlocks.values().stream()
-                .filter(entry -> entry.getPlacerUUID().equals(playerUUID))
+                .filter(entry -> entry.getPlacerUUID() != null
+                        && entry.getPlacerUUID().equals(playerUUID))
                 .collect(Collectors.toList());
     }
 
     public List<DriedGhastEntry> findWithinRadius(Location center, double radius) {
         List<DriedGhastEntry> found = new ArrayList<>();
+        if (center == null || center.getWorld() == null) {
+            return found;
+        }
         double rSq = radius * radius;
         for (DriedGhastEntry entry : trackedBlocks.values()) {
-            if (entry.getLocation().getWorld().equals(center.getWorld())) {
+            World entryWorld = entry.getLocation().getWorld();
+            if (entryWorld != null && entryWorld.equals(center.getWorld())) {
                 if (entry.getLocation().distanceSquared(center) <= rSq) {
                     found.add(entry);
                 }
@@ -84,7 +106,17 @@ public class DriedGhastTracker {
             boolean changed = false;
             for (DriedGhastEntry entry : trackedBlocks.values()) {
                 try {
-                    org.bukkit.block.Block block = entry.getLocation().getBlock();
+                    World world = entry.getLocation().getWorld();
+                    if (world == null) {
+                        continue;
+                    }
+                    int x = entry.getLocation().getBlockX();
+                    int y = entry.getLocation().getBlockY();
+                    int z = entry.getLocation().getBlockZ();
+                    if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+                        continue; // Do not force-load chunks just to check waterlogging
+                    }
+                    org.bukkit.block.Block block = world.getBlockAt(x, y, z);
                     if (!block.getType().name().equalsIgnoreCase("DRIED_GHAST")) {
                         continue; // Block gone, will be cleaned up by spawn event
                     }
@@ -120,12 +152,25 @@ public class DriedGhastTracker {
     }
 
     private void saveAsync() {
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, this::save);
+        if (!plugin.isEnabled()) {
+            save();
+            return;
+        }
+        // Coalesce bursts of saves (e.g. piston events) into one write.
+        if (saveScheduled.compareAndSet(false, true)) {
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                saveScheduled.set(false);
+                save();
+            });
+        }
     }
 
     public void save() {
         List<Map<String, Object>> serializedList = new ArrayList<>();
         for (DriedGhastEntry entry : trackedBlocks.values()) {
+            if (entry.getLocation() == null || entry.getLocation().getWorld() == null) {
+                continue;
+            }
             Map<String, Object> map = new HashMap<>();
             map.put("placer", entry.getPlacerUUID().toString());
             map.put("world", entry.getLocation().getWorld().getName());
@@ -139,10 +184,31 @@ public class DriedGhastTracker {
             serializedList.add(map);
         }
 
-        try (FileWriter writer = new FileWriter(storageFile)) {
-            gson.toJson(serializedList, writer);
-        } catch (IOException e) {
-            plugin.getLogger().severe("Failed to save dried ghasts: " + e.getMessage());
+        synchronized (saveLock) {
+            File tempFile = new File(storageFile.getParentFile(), storageFile.getName() + ".tmp");
+            try (BufferedWriter writer = Files.newBufferedWriter(tempFile.toPath(), StandardCharsets.UTF_8)) {
+                gson.toJson(serializedList, writer);
+            } catch (IOException e) {
+                plugin.getLogger().severe("Failed to save dried ghasts: " + e.getMessage());
+                return;
+            }
+
+            try {
+                try {
+                    Files.move(tempFile.toPath(), storageFile.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                            java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                } catch (IOException atomicUnsupported) {
+                    Files.move(tempFile.toPath(), storageFile.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                plugin.getLogger().severe("Failed to save dried ghasts: " + e.getMessage());
+                try {
+                    Files.deleteIfExists(tempFile.toPath());
+                } catch (IOException ignored) {
+                }
+            }
         }
     }
 
@@ -150,7 +216,7 @@ public class DriedGhastTracker {
         if (!storageFile.exists())
             return;
 
-        try (FileReader reader = new FileReader(storageFile)) {
+        try (BufferedReader reader = Files.newBufferedReader(storageFile.toPath(), StandardCharsets.UTF_8)) {
             Type listType = new TypeToken<List<Map<String, Object>>>() {
             }.getType();
             List<Map<String, Object>> data = gson.fromJson(reader, listType);
@@ -185,6 +251,8 @@ public class DriedGhastTracker {
             }
         } catch (IOException e) {
             plugin.getLogger().severe("Failed to load dried ghasts: " + e.getMessage());
+        } catch (RuntimeException e) {
+            plugin.getLogger().severe("Corrupt dried ghast storage file: " + e.getMessage());
         }
     }
 }

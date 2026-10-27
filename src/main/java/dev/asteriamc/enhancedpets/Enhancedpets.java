@@ -56,7 +56,6 @@ public final class Enhancedpets extends JavaPlugin {
         Objects.requireNonNull(this.getCommand("pets")).setTabCompleter(petCommandExecutor);
         Objects.requireNonNull(this.getCommand("petadmin")).setExecutor(petCommandExecutor);
         Objects.requireNonNull(this.getCommand("petadmin")).setTabCompleter(petCommandExecutor);
-        Objects.requireNonNull(this.getCommand("petadmin")).setTabCompleter(petCommandExecutor);
 
         this.driedGhastTracker = new DriedGhastTracker(this);
         this.petListener = new PetListener(this);

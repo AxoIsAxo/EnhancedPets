@@ -73,7 +73,8 @@ public class BatchActionsGUI {
                     mainGui.createItem(Material.BARRIER, plugin.getLanguageManager().getString("menus.no_types_found"),
                             plugin.getLanguageManager().getStringList("menus.no_types_found_lore")));
         } else {
-            for (int i = 0; i < petTypes.size(); i++) {
+            int maxSlots = Math.max(0, invSize - 9);
+            for (int i = 0; i < Math.min(petTypes.size(), maxSlots); i++) {
                 EntityType type = petTypes.get(i);
                 long count = allPets.stream().filter(p -> p.getEntityType() == type).count();
                 ItemStack item = createTypeSelectionItem(type, count);
@@ -96,8 +97,8 @@ public class BatchActionsGUI {
                 .filter(p -> p.getEntityType() == petType)
                 .sorted(Comparator.comparing(PetData::isFavorite).reversed()
                         .thenComparing((p1, p2) -> {
-                            String name1 = p1.getDisplayName();
-                            String name2 = p2.getDisplayName();
+                            String name1 = p1.getDisplayName() != null ? p1.getDisplayName() : "";
+                            String name2 = p2.getDisplayName() != null ? p2.getDisplayName() : "";
 
                             Integer id1 = PetManagerGUI.extractPetIdFromName(name1);
                             Integer id2 = PetManagerGUI.extractPetIdFromName(name2);
@@ -229,6 +230,9 @@ public class BatchActionsGUI {
     private ItemStack createNavButton(Material material, String name, String action, EntityType petType, int page) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
         meta.displayName(toComponent(name));
         meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, action);
         if (petType != null) {
@@ -245,6 +249,9 @@ public class BatchActionsGUI {
     private ItemStack createSelectionButton(Material material, String name, String action, EntityType petType) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
         meta.displayName(toComponent(name));
         meta.getPersistentDataContainer().set(BATCH_ACTION_KEY, PersistentDataType.STRING, action);
         meta.getPersistentDataContainer().set(PET_TYPE_KEY, PersistentDataType.STRING, petType.name());

@@ -28,6 +28,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Waterlogged;
@@ -72,6 +73,14 @@ public class PetManagerGUI {
     private Component toComponent(String text) {
         return LegacyComponentSerializer.legacySection().deserialize(text)
                 .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false);
+    }
+
+    private static double getMaxHealth(LivingEntity entity) {
+        AttributeInstance attribute = entity.getAttribute(Attribute.GENERIC_MAX_HEALTH);
+        if (attribute != null && attribute.getValue() > 0) {
+            return attribute.getValue();
+        }
+        return Math.max(1.0, entity.getHealth());
     }
 
     private List<Component> toComponentList(List<String> texts) {
@@ -181,9 +190,10 @@ public class PetManagerGUI {
 
         for (PetData petData : pets) {
             Entity petEntity = Bukkit.getEntity(petData.getPetUUID());
-            if (petEntity != null && petEntity.isValid() && petEntity.getCustomName() != null) {
-                String gameName = ChatColor.stripColor(petEntity.getCustomName());
-                if (!gameName.isEmpty() && !gameName.equals(petData.getDisplayName())) {
+            String rawName = petEntity != null && petEntity.isValid() ? petEntity.getCustomName() : null;
+            if (rawName != null) {
+                String gameName = ChatColor.stripColor(rawName);
+                if (gameName != null && !gameName.isEmpty() && !gameName.equals(petData.getDisplayName())) {
                     petData.setDisplayName(gameName);
                     didUpdate = true;
                 }
@@ -194,10 +204,11 @@ public class PetManagerGUI {
             this.petManager.saveAllPetData(pets);
         }
 
-        pets.sort(Comparator.comparing(PetData::isFavorite).reversed().thenComparing(p -> p.getEntityType().name())
+        pets.sort(Comparator.comparing(PetData::isFavorite).reversed()
+                .thenComparing(p -> p.getEntityType() != null ? p.getEntityType().name() : "")
                 .thenComparing((p1, p2) -> {
-                    String name1 = p1.getDisplayName();
-                    String name2 = p2.getDisplayName();
+                    String name1 = p1.getDisplayName() != null ? p1.getDisplayName() : "";
+                    String name2 = p2.getDisplayName() != null ? p2.getDisplayName() : "";
                     Integer id1 = extractPetIdFromName(name1);
                     Integer id2 = extractPetIdFromName(name2);
                     return id1 != null && id2 != null ? Integer.compare(id1, id2)
@@ -246,35 +257,35 @@ public class PetManagerGUI {
                         gui.setItem(i, is);
                     }
                 }
-
-                if (effectiveOwner.equals(player.getUniqueId())) {
-                    gui.setItem(
-                            invSize - 8,
-                            this.createActionButton(
-                                    Material.COMPASS,
-                                    this.plugin.getLanguageManager().getString("menus.scan_button_name"),
-                                    "scan_for_pets",
-                                    null,
-                                    this.plugin.getLanguageManager().getStringList("menus.scan_button_lore")));
-                }
-
-                gui.setItem(
-                        invSize - 5,
-                        this.createItem(
-                                Material.PAPER,
-                                this.plugin.getLanguageManager().getStringReplacements("menus.page_count_name", "page",
-                                        "1", "total", "1"),
-                                this.plugin.getLanguageManager().getStringListReplacements("menus.page_count_lore",
-                                        "count", String.valueOf(totalItems))));
-                gui.setItem(
-                        invSize - 2,
-                        this.createActionButton(
-                                Material.HOPPER,
-                                this.plugin.getLanguageManager().getString("menus.batch_button_name"),
-                                "batch_actions",
-                                null,
-                                this.plugin.getLanguageManager().getStringList("menus.batch_button_lore")));
             }
+
+            if (effectiveOwner.equals(player.getUniqueId())) {
+                gui.setItem(
+                        invSize - 8,
+                        this.createActionButton(
+                                Material.COMPASS,
+                                this.plugin.getLanguageManager().getString("menus.scan_button_name"),
+                                "scan_for_pets",
+                                null,
+                                this.plugin.getLanguageManager().getStringList("menus.scan_button_lore")));
+            }
+
+            gui.setItem(
+                    invSize - 5,
+                    this.createItem(
+                            Material.PAPER,
+                            this.plugin.getLanguageManager().getStringReplacements("menus.page_count_name", "page",
+                                    "1", "total", "1"),
+                            this.plugin.getLanguageManager().getStringListReplacements("menus.page_count_lore",
+                                    "count", String.valueOf(totalItems))));
+            gui.setItem(
+                    invSize - 2,
+                    this.createActionButton(
+                            Material.HOPPER,
+                            this.plugin.getLanguageManager().getString("menus.batch_button_name"),
+                            "batch_actions",
+                            null,
+                            this.plugin.getLanguageManager().getStringList("menus.batch_button_lore")));
 
             player.openInventory(gui);
         } else {
@@ -460,6 +471,11 @@ public class PetManagerGUI {
         if (selectedPetUUIDs != null && !selectedPetUUIDs.isEmpty()) {
             List<PetData> selectedPets = selectedPetUUIDs.stream().map(this.petManager::getPetData)
                     .filter(Objects::nonNull).collect(Collectors.toList());
+            if (selectedPets.isEmpty()) {
+                this.plugin.getLanguageManager().sendMessage(player, "gui.selection_lost");
+                this.openMainMenu(player);
+                return;
+            }
             String title = this.plugin.getLanguageManager().getStringReplacements("menus.batch_title", "count",
                     String.valueOf(selectedPets.size()));
             Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_MANAGE), 54,
@@ -1003,7 +1019,7 @@ public class PetManagerGUI {
                         "mode", petData.getMode().name()));
                 if (petEntity instanceof LivingEntity livingEntity && petEntity.isValid()) {
                     double health = livingEntity.getHealth();
-                    double maxHealth = livingEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+                    double maxHealth = getMaxHealth(livingEntity);
                     headerLore.addAll(
                             this.plugin
                                     .getLanguageManager()
@@ -1331,10 +1347,10 @@ public class PetManagerGUI {
                 double maxHp = 0.0;
                 if (petEntity instanceof LivingEntity le && petEntity.isValid()) {
                     currentHp = le.getHealth();
-                    maxHp = le.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+                    maxHp = getMaxHealth(le);
                 }
 
-                double missingHp = maxHp - currentHp;
+                double missingHp = Math.max(0.0, maxHp - currentHp);
                 int healCost = (int) Math.ceil(missingHp) * this.plugin.getConfigManager().getHealCost();
                 int bottomRowStart = guiSize - 9;
                 gui.setItem(
@@ -1742,7 +1758,7 @@ public class PetManagerGUI {
                     petData.getMode().name()));
             if (petEntity instanceof LivingEntity livingEntity && petEntity.isValid()) {
                 double health = livingEntity.getHealth();
-                double maxHealth = livingEntity.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+                double maxHealth = getMaxHealth(livingEntity);
                 lore.addAll(
                         this.plugin
                                 .getLanguageManager()
@@ -1851,20 +1867,28 @@ public class PetManagerGUI {
         if (md == null) {
             return null;
         } else if (md.containsKey("wolfVariant")) {
-            String raw = (String) md.get("wolfVariant");
+            Object rawValue = md.get("wolfVariant");
+            if (!(rawValue instanceof String raw) || raw.isBlank()) {
+                return null;
+            }
             if (raw.contains(":")) {
                 raw = raw.substring(raw.indexOf(":") + 1);
             }
+            if (raw.isEmpty()) {
+                return null;
+            }
 
             return raw.substring(0, 1).toUpperCase() + raw.substring(1).toLowerCase();
+        } else if (md.containsKey("catVariant")) {
+            return String.valueOf(md.get("catVariant"));
         } else if (md.containsKey("catType")) {
-            return (String) md.get("catType");
+            return String.valueOf(md.get("catType"));
         } else if (md.containsKey("parrotVariant")) {
-            return (String) md.get("parrotVariant");
+            return String.valueOf(md.get("parrotVariant"));
         } else if (md.containsKey("horseColor")) {
-            return (String) md.get("horseColor");
+            return String.valueOf(md.get("horseColor"));
         } else {
-            return md.containsKey("llamaColor") ? (String) md.get("llamaColor") : null;
+            return md.containsKey("llamaColor") ? String.valueOf(md.get("llamaColor")) : null;
         }
     }
 
@@ -2053,6 +2077,9 @@ public class PetManagerGUI {
     }
 
     public Material getPetMaterial(EntityType type) {
+        if (type == null) {
+            return Material.NAME_TAG;
+        }
         String typeName = type.name();
 
         // Special handling for custom or non-standard types

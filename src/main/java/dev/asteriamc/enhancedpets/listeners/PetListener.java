@@ -65,9 +65,9 @@ public class PetListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityDeath(EntityDeathEvent event) {
-        Entity entity = event.getEntity();
+        LivingEntity entity = event.getEntity();
 
-        if (this.petManager.isManagedPet(entity.getUniqueId()) && entity instanceof LivingEntity livingEntity) {
+        if (this.petManager.isManagedPet(entity.getUniqueId())) {
             UUID petUUID = entity.getUniqueId();
             PetData data = this.petManager.getPetData(petUUID);
             String name = data != null ? data.getDisplayName()
@@ -88,9 +88,8 @@ public class PetListener implements Listener {
             }
 
             this.plugin.debugLog("Managed pet " + name + " (UUID: " + petUUID + ") died. Marking as dead.");
-            this.petManager.unregisterPet(livingEntity);
-        } else if (entity instanceof Tameable t && t.isTamed() && t.getOwnerUniqueId() != null
-                && entity instanceof LivingEntity le) {
+            this.petManager.unregisterPet(entity);
+        } else if (entity instanceof Tameable t && t.isTamed() && t.getOwnerUniqueId() != null) {
             UUID ownerUUID = t.getOwnerUniqueId();
             UUID petUUID = t.getUniqueId();
             String fallbackName = entity.getCustomName();
@@ -103,9 +102,8 @@ public class PetListener implements Listener {
                         formatEntityType(entity.getType()), "id", shortId);
             }
             PetData snapshot = new PetData(petUUID, ownerUUID, entity.getType(), fallbackName);
-            this.plugin.getPetManager().captureMetadata(snapshot, le);
-            this.plugin.getPetManager().markPetDeadOffline(ownerUUID, petUUID, entity.getType(), fallbackName,
-                    snapshot.getMetadata());
+            this.plugin.getPetManager().captureMetadata(snapshot, entity);
+            this.plugin.getPetManager().markPetDead(snapshot);
         }
 
         // Fix: Target Neutralized Logic
@@ -201,8 +199,12 @@ public class PetListener implements Listener {
                 if (isStationed || hasTarget) {
                     // Block teleport if changing world OR distance is significant (>8 blocks)
                     // This prevents vanilla "teleport to owner" behavior
-                    if (event.getFrom().getWorld() != event.getTo().getWorld() ||
-                            event.getFrom().distanceSquared(event.getTo()) > 64) {
+                    org.bukkit.Location to = event.getTo();
+                    if (to == null || to.getWorld() == null) {
+                        return;
+                    }
+                    if (event.getFrom().getWorld() != to.getWorld() ||
+                            event.getFrom().distanceSquared(to) > 64) {
                         event.setCancelled(true);
                     }
                 }
@@ -215,8 +217,23 @@ public class PetListener implements Listener {
         Chunk chunk = event.getChunk();
 
         for (Entity entity : chunk.getEntities()) {
-            if (entity instanceof Tameable pet && pet.isTamed() && pet.getOwnerUniqueId() != null
-                    && !this.petManager.isManagedPet(pet.getUniqueId())) {
+            if (entity instanceof Tameable pet && pet.isTamed() && pet.getOwnerUniqueId() != null) {
+                if (this.petManager.isManagedPet(pet.getUniqueId())) {
+                    // Reconcile the entity's owner with the stored record. This is
+                    // important for pets transferred while their chunk was unloaded.
+                    PetData managed = this.petManager.getPetData(pet.getUniqueId());
+                    if (managed != null) {
+                        UUID entityOwner = pet.getOwnerUniqueId();
+                        if (entityOwner != null && !entityOwner.equals(managed.getOwnerUUID())) {
+                            pet.setOwner(Bukkit.getOfflinePlayer(managed.getOwnerUUID()));
+                            pet.setTamed(true);
+                            this.plugin.debugLog("Reconciled owner for pet " + managed.getDisplayName()
+                                    + " after chunk load.");
+                        }
+                    }
+                    continue;
+                }
+
                 this.plugin
                         .getLogger()
                         .log(Level.FINE, "Found unmanaged tamed pet {0} ({1}) in loaded chunk. Registering...",
@@ -571,10 +588,15 @@ public class PetListener implements Listener {
         if (owner == null || !owner.isOnline())
             return;
 
-        if (livingEntity.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH) == null)
+        org.bukkit.attribute.AttributeInstance maxHealthAttribute = livingEntity
+                .getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH);
+        if (maxHealthAttribute == null)
             return;
 
-        double maxHealth = livingEntity.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
+        double maxHealth = maxHealthAttribute.getValue();
+        if (maxHealth <= 0) {
+            return;
+        }
         double currentHealth = livingEntity.getHealth();
         double finalDamage = event.getFinalDamage();
         double newHealth = currentHealth - finalDamage;

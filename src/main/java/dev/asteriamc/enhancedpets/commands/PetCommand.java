@@ -115,11 +115,18 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                             plugin.getLanguageManager().sendMessage(player, "command.station_invalid_radius");
                             return true;
                         }
+                        if (!Double.isFinite(radius) || radius <= 0 || radius > 100) {
+                            plugin.getLanguageManager().sendMessage(player, "command.station_invalid_radius");
+                            return true;
+                        }
                     }
 
                     int count = 0;
                     for (dev.asteriamc.enhancedpets.data.PetData pet : plugin.getPetManager()
                             .getPetsOwnedBy(player.getUniqueId())) {
+                        if (pet.isDead() || pet.isStored()) {
+                            continue;
+                        }
                         pet.setStationLocation(player.getLocation());
                         pet.setStationRadius(radius);
                         // Default targets
@@ -167,10 +174,11 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                         org.bukkit.util.RayTraceResult result = player.getWorld().rayTraceEntities(
                                 player.getEyeLocation(), player.getEyeLocation().getDirection(), 20,
                                 e -> e instanceof org.bukkit.entity.LivingEntity && e != player);
-                        if (result != null && result.getHitEntity() != null) {
-                            targetUUID = result.getHitEntity().getUniqueId();
+                        Entity hit = result != null ? result.getHitEntity() : null;
+                        if (hit != null) {
+                            targetUUID = hit.getUniqueId();
                             plugin.getLanguageManager().sendReplacements(player, "command.target_locked", "target",
-                                    result.getHitEntity().getName());
+                                    getEntityName(hit));
                         } else {
                             plugin.getLanguageManager().sendMessage(player, "command.target_none");
                             return true;
@@ -193,13 +201,7 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                         // Get target name before we loop
                         Entity targetEntity = Bukkit.getEntity(targetUUID);
                         if (targetEntity != null) {
-                            if (targetEntity instanceof Player p) {
-                                targetName = p.getName();
-                            } else if (targetEntity.getCustomName() != null) {
-                                targetName = targetEntity.getCustomName();
-                            } else {
-                                targetName = targetEntity.getType().name();
-                            }
+                            targetName = getEntityName(targetEntity);
                         } else {
                             // Player target (offline check)
                             org.bukkit.OfflinePlayer op = Bukkit.getOfflinePlayer(targetUUID);
@@ -209,8 +211,13 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
 
                         for (dev.asteriamc.enhancedpets.data.PetData pet : plugin.getPetManager()
                                 .getPetsOwnedBy(player.getUniqueId())) {
+                            if (pet.isDead() || pet.isStored()) {
+                                continue;
+                            }
                             pet.setExplicitTargetUUID(targetUUID);
                             pet.setExplicitTargetName(targetName);
+                            // Station and target are mutually exclusive.
+                            pet.setStationLocation(null);
                             plugin.getPetManager().updatePetData(pet);
                             count++;
                         }
@@ -265,5 +272,16 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
             plugin.getLanguageManager().sendMessage(sender, "command.invalid_usage");
             return true;
         }
+    }
+
+    private static String getEntityName(Entity entity) {
+        if (entity instanceof Player player && player.getName() != null) {
+            return player.getName();
+        }
+        String customName = entity.getCustomName();
+        if (customName != null && !customName.isEmpty()) {
+            return customName;
+        }
+        return entity.getType().name();
     }
 }

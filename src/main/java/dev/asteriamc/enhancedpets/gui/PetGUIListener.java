@@ -143,6 +143,9 @@ public class PetGUIListener implements Listener {
         }
 
         PetInventoryHolder holder = (PetInventoryHolder) event.getInventory().getHolder();
+        if (holder == null) {
+            return;
+        }
         if (holder.getMenuType() == PetInventoryHolder.MenuType.CONFIRM_ACTION) {
             event.setCancelled(true);
             ItemStack clickedItem = event.getCurrentItem();
@@ -160,8 +163,15 @@ public class PetGUIListener implements Listener {
         }
 
         if (event.getClickedInventory() != event.getView().getTopInventory()) {
-            if (event.isShiftClick())
+            // Prevent shift-clicking, double-click collection and hotbar swaps from
+            // pulling GUI display items out of the menu.
+            if (event.isShiftClick()
+                    || event.getClick() == org.bukkit.event.inventory.ClickType.DOUBLE_CLICK
+                    || event.getAction() == org.bukkit.event.inventory.InventoryAction.COLLECT_TO_CURSOR
+                    || event.getAction() == org.bukkit.event.inventory.InventoryAction.MOVE_TO_OTHER_INVENTORY
+                    || event.getAction() == org.bukkit.event.inventory.InventoryAction.HOTBAR_SWAP) {
                 event.setCancelled(true);
+            }
             return;
         }
         event.setCancelled(true);
@@ -381,12 +391,14 @@ public class PetGUIListener implements Listener {
                     return;
                 }
                 Entity petEntity = Bukkit.getEntity(petUUID);
-                if (petEntity != null && petEntity.isValid()) {
-                    if (petEntity instanceof LivingEntity le) {
-                        petManager.captureMetadata(pd, le);
-                    }
-                    petEntity.remove();
+                if (petEntity == null || !petEntity.isValid()) {
+                    plugin.getLanguageManager().sendMessage(player, "gui.store_nearby_only");
+                    return;
                 }
+                if (petEntity instanceof LivingEntity le) {
+                    petManager.captureMetadata(pd, le);
+                }
+                petEntity.remove();
                 pd.setStored(true);
                 pd.setStationLocation(null);
                 pd.setExplicitTargetUUID(null);
@@ -406,9 +418,11 @@ public class PetGUIListener implements Listener {
                     return;
                 }
                 // Respawn the pet
-                // Respawn the pet
-                org.bukkit.entity.LivingEntity newPet = (org.bukkit.entity.LivingEntity) player.getWorld().spawnEntity(
-                        player.getLocation(), pd.getEntityType());
+                LivingEntity newPet = petManager.spawnPetAt(player.getLocation(), pd.getEntityType());
+                if (newPet == null) {
+                    plugin.getLanguageManager().sendMessage(player, "gui.spawn_failed");
+                    return;
+                }
 
                 // Update Pet Data with new UUID
                 PetData newData = petManager.updatePetId(pd, newPet.getUniqueId());
@@ -689,13 +703,7 @@ public class PetGUIListener implements Listener {
                     }
                     player.closeInventory();
                     String oldOwnerName = player.getName();
-                    petDataList.forEach(pd -> {
-                        pd.setOwnerUUID(targetPlayer.getUniqueId());
-                        if (Bukkit.getEntity(pd.getPetUUID()) instanceof Tameable t) {
-                            t.setOwner(targetPlayer);
-                        }
-                    });
-                    petManager.saveAllPetData(petDataList);
+                    petManager.transferPets(petDataList, targetPlayer.getUniqueId());
                     plugin.getLanguageManager().sendReplacements(player, "gui.transfer_batch_sender", "count",
                             String.valueOf(petDataList.size()), "target", targetPlayer.getName());
                     plugin.getLanguageManager().sendReplacements(targetPlayer, "gui.transfer_batch_receiver", "count",
@@ -758,7 +766,7 @@ public class PetGUIListener implements Listener {
                 for (PetData pd : petDataList) {
                     Entity e = Bukkit.getEntity(pd.getPetUUID());
                     if (e instanceof LivingEntity le && e.isValid()) {
-                        double max = le.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
+                        double max = petManager.getMaxHealth(le);
                         double current = le.getHealth();
                         double missing = max - current;
 
@@ -774,7 +782,7 @@ public class PetGUIListener implements Listener {
                     }
                 }
 
-                if (totalCost == 0) {
+                if (healMap.isEmpty()) {
                     plugin.getLanguageManager().sendMessage(player, "gui.batch_heal_already_full");
                     guiManager.openBatchManagementMenu(player, selectedPets);
                     break;
@@ -794,8 +802,10 @@ public class PetGUIListener implements Listener {
                 for (Map.Entry<LivingEntity, Double> entry : healMap.entrySet()) {
                     LivingEntity le = entry.getKey();
                     double amount = entry.getValue();
-                    double newHealth = Math.min(le.getHealth() + amount,
-                            le.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue());
+                    if (!le.isValid()) {
+                        continue;
+                    }
+                    double newHealth = Math.min(le.getHealth() + amount, petManager.getMaxHealth(le));
                     le.setHealth(newHealth);
                     healedCount++;
                     le.getWorld().spawnParticle(org.bukkit.Particle.HEART, le.getLocation().add(0, 1, 0), 3, 0.3, 0.3,
@@ -1003,10 +1013,7 @@ public class PetGUIListener implements Listener {
                         return;
                     }
                     String oldOwnerName = player.getName();
-                    petData.setOwnerUUID(targetPlayer.getUniqueId());
-                    petManager.updatePetData(petData);
-                    if (Bukkit.getEntity(petUUID) instanceof Tameable t)
-                        t.setOwner(targetPlayer);
+                    petManager.transferPets(Collections.singletonList(petData), targetPlayer.getUniqueId());
                     plugin.getLanguageManager().sendReplacements(player, "gui.transfer_sender", "pet",
                             petData.getDisplayName(), "target", targetPlayer.getName());
                     plugin.getLanguageManager().sendReplacements(targetPlayer, "gui.transfer_receiver", "pet",
@@ -1074,6 +1081,7 @@ public class PetGUIListener implements Listener {
                 int requiredAmount = plugin.getConfigManager().getReviveItemAmount();
                 boolean requireMainHand = plugin.getConfigManager().isReviveItemRequireMainHand();
 
+                ItemStack handItem = null;
                 if (requireMainHand) {
                     ItemStack hand = player.getInventory().getItemInMainHand();
                     if (hand.getType() != requiredItem || hand.getAmount() < requiredAmount) {
@@ -1084,26 +1092,32 @@ public class PetGUIListener implements Listener {
                         guiManager.openPetMenu(player, petData.getPetUUID());
                         return;
                     }
-                    // Consume Cost
-                    hand.setAmount(hand.getAmount() - requiredAmount);
-                } else {
-                    if (!player.getInventory().containsAtLeast(new ItemStack(requiredItem), requiredAmount)) {
-                        plugin.getLanguageManager().sendReplacements(player, "gui.need_nether_star",
-                                "amount", String.valueOf(requiredAmount),
-                                "item", requiredItem.name(),
-                                "hand", "");
-                        guiManager.openPetMenu(player, petData.getPetUUID());
-                        return;
-                    }
-                    // Consume Cost
-                    player.getInventory().removeItem(new ItemStack(requiredItem, requiredAmount));
+                    handItem = hand;
+                } else if (!player.getInventory().containsAtLeast(new ItemStack(requiredItem), requiredAmount)) {
+                    plugin.getLanguageManager().sendReplacements(player, "gui.need_nether_star",
+                            "amount", String.valueOf(requiredAmount),
+                            "item", requiredItem.name(),
+                            "hand", "");
+                    guiManager.openPetMenu(player, petData.getPetUUID());
+                    return;
                 }
 
                 player.closeInventory(); // Close completely to transition
 
-                // Spawn Logic
-                LivingEntity newPet = (LivingEntity) player.getWorld().spawnEntity(player.getLocation(),
-                        petData.getEntityType());
+                // Spawn first, then consume the cost only when the pet was actually
+                // created. This prevents losing the revive item if spawning fails.
+                LivingEntity newPet = petManager.spawnPetAt(player.getLocation(), petData.getEntityType());
+                if (newPet == null) {
+                    plugin.getLanguageManager().sendMessage(player, "gui.spawn_failed");
+                    guiManager.openPetMenu(player, petData.getPetUUID());
+                    return;
+                }
+
+                if (requireMainHand) {
+                    handItem.setAmount(handItem.getAmount() - requiredAmount);
+                } else {
+                    player.getInventory().removeItem(new ItemStack(requiredItem, requiredAmount));
+                }
 
                 // Manager Revival (Data Transfer + Core Effects)
                 petManager.revivePet(petData, newPet); // Also plays TOTEM sound/particle from Manager
@@ -1346,7 +1360,7 @@ public class PetGUIListener implements Listener {
                     return;
                 }
 
-                double maxHp = le.getAttribute(org.bukkit.attribute.Attribute.GENERIC_MAX_HEALTH).getValue();
+                double maxHp = petManager.getMaxHealth(le);
                 double currentHp = le.getHealth();
                 double missingHp = maxHp - currentHp;
 
@@ -1426,8 +1440,11 @@ public class PetGUIListener implements Listener {
                 }
 
                 // Respawn the pet
-                LivingEntity newPet = (LivingEntity) player.getWorld().spawnEntity(
-                        player.getLocation(), petData.getEntityType());
+                LivingEntity newPet = petManager.spawnPetAt(player.getLocation(), petData.getEntityType());
+                if (newPet == null) {
+                    plugin.getLanguageManager().sendMessage(player, "gui.spawn_failed");
+                    return;
+                }
 
                 // Update Pet Data with new UUID
                 PetData newData = petManager.updatePetId(petData, newPet.getUniqueId());

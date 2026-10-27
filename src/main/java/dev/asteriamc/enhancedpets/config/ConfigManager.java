@@ -56,6 +56,9 @@ public class ConfigManager {
         this.shiftdoubleclickgui = this.config.getBoolean("shift-doubleclick-pet-gui", true);
 
         String reviveItemString = this.config.getString("revive-item", DEFAULT_REVIVE_ITEM.name());
+        if (reviveItemString == null) {
+            reviveItemString = DEFAULT_REVIVE_ITEM.name();
+        }
         Material matchedReviveItem = Material.matchMaterial(reviveItemString);
         if (matchedReviveItem != null && matchedReviveItem != Material.AIR) {
             this.reviveItem = matchedReviveItem;

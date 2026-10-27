@@ -73,7 +73,14 @@ public class PetData {
             }
 
             String name = (String) map.getOrDefault("displayName", "Unknown Pet");
-            BehaviorMode mode = BehaviorMode.valueOf((String) map.getOrDefault("mode", "NEUTRAL"));
+            BehaviorMode mode = BehaviorMode.NEUTRAL;
+            Object modeValue = map.get("mode");
+            if (modeValue instanceof String modeString) {
+                try {
+                    mode = BehaviorMode.valueOf(modeString);
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
             boolean favorite = (boolean) map.getOrDefault("favorite", false);
             boolean growthPaused = (boolean) map.getOrDefault("growthPaused", false);
             int pausedAgeTicks = ((Number) map.getOrDefault("pausedAgeTicks", 0)).intValue();
@@ -135,7 +142,10 @@ public class PetData {
             // Initial Pet ID (permanent, never changes)
             // For existing pets without this field, try to extract from name or generate new
             if (map.containsKey("initialPetId")) {
-                data.setInitialPetId(((Number) map.get("initialPetId")).intValue());
+                Object idValue = map.get("initialPetId");
+                if (idValue instanceof Number number) {
+                    data.setInitialPetId(number.intValue());
+                }
             } else {
                 // Migration: try to extract ID from displayName (e.g., "Wolf #42" -> 42)
                 int extractedId = -1;
@@ -172,11 +182,13 @@ public class PetData {
                 data.setStationRadius(((Number) map.get("stationRadius")).doubleValue());
             }
             if (map.containsKey("stationTargetTypes")) {
-                List<?> rawList = (List<?>) map.get("stationTargetTypes");
+                Object rawTypes = map.get("stationTargetTypes");
                 Set<String> types = new HashSet<>();
-                for (Object o : rawList) {
-                    if (o instanceof String) {
-                        types.add((String) o);
+                if (rawTypes instanceof List<?> rawList) {
+                    for (Object o : rawList) {
+                        if (o instanceof String) {
+                            types.add((String) o);
+                        }
                     }
                 }
                 data.setStationTargetTypes(types);
@@ -194,7 +206,16 @@ public class PetData {
             }
 
             if (map.containsKey("aggressiveTargetTypes")) {
-                data.setAggressiveTargetTypes(new HashSet<>((List<String>) map.get("aggressiveTargetTypes")));
+                Object rawTypes = map.get("aggressiveTargetTypes");
+                Set<String> types = new HashSet<>();
+                if (rawTypes instanceof List<?> rawList) {
+                    for (Object o : rawList) {
+                        if (o instanceof String) {
+                            types.add((String) o);
+                        }
+                    }
+                }
+                data.setAggressiveTargetTypes(types);
             }
 
             return data;
