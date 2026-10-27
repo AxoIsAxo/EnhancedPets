@@ -835,7 +835,6 @@ public class PetManager {
         if (isOwnerLoaded(ownerUUID)) {
             queueOwnerSave(ownerUUID);
         } else {
-            cancelPendingOwnerSave(ownerUUID);
             final UUID oldPetUUID = oldData.getPetUUID();
             Bukkit.getScheduler().runTaskAsynchronously(plugin,
                     () -> storageManager.replacePetRecord(ownerUUID, oldPetUUID, newData));
@@ -879,7 +878,6 @@ public class PetManager {
             if (isOwnerLoaded(oldOwner)) {
                 queueOwnerSave(oldOwner);
             } else {
-                cancelPendingOwnerSave(oldOwner);
                 Bukkit.getScheduler().runTaskAsynchronously(plugin,
                         () -> storageManager.removePetRecords(oldOwner, removedIds));
             }
@@ -1067,7 +1065,6 @@ public class PetManager {
             if (isOwnerLoaded(ownerUUID)) {
                 queueOwnerSave(ownerUUID);
             } else {
-                cancelPendingOwnerSave(ownerUUID);
                 Bukkit.getScheduler().runTaskAsynchronously(plugin,
                         () -> storageManager.removePetRecords(ownerUUID, Collections.singleton(petUUID)));
             }
@@ -1427,7 +1424,6 @@ public class PetManager {
         if (isOwnerLoaded(ownerUUID)) {
             queueOwnerSave(ownerUUID);
         } else {
-            cancelPendingOwnerSave(ownerUUID);
             Bukkit.getScheduler().runTaskAsynchronously(plugin,
                     () -> storageManager.removePetRecords(ownerUUID, Collections.singleton(petUUID)));
         }
