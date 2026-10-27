@@ -63,6 +63,16 @@ public class PetTargetingTask extends BukkitRunnable {
             if (!(entity instanceof Creature petCreature) || !entity.isValid() || entity.isDead())
                 continue;
 
+            // Happy Ghasts are peaceful rideable pets. Never run combat AI for them,
+            // otherwise some server implementations can turn them into fireball
+            // launchers.
+            if (isHappyGhast(entity)) {
+                if (petCreature.getTarget() != null) {
+                    petCreature.setTarget(null);
+                }
+                continue;
+            }
+
             // 0. FLEE from Creepers (HIGHEST PRIORITY - Independent of other behaviors)
             // Skip for Cats since creepers naturally flee from cats
             if (petData.getCreeperBehavior() == CreeperBehavior.FLEE && !(entity instanceof Cat)) {
@@ -364,6 +374,10 @@ public class PetTargetingTask extends BukkitRunnable {
                     sittable.setSitting(true);
             }
         }
+    }
+
+    private static boolean isHappyGhast(Entity entity) {
+        return entity.getType().name().equalsIgnoreCase("HAPPY_GHAST");
     }
 
     private boolean isHostile(LivingEntity entity) {

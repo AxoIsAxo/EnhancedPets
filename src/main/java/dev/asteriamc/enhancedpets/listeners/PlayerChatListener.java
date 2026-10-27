@@ -21,6 +21,8 @@ import java.util.Set;
 import java.util.UUID;
 
 public class PlayerChatListener implements Listener {
+    private static final int MAX_PET_NAME_LENGTH = 32;
+
     private final Enhancedpets plugin;
     private final PetManager petManager;
     private final PetManagerGUI guiManager;
@@ -80,6 +82,7 @@ public class PlayerChatListener implements Listener {
             return;
         }
 
+        String newName = input.trim();
         this.plugin.getServer().getScheduler().runTask(this.plugin, () -> {
             PetData petData = this.petManager.getPetData(petContextUUID);
             if (petData == null) {
@@ -88,16 +91,19 @@ public class PlayerChatListener implements Listener {
                 return;
             }
 
-            if (input.matches("^[a-zA-Z0-9_-]+$")) {
+            if (newName.length() > MAX_PET_NAME_LENGTH) {
+                plugin.getLanguageManager().sendReplacements(player, "chat.rename_too_long",
+                        "max", String.valueOf(MAX_PET_NAME_LENGTH));
+            } else if (newName.matches("^[\\p{L}\\p{N}_ -]+$")) {
                 String oldName = petData.getDisplayName();
-                petData.setDisplayName(input);
+                petData.setDisplayName(newName);
                 Entity petEntity = Bukkit.getEntity(petContextUUID);
                 if (petEntity instanceof LivingEntity) {
-                    petEntity.setCustomName(ChatColor.translateAlternateColorCodes('&', input));
+                    petEntity.setCustomName(ChatColor.translateAlternateColorCodes('&', newName));
                 }
                 this.petManager.updatePetData(petData);
                 plugin.getLanguageManager().sendReplacements(player, "chat.rename_success", "old", oldName, "new",
-                        input);
+                        newName);
             } else {
                 plugin.getLanguageManager().sendMessage(player, "chat.rename_invalid");
             }

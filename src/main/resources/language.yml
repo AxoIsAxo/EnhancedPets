@@ -125,7 +125,7 @@ gui:
     - "&bℹ &7Reset name of &b%old% &7to &b%new%&7."
   rename_prompt:
     - "&6✉ &7Enter a new name for &b%pet% &7in chat."
-    - "&7Allowed characters: A-Z, a-z, 0-9, _, -"
+    - "&7Allowed characters: A-Z, a-z, 0-9, spaces, _, -"
     - "&7(Type 'cancel' to abort)"
   transfer_offline:
     - "&c✖ &7That player is no longer online."
@@ -264,6 +264,8 @@ chat:
     - "&a✔ &7Renamed &b%old% &7to &b%new%&7."
   rename_invalid:
     - "&c✖ &7Invalid name characters. Rename cancelled."
+  rename_too_long:
+    - "&c✖ &7That name is too long (maximum &e%max% &7characters)."
   friendly_cancel:
     - "&bℹ &7Cancelled adding friendly player."
   data_lost:

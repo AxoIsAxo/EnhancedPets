@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.logging.Level;
 
 public class LanguageManager {
+    private static final String DEFAULT_LANGUAGE_FILE = "language.yml";
+
     private final Enhancedpets plugin;
     private FileConfiguration langConfig;
     private File langFile;
@@ -24,12 +26,46 @@ public class LanguageManager {
         load();
     }
 
-    public void load() {
-        if (langFile == null) {
-            langFile = new File(plugin.getDataFolder(), "language.yml");
+    private boolean createFromBundledDefault() {
+        try (java.io.InputStream in = plugin.getResource(DEFAULT_LANGUAGE_FILE)) {
+            if (in == null) {
+                return false;
+            }
+            File dataFolder = plugin.getDataFolder();
+            if (!dataFolder.exists() && !dataFolder.mkdirs()) {
+                plugin.getLogger().warning("Could not create plugin data folder.");
+                return false;
+            }
+            java.nio.file.Files.copy(in, langFile.toPath());
+            return true;
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.WARNING, "Could not create " + langFile.getName(), e);
+            return false;
         }
+    }
+
+    public void load() {
+        String configuredFile = DEFAULT_LANGUAGE_FILE;
+        if (plugin.getConfigManager() != null) {
+            configuredFile = plugin.getConfigManager().getLanguageFile();
+        }
+        langFile = new File(plugin.getDataFolder(), configuredFile);
+
         if (!langFile.exists()) {
-            plugin.saveResource("language.yml", false);
+            if (DEFAULT_LANGUAGE_FILE.equals(configuredFile)) {
+                plugin.saveResource(DEFAULT_LANGUAGE_FILE, false);
+            } else if (!createFromBundledDefault()) {
+                // Never fail to start just because a translation file is missing.
+                plugin.getLogger().warning("Could not create " + configuredFile + ". Falling back to "
+                        + DEFAULT_LANGUAGE_FILE + ".");
+                langFile = new File(plugin.getDataFolder(), DEFAULT_LANGUAGE_FILE);
+                if (!langFile.exists()) {
+                    plugin.saveResource(DEFAULT_LANGUAGE_FILE, false);
+                }
+            } else {
+                plugin.getLogger().info("Created " + configuredFile
+                        + " from the bundled language file. Translate it and reload the plugin.");
+            }
         }
         langConfig = YamlConfiguration.loadConfiguration(langFile);
 
@@ -64,7 +100,7 @@ public class LanguageManager {
         }
 
         // Load defaults from internal resource and merge any missing keys
-        try (java.io.InputStream defStream = plugin.getResource("language.yml")) {
+        try (java.io.InputStream defStream = plugin.getResource(DEFAULT_LANGUAGE_FILE)) {
             if (defStream != null) {
                 FileConfiguration defaults = YamlConfiguration.loadConfiguration(
                         new InputStreamReader(defStream, StandardCharsets.UTF_8));
@@ -80,11 +116,11 @@ public class LanguageManager {
 
                 if (updated) {
                     save();
-                    plugin.getLogger().info("Updated language.yml with new keys from plugin.");
+                    plugin.getLogger().info("Updated " + langFile.getName() + " with new keys from plugin.");
                 }
             }
         } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Could not load default language.yml", e);
+            plugin.getLogger().log(Level.WARNING, "Could not load defaults from the bundled language.yml", e);
         }
     }
 
@@ -94,7 +130,7 @@ public class LanguageManager {
         try {
             langConfig.save(langFile);
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save language.yml", e);
+            plugin.getLogger().log(Level.SEVERE, "Could not save " + langFile.getName(), e);
         }
     }
 

@@ -39,7 +39,8 @@ More micromanagement for our dear users.
 ---
 
 ### Rename (with validation)
-- Click Name Tag button: Type new name in chat (A–Z, 0–9, _, -)
+- Click Name Tag button: Type new name in chat (letters, numbers, spaces, _, -)
+- Names are limited to 32 characters and support Unicode letters
 - Shift-Click: Reset to default generated name (e.g., "Wolf #42")
 
 If you rename a pet in-game with a standard Name Tag, the plugin auto-syncs the GUI name.
@@ -302,6 +303,11 @@ Don't torture your Happy Ghasts, Kids.
 ```yml
 # Configuration for EnhancedPets
 
+# Optional: name of the language file inside the plugin folder.
+# Copy language.yml to another file (for example language_zh.yml), translate it,
+# and set this option to that file name to use it.
+language-file: language.yml
+
 # Re-enable pre-1.14 Ocelot taming?
 # If true, right-clicking an untamed adult Ocelot with raw Cod or Salmon
 # will consume the fish and transform the Ocelot into a tamed Cat.
@@ -310,7 +316,7 @@ ocelot-taming-legacy-style: false
 # Shift double right-click any pet you own to open its GUI?
 shift-doubleclick-pet-gui: true
 
-# Item required to revive dead pets
+# Item required to revive dead pets (any valid Minecraft material)
 revive-item: NETHER_STAR
 revive-item-amount: 1
 revive-item-require-mainhand: true
@@ -328,6 +334,8 @@ debug: false
 - Creeper behavior is configured **per-pet** via the GUI, not globally.
 - Per-player JSON storage in `playerdata/<uuid>.json`.
 - Autosave runs every 2 minutes.
+- On startup, missing keys are automatically added to an existing `config.yml` without removing your edits or comments.
+- To add a translation, copy `language.yml` to a new file such as `language_zh.yml`, translate the values, and set `language-file` in `config.yml` to that file name. Missing keys fall back to the bundled English text.
 
 ---
 

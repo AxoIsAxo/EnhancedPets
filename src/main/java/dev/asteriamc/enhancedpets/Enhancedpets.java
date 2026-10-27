@@ -46,11 +46,11 @@ public final class Enhancedpets extends JavaPlugin {
         this.storageManager = new PetStorageManager(this);
         this.storageManager.migrateFromConfig();
         this.configManager = new ConfigManager(this);
+        this.loadConfigurationAndData();
         this.languageManager = new LanguageManager(this);
         this.petManager = new PetManager(this);
         this.guiManager = new PetManagerGUI(this);
         this.petGUIListener = new PetGUIListener(this, this.guiManager);
-        this.loadConfigurationAndData();
         PetCommand petCommandExecutor = new PetCommand(this, this.guiManager);
         Objects.requireNonNull(this.getCommand("pets")).setExecutor(petCommandExecutor);
         Objects.requireNonNull(this.getCommand("pets")).setTabCompleter(petCommandExecutor);

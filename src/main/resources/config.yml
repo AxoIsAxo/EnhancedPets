@@ -1,5 +1,10 @@
 # Configuration for EnhancedPets
 
+# Optional: name of the language file inside the plugin folder.
+# Copy language.yml to another file (for example language_zh.yml), translate it,
+# and set this option to that file name to use it.
+language-file: language.yml
+
 # Re-enable pre-1.14 Ocelot taming?
 # If true, right-clicking an untamed adult Ocelot with raw Cod or Salmon
 # will consume the fish and transform the Ocelot into a tamed Cat.
@@ -12,11 +17,11 @@ shift-doubleclick-pet-gui: true
 
 
 # Setup the item for reviving a pet.
+# Any valid Minecraft material works, e.g. NETHER_STAR, NETHERITE_SCRAP or DIRT.
 revive-item: NETHER_STAR
 revive-item-amount: 1
 revive-item-require-mainhand: true
-# Cost (in XP levels) to heal 1 HP of a pet. Default is 100 XP points (not levels, points).
-# Wait, the code says "XP" generally refers to total experience points.
+# Cost (in XP points, not levels) to heal 1 HP of a pet.
 pet-heal-cost: 100
 
 #Require advanced logs? want to check if there's a bug?

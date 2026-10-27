@@ -321,6 +321,13 @@ public class PetListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityTargetLivingEntity(EntityTargetLivingEntityEvent event) {
         if (event.getEntity() instanceof Creature petCreature) {
+            if (isHappyGhast(petCreature) && this.petManager.isManagedPet(petCreature.getUniqueId())) {
+                // Happy Ghasts are peaceful pets. Never let them acquire a target (some
+                // server implementations inherit hostile Ghast AI, which shoots fireballs).
+                event.setTarget(null);
+                event.setCancelled(true);
+                return;
+            }
             if (petCreature instanceof Tameable pet) {
                 if (pet.isTamed() && this.petManager.isManagedPet(pet.getUniqueId())) {
                     PetData petData = this.petManager.getPetData(pet.getUniqueId());
@@ -366,6 +373,23 @@ public class PetListener implements Listener {
                 }
             }
         }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onProjectileLaunch(ProjectileLaunchEvent event) {
+        if (!(event.getEntity() instanceof Fireball)) {
+            return;
+        }
+        org.bukkit.projectiles.ProjectileSource shooter = event.getEntity().getShooter();
+        if (shooter instanceof Entity shooterEntity && isHappyGhast(shooterEntity)
+                && petManager.isManagedPet(shooterEntity.getUniqueId())) {
+            // Happy Ghasts must never be used as fireball launchers.
+            event.setCancelled(true);
+        }
+    }
+
+    private static boolean isHappyGhast(Entity entity) {
+        return entity.getType().name().equalsIgnoreCase("HAPPY_GHAST");
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
