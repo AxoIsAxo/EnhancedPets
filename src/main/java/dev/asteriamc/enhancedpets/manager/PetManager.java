@@ -1036,12 +1036,24 @@ public class PetManager {
         PetData removedData = this.petDataMap.remove(petUUID);
 
         if (removedData != null) {
+            boolean needsFreedMarker = !removedData.isDead() && !removedData.isStored()
+                    && isTameableType(removedData.getEntityType());
+            if (needsFreedMarker) {
+                storageManager.markPetFreed(petUUID);
+            }
 
             Bukkit.getScheduler().runTask(plugin, () -> {
                 Entity entity = Bukkit.getEntity(petUUID);
-                if (entity instanceof Tameable t && t.isTamed()) {
+                if (entity == null) {
+                    // Entity is unloaded. Keep the freed marker so it is consumed when
+                    // the chunk loads and the entity tries to register itself again.
+                    return;
+                }
+                if (entity instanceof Tameable t) {
                     t.setOwner(null);
                     t.setTamed(false);
+                    t.setPersistent(true);
+                    t.setRemoveWhenFarAway(false);
 
                     String name = removedData.getDisplayName();
                     int id = -1;
@@ -1056,7 +1068,7 @@ public class PetManager {
                         t.getPersistentDataContainer().set(PET_ID_KEY, PersistentDataType.INTEGER, id);
                     }
                 }
-
+                storageManager.unmarkPetFreed(petUUID);
             });
 
             plugin.debugLog("Completely removing pet: " + removedData.getDisplayName() + " (UUID: " + petUUID + ")");
@@ -1069,6 +1081,60 @@ public class PetManager {
                         () -> storageManager.removePetRecords(ownerUUID, Collections.singleton(petUUID)));
             }
         }
+    }
+
+    public boolean isPetFreed(UUID petUUID) {
+        return storageManager.isPetFreed(petUUID);
+    }
+
+    public void unmarkPetFreed(UUID petUUID) {
+        storageManager.unmarkPetFreed(petUUID);
+    }
+
+    private static boolean isTameableType(EntityType type) {
+        if (type == null) {
+            return false;
+        }
+        Class<?> entityClass = type.getEntityClass();
+        return entityClass != null && Tameable.class.isAssignableFrom(entityClass);
+    }
+
+    /**
+     * Finds tamed pets near online players that are not registered in memory.
+     * This is a safety net for taming methods that do not fire EntityTameEvent
+     * reliably on every server version (notably horses).
+     */
+    public int scanNearbyTamedPetsForOnlinePlayers() {
+        int registered = 0;
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!isOwnerLoaded(player.getUniqueId())) {
+                continue;
+            }
+            for (Entity entity : player.getNearbyEntities(32, 32, 32)) {
+                if (!(entity instanceof Tameable pet) || !pet.isTamed()) {
+                    continue;
+                }
+                UUID ownerUUID = pet.getOwnerUniqueId();
+                if (ownerUUID == null || !ownerUUID.equals(player.getUniqueId())) {
+                    continue;
+                }
+                if (isManagedPet(pet.getUniqueId())) {
+                    continue;
+                }
+                if (storageManager.isPetFreed(pet.getUniqueId())) {
+                    pet.setOwner(null);
+                    pet.setTamed(false);
+                    pet.setPersistent(true);
+                    pet.setRemoveWhenFarAway(false);
+                    storageManager.unmarkPetFreed(pet.getUniqueId());
+                    continue;
+                }
+                if (registerPet(pet) != null) {
+                    registered++;
+                }
+            }
+        }
+        return registered;
     }
 
     public List<PetData> getPetsOwnedBy(UUID ownerUUID) {

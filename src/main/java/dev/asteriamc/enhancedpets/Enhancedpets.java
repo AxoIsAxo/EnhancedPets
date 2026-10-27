@@ -34,6 +34,7 @@ public final class Enhancedpets extends JavaPlugin {
     private BukkitTask autosaveTask;
     private PetListener petListener;
     private BukkitTask growthGuardTask;
+    private BukkitTask registrationScanTask;
     private dev.asteriamc.enhancedpets.manager.DriedGhastTracker driedGhastTracker;
 
     public static Enhancedpets getInstance() {
@@ -161,6 +162,16 @@ public final class Enhancedpets extends JavaPlugin {
                 growthGuardTask.cancel();
             }
             growthGuardTask = new GrowthGuardTask(this).runTaskTimer(this, 20L, 20L);
+
+            if (registrationScanTask != null && !registrationScanTask.isCancelled()) {
+                registrationScanTask.cancel();
+            }
+            registrationScanTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
+                if (petManager != null) {
+                    petManager.scanNearbyTamedPetsForOnlinePlayers();
+                }
+            }, 100L, 100L);
+
             this.targetingTaskRunnable = new PetTargetingTask(this, this.petManager);
             this.targetingTask = this.targetingTaskRunnable.runTaskTimer(this, delayTicks, periodTicks);
             Enhancedpets.getInstance().debugLog("Scheduled Aggressive Pet Targeting Task (runs every 1 second).");
@@ -173,6 +184,10 @@ public final class Enhancedpets extends JavaPlugin {
             Enhancedpets.getInstance().debugLog("Cancelled Aggressive Pet Targeting Task.");
             this.targetingTask = null;
             this.targetingTaskRunnable = null;
+        }
+        if (this.registrationScanTask != null && !this.registrationScanTask.isCancelled()) {
+            this.registrationScanTask.cancel();
+            this.registrationScanTask = null;
         }
     }
 

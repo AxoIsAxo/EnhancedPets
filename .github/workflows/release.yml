@@ -31,6 +31,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: EnhancedPets ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: .github/release-notes/${{ github.ref_name }}.md
           files: target/enhancedpets-*.jar
           fail_on_unmatched_files: true

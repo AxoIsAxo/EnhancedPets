@@ -250,6 +250,39 @@ public class PetStorageManager {
         }
     }
 
+    /**
+     * Remembers that a pet was freed while its entity was unloaded. The marker is
+     * consumed the next time the entity is loaded, so a freed pet cannot be
+     * automatically re-registered from its still-tamed entity data.
+     */
+    public synchronized void markPetFreed(UUID petUUID) {
+        if (petUUID == null) {
+            return;
+        }
+        List<String> freed = new ArrayList<>(this.dataConfig.getStringList("freed-pets"));
+        String id = petUUID.toString();
+        if (!freed.contains(id)) {
+            freed.add(id);
+            this.dataConfig.set("freed-pets", freed);
+            saveDataConfig();
+        }
+    }
+
+    public synchronized boolean isPetFreed(UUID petUUID) {
+        return petUUID != null && this.dataConfig.getStringList("freed-pets").contains(petUUID.toString());
+    }
+
+    public synchronized void unmarkPetFreed(UUID petUUID) {
+        if (petUUID == null) {
+            return;
+        }
+        List<String> freed = new ArrayList<>(this.dataConfig.getStringList("freed-pets"));
+        if (freed.remove(petUUID.toString())) {
+            this.dataConfig.set("freed-pets", freed);
+            saveDataConfig();
+        }
+    }
+
 
     public void migrateFromConfig() {
         File configFile = new File(plugin.getDataFolder(), "config.yml");

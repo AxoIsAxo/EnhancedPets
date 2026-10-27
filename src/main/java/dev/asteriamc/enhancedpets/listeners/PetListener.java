@@ -53,9 +53,10 @@ public class PetListener implements Listener {
             this.plugin.getServer().getScheduler().runTaskLater(this.plugin, () -> {
                 if (pet.isValid() && pet.isTamed() && pet.getOwnerUniqueId() != null
                         && !this.petManager.isManagedPet(pet.getUniqueId())) {
+                    this.petManager.unmarkPetFreed(pet.getUniqueId());
                     this.petManager.registerPet(pet);
                 }
-            }, 1L);
+            }, 2L);
         }
     }
 
@@ -218,6 +219,16 @@ public class PetListener implements Listener {
 
         for (Entity entity : chunk.getEntities()) {
             if (entity instanceof Tameable pet && pet.isTamed() && pet.getOwnerUniqueId() != null) {
+                if (this.petManager.isPetFreed(pet.getUniqueId())) {
+                    // The pet was released while this chunk was unloaded. Untame it
+                    // now instead of re-registering it as a managed pet.
+                    pet.setOwner(null);
+                    pet.setTamed(false);
+                    pet.setPersistent(true);
+                    pet.setRemoveWhenFarAway(false);
+                    this.petManager.unmarkPetFreed(pet.getUniqueId());
+                    continue;
+                }
                 if (this.petManager.isManagedPet(pet.getUniqueId())) {
                     // Reconcile the entity's owner with the stored record. This is
                     // important for pets transferred while their chunk was unloaded.
@@ -407,6 +418,20 @@ public class PetListener implements Listener {
 
     private static boolean isHappyGhast(Entity entity) {
         return entity.getType().name().equalsIgnoreCase("HAPPY_GHAST");
+    }
+
+    private void scheduleRegistrationCheck(Tameable pet, Player owner) {
+        UUID petUUID = pet.getUniqueId();
+        UUID ownerUUID = owner.getUniqueId();
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            Entity entity = Bukkit.getEntity(petUUID);
+            if (entity instanceof Tameable tamed && tamed.isValid() && tamed.isTamed()
+                    && ownerUUID.equals(tamed.getOwnerUniqueId())
+                    && !petManager.isManagedPet(petUUID)) {
+                petManager.unmarkPetFreed(petUUID);
+                petManager.registerPet(tamed);
+            }
+        }, 2L);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -625,6 +650,23 @@ public class PetListener implements Listener {
     public void onPlayerInteractEntity(PlayerInteractEntityEvent e) {
         Player player = e.getPlayer();
         Entity targetEntity = e.getRightClicked();
+
+        // Never block the vanilla snowball-growth interaction for baby Happy
+        // Ghasts. This was previously intercepted as a taming attempt and could
+        // trap already-managed ghastlings at baby age.
+        ItemStack heldItem = e.getHand() == EquipmentSlot.HAND
+                ? player.getInventory().getItemInMainHand()
+                : player.getInventory().getItemInOffHand();
+        if (isHappyGhast(targetEntity) && heldItem != null && heldItem.getType() == Material.SNOWBALL
+                && targetEntity instanceof Ageable ageable && !ageable.isAdult()) {
+            return;
+        }
+
+        // Safety net for taming interactions that do not reliably fire
+        // EntityTameEvent on every server version.
+        if (targetEntity instanceof Tameable tameable && !petManager.isManagedPet(targetEntity.getUniqueId())) {
+            scheduleRegistrationCheck(tameable, player);
+        }
 
         // [Security] Access Control for Managed Pets
         if (petManager.isManagedPet(targetEntity.getUniqueId())) {
@@ -887,6 +929,11 @@ public class PetListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onVehicleEnter(VehicleEnterEvent event) {
         if (event.getEntered() instanceof Player player && event.getVehicle() instanceof LivingEntity vehicle) {
+            if (vehicle instanceof Tameable tameable && !petManager.isManagedPet(vehicle.getUniqueId())) {
+                // Horse taming is done by mounting, and does not always fire
+                // EntityTameEvent. Check again shortly after mounting.
+                scheduleRegistrationCheck(tameable, player);
+            }
             if (petManager.isManagedPet(vehicle.getUniqueId())) {
                 PetData petData = petManager.getPetData(vehicle.getUniqueId());
                 if (petData != null) {
