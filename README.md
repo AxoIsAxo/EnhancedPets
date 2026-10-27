@@ -1,6 +1,6 @@
 # EnhancedPets — Enhanced Pet System
 
-![Version](https://img.shields.io/badge/Version-v1.3.1-blue.svg)
+![Version](https://img.shields.io/badge/Version-v1.4.0-blue.svg)
 ![Compatibility](https://img.shields.io/badge/MC%20Version-1.17%E2%80%941.21.x-orange.svg)
 ![Java](https://img.shields.io/badge/Java-17%2B-RED)
 ![Discord Support](https://img.shields.io/discord/b7BVkJ56mR?label=Discord&logo=discord&color=7289DA)
@@ -308,6 +308,36 @@ Don't torture your Happy Ghasts, Kids.
 # and set this option to that file name to use it.
 language-file: language.yml
 
+# GUI and feature toggles.
+# Set any option to false to hide it from the pet menus and disable its action.
+features:
+  mode-passive: true
+  mode-neutral: true
+  mode-aggressive: true
+  sit: true
+  teleport: true
+  calm: true
+  rename: true
+  friendly-players: true
+  transfer: true
+  protection: true
+  station: true
+  targeting: true
+  creeper-behavior: true
+  public-access: true
+  heal: true
+  storage: true
+  free-pet: true
+  remove-pet: true
+  customization: true
+  favorites: true
+  growth-control: true
+  revive: true
+  batch-actions: true
+  scan: true
+  adoption: true
+  incubator: true
+
 # Re-enable pre-1.14 Ocelot taming?
 # If true, right-clicking an untamed adult Ocelot with raw Cod or Salmon
 # will consume the fish and transform the Ocelot into a tamed Cat.
@@ -336,6 +366,39 @@ debug: false
 - Autosave runs every 2 minutes.
 - On startup, missing keys are automatically added to an existing `config.yml` without removing your edits or comments.
 - To add a translation, copy `language.yml` to a new file such as `language_zh.yml`, translate the values, and set `language-file` in `config.yml` to that file name. Missing keys fall back to the bundled English text.
+- To run a minimal menu setup, set the features you do not use to `false`. For example, this leaves only teleport, rename, and the friendly-player list while disabling aggressive mode and the rest:
+
+```yml
+features:
+  mode-passive: true
+  mode-neutral: true
+  mode-aggressive: false
+  sit: false
+  teleport: true
+  calm: false
+  rename: true
+  friendly-players: true
+  transfer: false
+  protection: false
+  station: false
+  targeting: false
+  creeper-behavior: false
+  public-access: false
+  heal: false
+  storage: false
+  free-pet: false
+  remove-pet: false
+  customization: false
+  favorites: false
+  growth-control: false
+  revive: false
+  batch-actions: false
+  scan: false
+  adoption: false
+  incubator: false
+```
+
+Disabled features are removed from the GUI, hidden from command tab-completion, and rejected if an old menu item or command is used.
 
 ---
 

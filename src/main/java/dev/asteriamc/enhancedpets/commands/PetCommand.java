@@ -1,6 +1,7 @@
 package dev.asteriamc.enhancedpets.commands;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.config.ConfigManager;
 import dev.asteriamc.enhancedpets.gui.PetManagerGUI;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -34,7 +35,19 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
 
         if (args.length == 1) {
             if (sender.hasPermission("enhancedpets.use")) {
-                String[] subcmds = { "station", "unstation", "target", "untarget", "store", "withdraw" };
+                java.util.List<String> subcmds = new java.util.ArrayList<>();
+                if (plugin.getConfigManager().isFeatureEnabled(ConfigManager.Feature.STATION)) {
+                    subcmds.add("station");
+                    subcmds.add("unstation");
+                }
+                if (plugin.getConfigManager().isFeatureEnabled(ConfigManager.Feature.TARGETING)) {
+                    subcmds.add("target");
+                    subcmds.add("untarget");
+                }
+                if (plugin.getConfigManager().isFeatureEnabled(ConfigManager.Feature.STORAGE)) {
+                    subcmds.add("store");
+                    subcmds.add("withdraw");
+                }
                 for (String s : subcmds) {
                     if (s.toLowerCase().startsWith(args[0].toLowerCase()))
                         completions.add(s);
@@ -106,6 +119,9 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
 
                 // Station Command
                 if (args[0].equalsIgnoreCase("station")) {
+                    if (!requireFeature(player, ConfigManager.Feature.STATION)) {
+                        return true;
+                    }
                     // Usage: /pet station <radius>
                     double radius = 10.0;
                     if (args.length > 1) {
@@ -147,6 +163,9 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                 }
 
                 if (args[0].equalsIgnoreCase("unstation")) {
+                    if (!requireFeature(player, ConfigManager.Feature.STATION)) {
+                        return true;
+                    }
                     int count = 0;
                     for (dev.asteriamc.enhancedpets.data.PetData pet : plugin.getPetManager()
                             .getPetsOwnedBy(player.getUniqueId())) {
@@ -161,6 +180,9 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
 
                 // Target Command
                 if (args[0].equalsIgnoreCase("target")) {
+                    if (!requireFeature(player, ConfigManager.Feature.TARGETING)) {
+                        return true;
+                    }
                     // Usage: /pet target <playername> OR /pet target mob
                     if (args.length < 2) {
                         plugin.getLanguageManager().sendMessage(player, "command.target_usage");
@@ -228,6 +250,9 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
                 }
 
                 if (args[0].equalsIgnoreCase("untarget")) {
+                    if (!requireFeature(player, ConfigManager.Feature.TARGETING)) {
+                        return true;
+                    }
                     int count = 0;
                     for (dev.asteriamc.enhancedpets.data.PetData pet : plugin.getPetManager()
                             .getPetsOwnedBy(player.getUniqueId())) {
@@ -242,12 +267,18 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
 
                 // Store Command - Opens GUI with active pets to store
                 if (args[0].equalsIgnoreCase("store")) {
+                    if (!requireFeature(player, ConfigManager.Feature.STORAGE)) {
+                        return true;
+                    }
                     guiManager.openStorePetMenu(player);
                     return true;
                 }
 
                 // Withdraw Command - Opens GUI with stored pets to withdraw
                 if (args[0].equalsIgnoreCase("withdraw")) {
+                    if (!requireFeature(player, ConfigManager.Feature.STORAGE)) {
+                        return true;
+                    }
                     guiManager.openWithdrawPetMenu(player);
                     return true;
                 }
@@ -283,5 +314,13 @@ public class PetCommand implements CommandExecutor, org.bukkit.command.TabComple
             return customName;
         }
         return entity.getType().name();
+    }
+
+    private boolean requireFeature(Player player, ConfigManager.Feature feature) {
+        if (plugin.getConfigManager().isFeatureEnabled(feature)) {
+            return true;
+        }
+        plugin.getLanguageManager().sendMessage(player, "command.feature_disabled");
+        return false;
     }
 }

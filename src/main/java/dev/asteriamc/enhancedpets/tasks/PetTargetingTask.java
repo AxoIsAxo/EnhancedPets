@@ -1,6 +1,7 @@
 package dev.asteriamc.enhancedpets.tasks;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.config.ConfigManager;
 import dev.asteriamc.enhancedpets.data.BehaviorMode;
 import dev.asteriamc.enhancedpets.data.CreeperBehavior;
 import dev.asteriamc.enhancedpets.data.PetData;
@@ -38,6 +39,12 @@ public class PetTargetingTask extends BukkitRunnable {
 
     @Override
     public void run() {
+        ConfigManager cfg = plugin.getConfigManager();
+        boolean aggressiveEnabled = cfg.isFeatureEnabled(ConfigManager.Feature.MODE_AGGRESSIVE);
+        boolean stationEnabled = cfg.isFeatureEnabled(ConfigManager.Feature.STATION);
+        boolean targetingEnabled = cfg.isFeatureEnabled(ConfigManager.Feature.TARGETING);
+        boolean creeperEnabled = cfg.isFeatureEnabled(ConfigManager.Feature.CREEPER_BEHAVIOR);
+
         List<PetData> pets = new ArrayList<>();
         // Filter pets that need active logic (targeting or flee)
         for (PetData pd : this.petManager.getAllPetData()) {
@@ -75,27 +82,32 @@ public class PetTargetingTask extends BukkitRunnable {
 
             // 0. FLEE from Creepers (HIGHEST PRIORITY - Independent of other behaviors)
             // Skip for Cats since creepers naturally flee from cats
-            if (petData.getCreeperBehavior() == CreeperBehavior.FLEE && !(entity instanceof Cat)) {
+            if (creeperEnabled && petData.getCreeperBehavior() == CreeperBehavior.FLEE
+                    && !(entity instanceof Cat)) {
                 if (handleCreeperFlee(petCreature, petData)) {
                     continue; // Pet is fleeing, skip other behaviors
                 }
             }
 
             // 1. Explicit Target Handling
-            if (petData.getExplicitTargetUUID() != null) {
+            if (targetingEnabled && petData.getExplicitTargetUUID() != null) {
                 handleExplicitTarget(petCreature, petData);
                 continue; // Skip other behaviors if locked on target
             }
 
             // 2. Station Feature Handling
-            if (petData.getStationLocation() != null) {
+            if (stationEnabled && petData.getStationLocation() != null) {
                 handleStationBehavior(petCreature, petData);
                 continue; // Skip Aggressive fallback if Stationed
             }
 
             // 3. Fallback: Aggressive Mode
-            if (petData.getMode() == BehaviorMode.AGGRESSIVE) {
+            if (aggressiveEnabled && petData.getMode() == BehaviorMode.AGGRESSIVE) {
                 handleAggressiveBehavior(petCreature, petData);
+            } else if (!aggressiveEnabled && petData.getMode() == BehaviorMode.AGGRESSIVE
+                    && petData.getExplicitTargetUUID() == null && petData.getStationLocation() == null) {
+                // Aggressive mode is disabled; clear targets left over from before.
+                petCreature.setTarget(null);
             }
         }
     }

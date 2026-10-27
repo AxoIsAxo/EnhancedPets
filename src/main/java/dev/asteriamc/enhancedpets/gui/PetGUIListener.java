@@ -1,6 +1,7 @@
 package dev.asteriamc.enhancedpets.gui;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.config.ConfigManager;
 import dev.asteriamc.enhancedpets.data.BehaviorMode;
 import dev.asteriamc.enhancedpets.data.CreeperBehavior;
 import dev.asteriamc.enhancedpets.data.PetData;
@@ -205,6 +206,13 @@ public class PetGUIListener implements Listener {
     }
 
     private void handleBatchAction(Player player, String batchAction, PersistentDataContainer data) {
+        if (!requireFeature(player, ConfigManager.Feature.BATCH_ACTIONS)) {
+            return;
+        }
+        if (("batch_remove_dead".equals(batchAction) || "batch_confirm_remove_dead".equals(batchAction))
+                && !requireFeature(player, ConfigManager.Feature.REMOVE_PET)) {
+            return;
+        }
         Set<UUID> selectedPets = batchActionsGUI.getPlayerSelections().computeIfAbsent(player.getUniqueId(),
                 k -> new HashSet<>());
         String typeName = data.get(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING);
@@ -297,6 +305,9 @@ public class PetGUIListener implements Listener {
 
     private void handleRegularAction(Player player, String action, PersistentDataContainer data,
             InventoryClickEvent event) {
+        if (!requireFeature(player, featureForAction(action))) {
+            return;
+        }
         String petUUIDString = data.get(PetManagerGUI.PET_UUID_KEY, PersistentDataType.STRING);
         UUID petUUID = (petUUIDString != null) ? UUID.fromString(petUUIDString) : null;
         Set<UUID> selectedPets = batchActionsGUI.getPlayerSelections().get(player.getUniqueId());
@@ -454,6 +465,9 @@ public class PetGUIListener implements Listener {
             }
 
             if (event.isRightClick()) {
+                if (!requireFeature(player, ConfigManager.Feature.FAVORITES)) {
+                    return;
+                }
 
                 petData.setFavorite(!petData.isFavorite());
                 petManager.updatePetData(petData);
@@ -467,7 +481,9 @@ public class PetGUIListener implements Listener {
                 guiManager.openPetMenu(player, petUUID);
                 return;
             } else if (event.isLeftClick()) {
-
+                if (!requireFeature(player, ConfigManager.Feature.CUSTOMIZATION)) {
+                    return;
+                }
                 guiManager.openCustomizationMenu(player, petUUID);
                 return;
             }
@@ -509,6 +525,12 @@ public class PetGUIListener implements Listener {
 
     private void handleBatchManagementAction(Player player, String action, PersistentDataContainer data,
             Set<UUID> selectedPets, InventoryClickEvent event) {
+        if (!requireFeature(player, ConfigManager.Feature.BATCH_ACTIONS)) {
+            return;
+        }
+        if (!requireFeature(player, featureForBatchAction(action))) {
+            return;
+        }
         if (selectedPets == null || selectedPets.isEmpty()) {
             plugin.getLanguageManager().sendMessage(player, "gui.batch_no_selection");
             guiManager.openMainMenu(player);
@@ -824,6 +846,9 @@ public class PetGUIListener implements Listener {
 
     private void handleSinglePetAction(Player player, String action, PetData petData, PersistentDataContainer data,
             InventoryClickEvent event) {
+        if (!requireFeature(player, featureForSingleAction(action))) {
+            return;
+        }
         UUID petUUID = petData.getPetUUID();
         switch (action) {
             case "set_mode_PASSIVE", "set_mode_NEUTRAL", "set_mode_AGGRESSIVE" -> {
@@ -1466,6 +1491,75 @@ public class PetGUIListener implements Listener {
                 guiManager.openPetMenu(player, newData.getPetUUID());
             }
         }
+    }
+
+    private ConfigManager.Feature featureForAction(String action) {
+        return switch (action) {
+            case "adopt_leashed" -> ConfigManager.Feature.ADOPTION;
+            case "scan_for_pets" -> ConfigManager.Feature.SCAN;
+            case "batch_actions", "open_batch_manage" -> ConfigManager.Feature.BATCH_ACTIONS;
+            case "do_store_pet", "do_withdraw_pet" -> ConfigManager.Feature.STORAGE;
+            default -> null;
+        };
+    }
+
+    private ConfigManager.Feature featureForSingleAction(String action) {
+        return switch (action) {
+            case "set_mode_PASSIVE" -> ConfigManager.Feature.MODE_PASSIVE;
+            case "set_mode_NEUTRAL" -> ConfigManager.Feature.MODE_NEUTRAL;
+            case "set_mode_AGGRESSIVE" -> ConfigManager.Feature.MODE_AGGRESSIVE;
+            case "confirm_free_pet_prompt", "free_pet", "confirm_free" -> ConfigManager.Feature.FREE_PET;
+            case "confirm_revive_pet", "do_revive_pet" -> ConfigManager.Feature.REVIVE;
+            case "confirm_remove_pet", "do_remove_pet" -> ConfigManager.Feature.REMOVE_PET;
+            case "manage_friendly", "add_friendly_prompt", "remove_friendly", "friendly_page" ->
+                ConfigManager.Feature.FRIENDLY_PLAYERS;
+            case "toggle_growth_pause" -> ConfigManager.Feature.GROWTH_CONTROL;
+            case "teleport_pet" -> ConfigManager.Feature.TELEPORT;
+            case "rename_pet_prompt" -> ConfigManager.Feature.RENAME;
+            case "open_transfer", "transfer_to_player" -> ConfigManager.Feature.TRANSFER;
+            case "toggle_sit" -> ConfigManager.Feature.SIT;
+            case "calm_pet" -> ConfigManager.Feature.CALM;
+            case "set_display_icon", "set_display_color", "choose_color" ->
+                ConfigManager.Feature.CUSTOMIZATION;
+            case "toggle_mutual_protection" -> ConfigManager.Feature.PROTECTION;
+            case "toggle_access" -> ConfigManager.Feature.PUBLIC_ACCESS;
+            case "toggle_station" -> ConfigManager.Feature.STATION;
+            case "toggle_target_prompt" -> ConfigManager.Feature.TARGETING;
+            case "cycle_creeper_behavior" -> ConfigManager.Feature.CREEPER_BEHAVIOR;
+            case "heal_pet" -> ConfigManager.Feature.HEAL;
+            case "store_pet", "withdraw_pet" -> ConfigManager.Feature.STORAGE;
+            default -> null;
+        };
+    }
+
+    private ConfigManager.Feature featureForBatchAction(String action) {
+        return switch (action) {
+            case "batch_set_mode_PASSIVE" -> ConfigManager.Feature.MODE_PASSIVE;
+            case "batch_set_mode_NEUTRAL" -> ConfigManager.Feature.MODE_NEUTRAL;
+            case "batch_set_mode_AGGRESSIVE" -> ConfigManager.Feature.MODE_AGGRESSIVE;
+            case "batch_toggle_growth_pause" -> ConfigManager.Feature.GROWTH_CONTROL;
+            case "batch_toggle_favorite" -> ConfigManager.Feature.FAVORITES;
+            case "batch_teleport" -> ConfigManager.Feature.TELEPORT;
+            case "batch_calm" -> ConfigManager.Feature.CALM;
+            case "batch_toggle_sit" -> ConfigManager.Feature.SIT;
+            case "batch_free_pet_prompt", "batch_confirm_free" -> ConfigManager.Feature.FREE_PET;
+            case "batch_manage_friendly", "add_batch_friendly_prompt", "remove_batch_friendly",
+                    "batch_friendly_page" -> ConfigManager.Feature.FRIENDLY_PLAYERS;
+            case "batch_open_transfer", "batch_transfer_to_player" -> ConfigManager.Feature.TRANSFER;
+            case "batch_toggle_protection" -> ConfigManager.Feature.PROTECTION;
+            case "batch_toggle_target_prompt", "batch_target_logic" -> ConfigManager.Feature.TARGETING;
+            case "batch_heal" -> ConfigManager.Feature.HEAL;
+            case "batch_remove_dead", "batch_confirm_remove_dead" -> ConfigManager.Feature.REMOVE_PET;
+            default -> null;
+        };
+    }
+
+    private boolean requireFeature(Player player, ConfigManager.Feature feature) {
+        if (feature == null || this.plugin.getConfigManager().isFeatureEnabled(feature)) {
+            return true;
+        }
+        this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+        return false;
     }
 
     private net.kyori.adventure.text.Component toComponent(String text) {

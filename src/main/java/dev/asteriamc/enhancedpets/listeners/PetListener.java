@@ -1,6 +1,7 @@
 package dev.asteriamc.enhancedpets.listeners;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.config.ConfigManager;
 import dev.asteriamc.enhancedpets.data.BehaviorMode;
 import dev.asteriamc.enhancedpets.data.CreeperBehavior;
 import dev.asteriamc.enhancedpets.data.PetData;
@@ -45,6 +46,10 @@ public class PetListener implements Listener {
                 sb.append(Character.toUpperCase(w.charAt(0))).append(w.substring(1)).append(" ");
         }
         return sb.toString().trim();
+    }
+
+    private boolean enabled(ConfigManager.Feature feature) {
+        return this.plugin.getConfigManager().isFeatureEnabled(feature);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -366,7 +371,8 @@ public class PetListener implements Listener {
                             if (plugin.getPetManager().isManagedPet(target.getUniqueId())) {
                                 PetData tpd = plugin.getPetManager().getPetData(target.getUniqueId());
                                 if (tpd != null && (tpd.getOwnerUUID().equals(petData.getOwnerUUID())
-                                        || petData.isFriendlyPlayer(tpd.getOwnerUUID()))) {
+                                        || (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)
+                                                && petData.isFriendlyPlayer(tpd.getOwnerUUID())))) {
                                     event.setTarget(null);
                                     event.setCancelled(true);
                                     return;
@@ -376,13 +382,16 @@ public class PetListener implements Listener {
                             if (petData.getMode() == BehaviorMode.PASSIVE) {
                                 event.setTarget(null);
                                 event.setCancelled(true);
-                            } else if (petData.isFriendlyPlayer(target.getUniqueId())) {
+                            } else if (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)
+                                    && petData.isFriendlyPlayer(target.getUniqueId())) {
                                 event.setTarget(null);
                                 event.setCancelled(true);
-                            } else if (target instanceof Player && petData.isProtectedFromPlayers()) {
+                            } else if (enabled(ConfigManager.Feature.PROTECTION)
+                                    && target instanceof Player && petData.isProtectedFromPlayers()) {
                                 event.setTarget(null);
                                 event.setCancelled(true);
-                            } else if (target instanceof Creeper) {
+                            } else if (enabled(ConfigManager.Feature.CREEPER_BEHAVIOR)
+                                    && target instanceof Creeper) {
                                 // Per-pet creeper behavior
                                 CreeperBehavior cb = petData.getCreeperBehavior();
                                 if (cb == CreeperBehavior.FLEE || cb == CreeperBehavior.IGNORE) {
@@ -444,7 +453,7 @@ public class PetListener implements Listener {
             Map<UUID, UUID> awaitingTarget = plugin.getPetGUIListener().getAwaitingTargetSelectionMap();
             Map<UUID, Boolean> awaitingBatchTarget = plugin.getPetGUIListener().getAwaitingBatchTargetSelectionMap();
 
-            if (awaitingTarget.containsKey(player.getUniqueId())) {
+            if (enabled(ConfigManager.Feature.TARGETING) && awaitingTarget.containsKey(player.getUniqueId())) {
                 UUID petUUID = awaitingTarget.get(player.getUniqueId());
                 event.setCancelled(true);
 
@@ -475,7 +484,8 @@ public class PetListener implements Listener {
                     awaitingTarget.remove(player.getUniqueId());
                 }
                 return;
-            } else if (awaitingBatchTarget.containsKey(player.getUniqueId())) {
+            } else if (enabled(ConfigManager.Feature.TARGETING)
+                    && awaitingBatchTarget.containsKey(player.getUniqueId())) {
                 event.setCancelled(true);
                 if (!isValidSelectionTarget(victim)) {
                     plugin.getLanguageManager().sendMessage(player, "event.target_selection_invalid");
@@ -522,7 +532,7 @@ public class PetListener implements Listener {
 
             // NEUTRAL Creeper Behavior: When player attacks a creeper, pets with NEUTRAL
             // mode target it
-            if (victim instanceof Creeper creeper) {
+            if (enabled(ConfigManager.Feature.CREEPER_BEHAVIOR) && victim instanceof Creeper creeper) {
                 for (PetData petData : petManager.getPetsOwnedBy(player.getUniqueId())) {
                     if (petData.getCreeperBehavior() != CreeperBehavior.NEUTRAL)
                         continue;
@@ -555,18 +565,21 @@ public class PetListener implements Listener {
             if (plugin.getPetManager().isManagedPet(victim.getUniqueId())) {
                 PetData vpd = plugin.getPetManager().getPetData(victim.getUniqueId());
                 if (vpd != null && (vpd.getOwnerUUID().equals(petData.getOwnerUUID())
-                        || petData.isFriendlyPlayer(vpd.getOwnerUUID()))) {
+                        || (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)
+                                && petData.isFriendlyPlayer(vpd.getOwnerUUID())))) {
                     event.setCancelled(true);
                     return;
                 }
             }
 
-            if (petData.isFriendlyPlayer(victim.getUniqueId())) {
+            if (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)
+                    && petData.isFriendlyPlayer(victim.getUniqueId())) {
                 event.setCancelled(true);
                 return;
             }
 
-            if (victim instanceof Player && petData.isProtectedFromPlayers()) {
+            if (enabled(ConfigManager.Feature.PROTECTION)
+                    && victim instanceof Player && petData.isProtectedFromPlayers()) {
                 event.setCancelled(true);
                 return;
             }
@@ -577,7 +590,7 @@ public class PetListener implements Listener {
             if (victimData == null)
                 return;
 
-            if (victimData.isProtectedFromPlayers()) {
+            if (enabled(ConfigManager.Feature.PROTECTION) && victimData.isProtectedFromPlayers()) {
                 if (damager instanceof Player p) {
                     // Allow owner to hurt their own pet even if protected
                     if (victimData.getOwnerUUID().equals(p.getUniqueId())) {
@@ -672,9 +685,10 @@ public class PetListener implements Listener {
         if (petManager.isManagedPet(targetEntity.getUniqueId())) {
             PetData pd = petManager.getPetData(targetEntity.getUniqueId());
             if (pd != null) {
-                boolean isAllowed = pd.isPublicAccess() ||
+                boolean isAllowed = (enabled(ConfigManager.Feature.PUBLIC_ACCESS) && pd.isPublicAccess()) ||
                         pd.getOwnerUUID().equals(player.getUniqueId()) ||
-                        pd.isFriendlyPlayer(player.getUniqueId()) ||
+                        (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)
+                                && pd.isFriendlyPlayer(player.getUniqueId())) ||
                         player.hasPermission("enhancedpets.admin");
 
                 if (!isAllowed) {
@@ -773,6 +787,9 @@ public class PetListener implements Listener {
     @EventHandler(priority = EventPriority.LOW)
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
+        if (!enabled(ConfigManager.Feature.TARGETING)) {
+            return;
+        }
         Map<UUID, UUID> awaitingTarget = plugin.getPetGUIListener().getAwaitingTargetSelectionMap();
         Map<UUID, Boolean> awaitingBatchTarget = plugin.getPetGUIListener().getAwaitingBatchTargetSelectionMap();
 
@@ -938,11 +955,12 @@ public class PetListener implements Listener {
                 PetData petData = petManager.getPetData(vehicle.getUniqueId());
                 if (petData != null) {
                     // Check access
-                    if (petData.isPublicAccess())
+                    if (enabled(ConfigManager.Feature.PUBLIC_ACCESS) && petData.isPublicAccess())
                         return; // Open to all
                     if (petData.getOwnerUUID().equals(player.getUniqueId()))
                         return; // Owner
-                    if (petData.isFriendlyPlayer(player.getUniqueId()))
+                    if (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)
+                            && petData.isFriendlyPlayer(player.getUniqueId()))
                         return; // Friendly (Trusted)
                     if (player.hasPermission("enhancedpets.admin"))
                         return; // Admin

@@ -5,6 +5,38 @@
 # and set this option to that file name to use it.
 language-file: language.yml
 
+# GUI and feature toggles.
+# Set any option to false to hide it from the pet menus and disable its action.
+# Existing pets keep their stored data, but disabled actions cannot be used.
+features:
+  # Pet behaviour modes shown in the single-pet and batch menus.
+  mode-passive: true
+  mode-neutral: true
+  mode-aggressive: true
+  sit: true
+  teleport: true
+  calm: true
+  rename: true
+  friendly-players: true
+  transfer: true
+  protection: true
+  station: true
+  targeting: true
+  creeper-behavior: true
+  public-access: true
+  heal: true
+  storage: true
+  free-pet: true
+  remove-pet: true
+  customization: true
+  favorites: true
+  growth-control: true
+  revive: true
+  batch-actions: true
+  scan: true
+  adoption: true
+  incubator: true
+
 # Re-enable pre-1.14 Ocelot taming?
 # If true, right-clicking an untamed adult Ocelot with raw Cod or Salmon
 # will consume the fish and transform the Ocelot into a tamed Cat.

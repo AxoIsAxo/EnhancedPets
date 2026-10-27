@@ -11,6 +11,7 @@ command:
     - "&c✖ &7You do not have permission to reload."
   no_permission_msg: "&c✖ &7You do not have permission to use this command."
   invalid_usage: "&c✖ &7Invalid usage."
+  feature_disabled: "&c✖ &7This feature is disabled on this server."
   gui_player_only: "&c✖ &7The pet GUI can only be opened by a player. Use '/%label% reload' to reload."
   reload_start: "&e⚠ &7Reloading EnhancedPets configuration..."
   reload_success: "&a✔ &7Configuration reloaded successfully."
@@ -40,6 +41,8 @@ command:
   untarget_success:
     - "&a✔ &7Cleared targets for &b%count% &7pets."
 gui:
+  feature_disabled:
+    - "&c✖ &7This feature is disabled on this server."
   dead_removed:
     - "&e⚠ &7Removed dead pet record for &b%pet%&7."
   batch_no_selection:

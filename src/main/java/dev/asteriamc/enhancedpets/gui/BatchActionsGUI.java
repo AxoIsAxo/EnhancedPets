@@ -1,6 +1,7 @@
 package dev.asteriamc.enhancedpets.gui;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.config.ConfigManager;
 import dev.asteriamc.enhancedpets.data.PetData;
 import dev.asteriamc.enhancedpets.manager.PetManager;
 import org.bukkit.Bukkit;
@@ -50,6 +51,11 @@ public class BatchActionsGUI {
     }
 
     public void openPetTypeSelectionMenu(Player player) {
+        if (!plugin.getConfigManager().isFeatureEnabled(ConfigManager.Feature.BATCH_ACTIONS)) {
+            plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            mainGui.openMainMenu(player);
+            return;
+        }
         UUID owner = mainGui.getEffectiveOwner(player);
         List<PetData> allPets = petManager.getPetsOwnedBy(owner);
         List<EntityType> petTypes = allPets.stream()
@@ -89,6 +95,11 @@ public class BatchActionsGUI {
     }
 
     public void openPetSelectionMenu(Player player, EntityType petType, int page) {
+        if (!plugin.getConfigManager().isFeatureEnabled(ConfigManager.Feature.BATCH_ACTIONS)) {
+            plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            mainGui.openMainMenu(player);
+            return;
+        }
         playerSelections.putIfAbsent(player.getUniqueId(), new HashSet<>());
         Set<UUID> selectedPets = playerSelections.get(player.getUniqueId());
 
@@ -149,7 +160,8 @@ public class BatchActionsGUI {
                         plugin.getLanguageManager().getString("menus.select_all"),
                         "select_all", petType));
 
-        if (petsOfType.stream().anyMatch(PetData::isDead)) {
+        if (petsOfType.stream().anyMatch(PetData::isDead)
+                && plugin.getConfigManager().isFeatureEnabled(ConfigManager.Feature.REMOVE_PET)) {
             gui.setItem(51,
                     createSelectionButton(Material.SKELETON_SKULL,
                             plugin.getLanguageManager().getString("menus.remove_all_dead"),

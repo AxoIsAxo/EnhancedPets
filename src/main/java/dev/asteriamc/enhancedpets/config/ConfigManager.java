@@ -13,6 +13,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -23,11 +24,51 @@ import java.util.logging.Level;
 
 public class ConfigManager {
 
+    public enum Feature {
+        MODE_PASSIVE("mode-passive"),
+        MODE_NEUTRAL("mode-neutral"),
+        MODE_AGGRESSIVE("mode-aggressive"),
+        SIT("sit"),
+        TELEPORT("teleport"),
+        CALM("calm"),
+        RENAME("rename"),
+        FRIENDLY_PLAYERS("friendly-players"),
+        TRANSFER("transfer"),
+        PROTECTION("protection"),
+        STATION("station"),
+        TARGETING("targeting"),
+        CREEPER_BEHAVIOR("creeper-behavior"),
+        PUBLIC_ACCESS("public-access"),
+        HEAL("heal"),
+        STORAGE("storage"),
+        FREE_PET("free-pet"),
+        REMOVE_PET("remove-pet"),
+        CUSTOMIZATION("customization"),
+        FAVORITES("favorites"),
+        GROWTH_CONTROL("growth-control"),
+        REVIVE("revive"),
+        BATCH_ACTIONS("batch-actions"),
+        SCAN("scan"),
+        ADOPTION("adoption"),
+        INCUBATOR("incubator");
+
+        private final String key;
+
+        Feature(String key) {
+            this.key = key;
+        }
+
+        public String getKey() {
+            return key;
+        }
+    }
+
     public static final String DEFAULT_LANGUAGE_FILE = "language.yml";
     private static final Material DEFAULT_REVIVE_ITEM = Material.NETHER_STAR;
     private static final String END_OF_CONFIG_MARKER = "END OF CONFIGURATION";
 
     private final Enhancedpets plugin;
+    private final EnumMap<Feature, Boolean> features = new EnumMap<>(Feature.class);
     private FileConfiguration config;
     private boolean ocelotTamingLegacyStyle;
     private boolean shiftdoubleclickgui;
@@ -75,6 +116,14 @@ public class ConfigManager {
         this.debug = this.config.getBoolean("debug", false);
 
         this.languageFile = sanitizeLanguageFile(this.config.getString("language-file", DEFAULT_LANGUAGE_FILE));
+
+        for (Feature feature : Feature.values()) {
+            this.features.put(feature, this.config.getBoolean("features." + feature.getKey(), true));
+        }
+    }
+
+    public boolean isFeatureEnabled(Feature feature) {
+        return feature != null && this.features.getOrDefault(feature, true);
     }
 
     /**

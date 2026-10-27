@@ -1,6 +1,7 @@
 package dev.asteriamc.enhancedpets.gui;
 
 import dev.asteriamc.enhancedpets.Enhancedpets;
+import dev.asteriamc.enhancedpets.config.ConfigManager;
 import dev.asteriamc.enhancedpets.data.BehaviorMode;
 import dev.asteriamc.enhancedpets.data.CreeperBehavior;
 import dev.asteriamc.enhancedpets.data.PetData;
@@ -81,6 +82,10 @@ public class PetManagerGUI {
             return attribute.getValue();
         }
         return Math.max(1.0, entity.getHealth());
+    }
+
+    private boolean enabled(ConfigManager.Feature feature) {
+        return this.plugin.getConfigManager().isFeatureEnabled(feature);
     }
 
     private List<Component> toComponentList(List<String> texts) {
@@ -214,9 +219,11 @@ public class PetManagerGUI {
                     return id1 != null && id2 != null ? Integer.compare(id1, id2)
                             : String.CASE_INSENSITIVE_ORDER.compare(name1, name2);
                 }));
-        List<DriedGhastEntry> incubating = this.plugin.getDriedGhastTracker().getEntriesForPlayer(effectiveOwner);
+        List<DriedGhastEntry> incubating = enabled(ConfigManager.Feature.INCUBATOR)
+                ? this.plugin.getDriedGhastTracker().getEntriesForPlayer(effectiveOwner)
+                : new ArrayList<>();
         List<Object> allItems = new ArrayList<>();
-        if (effectiveOwner.equals(player.getUniqueId())) {
+        if (effectiveOwner.equals(player.getUniqueId()) && enabled(ConfigManager.Feature.ADOPTION)) {
             player.getNearbyEntities(10.0, 10.0, 10.0)
                     .stream()
                     .filter(e -> e instanceof LivingEntity)
@@ -259,7 +266,7 @@ public class PetManagerGUI {
                 }
             }
 
-            if (effectiveOwner.equals(player.getUniqueId())) {
+            if (effectiveOwner.equals(player.getUniqueId()) && enabled(ConfigManager.Feature.SCAN)) {
                 gui.setItem(
                         invSize - 8,
                         this.createActionButton(
@@ -278,14 +285,16 @@ public class PetManagerGUI {
                                     "1", "total", "1"),
                             this.plugin.getLanguageManager().getStringListReplacements("menus.page_count_lore",
                                     "count", String.valueOf(totalItems))));
-            gui.setItem(
-                    invSize - 2,
-                    this.createActionButton(
-                            Material.HOPPER,
-                            this.plugin.getLanguageManager().getString("menus.batch_button_name"),
-                            "batch_actions",
-                            null,
-                            this.plugin.getLanguageManager().getStringList("menus.batch_button_lore")));
+            if (enabled(ConfigManager.Feature.BATCH_ACTIONS)) {
+                gui.setItem(
+                        invSize - 2,
+                        this.createActionButton(
+                                Material.HOPPER,
+                                this.plugin.getLanguageManager().getString("menus.batch_button_name"),
+                                "batch_actions",
+                                null,
+                                this.plugin.getLanguageManager().getStringList("menus.batch_button_lore")));
+            }
 
             player.openInventory(gui);
         } else {
@@ -326,7 +335,7 @@ public class PetManagerGUI {
                                 null));
             }
 
-            if (effectiveOwner.equals(player.getUniqueId())) {
+            if (effectiveOwner.equals(player.getUniqueId()) && enabled(ConfigManager.Feature.SCAN)) {
                 gui.setItem(
                         invSize - 8,
                         this.createActionButton(
@@ -347,14 +356,16 @@ public class PetManagerGUI {
                                             "total", String.valueOf(totalPages)),
                             this.plugin.getLanguageManager().getStringListReplacements("menus.page_count_lore", "count",
                                     String.valueOf(totalItems))));
-            gui.setItem(
-                    invSize - 2,
-                    this.createActionButton(
-                            Material.HOPPER,
-                            this.plugin.getLanguageManager().getString("menus.batch_button_name"),
-                            "batch_actions",
-                            null,
-                            this.plugin.getLanguageManager().getStringList("menus.batch_button_lore")));
+            if (enabled(ConfigManager.Feature.BATCH_ACTIONS)) {
+                gui.setItem(
+                        invSize - 2,
+                        this.createActionButton(
+                                Material.HOPPER,
+                                this.plugin.getLanguageManager().getString("menus.batch_button_name"),
+                                "batch_actions",
+                                null,
+                                this.plugin.getLanguageManager().getStringList("menus.batch_button_lore")));
+            }
             player.openInventory(gui);
         }
     }
@@ -468,6 +479,11 @@ public class PetManagerGUI {
     }
 
     public void openBatchManagementMenu(Player player, Set<UUID> selectedPetUUIDs) {
+        if (!enabled(ConfigManager.Feature.BATCH_ACTIONS)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openMainMenu(player);
+            return;
+        }
         if (selectedPetUUIDs != null && !selectedPetUUIDs.isEmpty()) {
             List<PetData> selectedPets = selectedPetUUIDs.stream().map(this.petManager::getPetData)
                     .filter(Objects::nonNull).collect(Collectors.toList());
@@ -517,22 +533,25 @@ public class PetManagerGUI {
                     : "")
                     + this.plugin.getLanguageManager().getStringReplacements("menus.managing_header", "count",
                             String.valueOf(selectedPets.size()));
-            gui.setItem(
-                    4,
-                    this.createActionButton(
-                            Material.HOPPER,
-                            favoriteDisplayName,
-                            "batch_toggle_favorite",
-                            null,
-                            this.plugin.getLanguageManager().getStringListReplacements("menus.managing_header_lore",
-                                    "count", String.valueOf(selectedPets.size()))));
+            if (enabled(ConfigManager.Feature.FAVORITES)) {
+                gui.setItem(
+                        4,
+                        this.createActionButton(
+                                Material.HOPPER,
+                                favoriteDisplayName,
+                                "batch_toggle_favorite",
+                                null,
+                                this.plugin.getLanguageManager().getStringListReplacements(
+                                        "menus.managing_header_lore",
+                                        "count", String.valueOf(selectedPets.size()))));
+            }
             List<UUID> babyUUIDs = selectedPetUUIDs.stream()
                     .<Entity>map(Bukkit::getEntity)
                     .filter(e -> e instanceof Ageable a && !a.isAdult())
                     .<UUID>map(Entity::getUniqueId)
                     .toList();
             List<ItemStack> actionItems = new ArrayList<>();
-            if (allCanSit) {
+            if (allCanSit && enabled(ConfigManager.Feature.SIT)) {
                 String sitStandName = allSitting
                         ? this.plugin.getLanguageManager().getString("menus.make_stand")
                         : this.plugin.getLanguageManager().getString("menus.make_sit");
@@ -550,15 +569,17 @@ public class PetManagerGUI {
                                         "status", sitStandStatus)));
             }
 
-            actionItems.add(
-                    this.createActionButton(
-                            Material.ENDER_PEARL,
-                            this.plugin.getLanguageManager().getString("menus.teleport_pets"),
-                            "batch_teleport",
-                            null,
-                            this.plugin.getLanguageManager().getStringList("menus.teleport_pets_lore")));
+            if (enabled(ConfigManager.Feature.TELEPORT)) {
+                actionItems.add(
+                        this.createActionButton(
+                                Material.ENDER_PEARL,
+                                this.plugin.getLanguageManager().getString("menus.teleport_pets"),
+                                "batch_teleport",
+                                null,
+                                this.plugin.getLanguageManager().getStringList("menus.teleport_pets_lore")));
+            }
             boolean anyCanAttack = selectedPets.stream().anyMatch(p -> this.canAttack(p.getEntityType()));
-            if (anyCanAttack) {
+            if (anyCanAttack && enabled(ConfigManager.Feature.CALM)) {
                 actionItems.add(
                         this.createActionButton(
                                 Material.MILK_BUCKET,
@@ -568,7 +589,7 @@ public class PetManagerGUI {
                                 this.plugin.getLanguageManager().getStringList("menus.calm_pets_lore")));
             }
 
-            if (anyCanAttack) {
+            if (anyCanAttack && enabled(ConfigManager.Feature.TARGETING)) {
                 boolean anyHasTarget = selectedPets.stream().anyMatch(p -> p.getExplicitTargetUUID() != null);
                 boolean allHasTarget = selectedPets.stream().allMatch(p -> p.getExplicitTargetUUID() != null);
                 String commonTargetName = null;
@@ -652,17 +673,19 @@ public class PetManagerGUI {
                 }
             }
 
-            actionItems.add(
-                    this.createActionButton(
-                            Material.GOLDEN_APPLE,
-                            this.plugin.getLanguageManager().getString("menus.batch_heal_title"),
-                            "batch_heal",
-                            null,
-                            this.plugin
-                                    .getLanguageManager()
-                                    .getStringListReplacements("menus.batch_heal_lore", "cost",
-                                            String.valueOf(this.plugin.getConfigManager().getHealCost()))));
-            if (!babyUUIDs.isEmpty()) {
+            if (enabled(ConfigManager.Feature.HEAL)) {
+                actionItems.add(
+                        this.createActionButton(
+                                Material.GOLDEN_APPLE,
+                                this.plugin.getLanguageManager().getString("menus.batch_heal_title"),
+                                "batch_heal",
+                                null,
+                                this.plugin
+                                        .getLanguageManager()
+                                        .getStringListReplacements("menus.batch_heal_lore", "cost",
+                                                String.valueOf(this.plugin.getConfigManager().getHealCost()))));
+            }
+            if (!babyUUIDs.isEmpty() && enabled(ConfigManager.Feature.GROWTH_CONTROL)) {
                 long pausedCount = babyUUIDs.stream().map(this.petManager::getPetData).filter(Objects::nonNull)
                         .filter(PetData::isGrowthPaused).count();
                 int totalBabies = babyUUIDs.size();
@@ -711,52 +734,50 @@ public class PetManagerGUI {
             }
 
             if (anyCanAttack) {
-                gui.setItem(
-                        11,
-                        this.createModeButton(Material.FEATHER,
-                                this.plugin.getLanguageManager().getString("menus.set_passive"), BehaviorMode.PASSIVE,
-                                batchData));
-                gui.setItem(
-                        13,
-                        this.createModeButton(Material.IRON_SWORD,
-                                this.plugin.getLanguageManager().getString("menus.set_neutral"), BehaviorMode.NEUTRAL,
-                                batchData));
-                gui.setItem(
-                        15,
-                        this.createModeButton(
-                                Material.DIAMOND_SWORD,
-                                this.plugin.getLanguageManager().getString("menus.set_aggressive"),
-                                BehaviorMode.AGGRESSIVE, batchData));
+                List<ItemStack> batchModeItems = new ArrayList<>();
+                if (enabled(ConfigManager.Feature.MODE_PASSIVE)) {
+                    batchModeItems.add(this.createModeButton(Material.FEATHER,
+                            this.plugin.getLanguageManager().getString("menus.set_passive"), BehaviorMode.PASSIVE,
+                            batchData));
+                }
+                if (enabled(ConfigManager.Feature.MODE_NEUTRAL)) {
+                    batchModeItems.add(this.createModeButton(Material.IRON_SWORD,
+                            this.plugin.getLanguageManager().getString("menus.set_neutral"), BehaviorMode.NEUTRAL,
+                            batchData));
+                }
+                if (enabled(ConfigManager.Feature.MODE_AGGRESSIVE)) {
+                    batchModeItems.add(this.createModeButton(Material.DIAMOND_SWORD,
+                            this.plugin.getLanguageManager().getString("menus.set_aggressive"), BehaviorMode.AGGRESSIVE,
+                            batchData));
+                }
+                int[] batchModeSlots = this.getSymmetricalSlots(batchModeItems.size(), 9);
+                for (int i = 0; i < batchModeItems.size(); i++) {
+                    gui.setItem(batchModeSlots[i], batchModeItems.get(i));
+                }
             }
 
-            String protName;
-            if (anyCanAttack) {
-                protName = allProtected
+            if (enabled(ConfigManager.Feature.PROTECTION)) {
+                String protName = allProtected
                         ? this.plugin.getLanguageManager().getString("menus.disable_protection")
                         : this.plugin.getLanguageManager().getString("menus.enable_protection");
-            } else {
-                protName = allProtected
-                        ? this.plugin.getLanguageManager().getString("menus.disable_protection")
-                        : this.plugin.getLanguageManager().getString("menus.enable_protection");
+                String protStatus = allProtected
+                        ? this.plugin.getLanguageManager().getString("menus.all_protected")
+                        : (anyProtected ? this.plugin.getLanguageManager().getString("menus.mixed")
+                                : this.plugin.getLanguageManager().getString("menus.all_unprotected"));
+                gui.setItem(
+                        29,
+                        this.createActionButton(
+                                Material.SHIELD,
+                                protName,
+                                "batch_toggle_protection",
+                                null,
+                                this.plugin.getLanguageManager().getStringListReplacements("menus.protection_lore",
+                                        "status", protStatus)));
             }
-
-            String protStatus = allProtected
-                    ? this.plugin.getLanguageManager().getString("menus.all_protected")
-                    : (anyProtected ? this.plugin.getLanguageManager().getString("menus.mixed")
-                            : this.plugin.getLanguageManager().getString("menus.all_unprotected"));
-            gui.setItem(
-                    29,
-                    this.createActionButton(
-                            Material.SHIELD,
-                            protName,
-                            "batch_toggle_protection",
-                            null,
-                            this.plugin.getLanguageManager().getStringListReplacements("menus.protection_lore",
-                                    "status", protStatus)));
 
             // Only show manage friendly/trusted riders for applicable pet types
             boolean anyRideable = selectedPets.stream().anyMatch(p -> this.isRideable(p.getEntityType()));
-            if (anyRideable) {
+            if (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS) && anyRideable) {
                 // Show "Manage Trusted Riders" for rideable pets
                 gui.setItem(
                         31,
@@ -766,7 +787,7 @@ public class PetManagerGUI {
                                 "batch_manage_friendly",
                                 null,
                                 this.plugin.getLanguageManager().getStringList("menus.manage_trusted_riders_lore")));
-            } else if (anyCanAttack) {
+            } else if (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS) && anyCanAttack) {
                 // Show "Manage Friendly Players" for combat pets
                 gui.setItem(
                         31,
@@ -778,14 +799,16 @@ public class PetManagerGUI {
                                 this.plugin.getLanguageManager().getStringList("menus.manage_friendly_lore")));
             }
             // If neither rideable nor combat, slot 31 stays empty
-            gui.setItem(
-                    33,
-                    this.createActionButton(
-                            Material.LEAD,
-                            this.plugin.getLanguageManager().getString("menus.transfer_pets"),
-                            "batch_open_transfer",
-                            null,
-                            this.plugin.getLanguageManager().getStringList("menus.transfer_pets_lore")));
+            if (enabled(ConfigManager.Feature.TRANSFER)) {
+                gui.setItem(
+                        33,
+                        this.createActionButton(
+                                Material.LEAD,
+                                this.plugin.getLanguageManager().getString("menus.transfer_pets"),
+                                "batch_open_transfer",
+                                null,
+                                this.plugin.getLanguageManager().getStringList("menus.transfer_pets_lore")));
+            }
             EntityType type = selectedPets.get(0).getEntityType();
             ItemStack backButton = new ItemStack(Material.ARROW);
             ItemMeta meta = backButton.getItemMeta();
@@ -795,14 +818,16 @@ public class PetManagerGUI {
             meta.getPersistentDataContainer().set(BatchActionsGUI.PET_TYPE_KEY, PersistentDataType.STRING, type.name());
             backButton.setItemMeta(meta);
             gui.setItem(45, backButton);
-            gui.setItem(
-                    53,
-                    this.createActionButton(
-                            Material.BARRIER,
-                            this.plugin.getLanguageManager().getString("menus.free_selected"),
-                            "batch_free_pet_prompt",
-                            null,
-                            this.plugin.getLanguageManager().getStringList("menus.free_selected_lore")));
+            if (enabled(ConfigManager.Feature.FREE_PET)) {
+                gui.setItem(
+                        53,
+                        this.createActionButton(
+                                Material.BARRIER,
+                                this.plugin.getLanguageManager().getString("menus.free_selected"),
+                                "batch_free_pet_prompt",
+                                null,
+                                this.plugin.getLanguageManager().getStringList("menus.free_selected_lore")));
+            }
             player.openInventory(gui);
         } else {
             this.plugin.getLanguageManager().sendMessage(player, "gui.batch_no_selection");
@@ -811,6 +836,11 @@ public class PetManagerGUI {
     }
 
     public void openBatchConfirmFreeMenu(Player player, Set<UUID> selectedPetUUIDs) {
+        if (!enabled(ConfigManager.Feature.BATCH_ACTIONS) || !enabled(ConfigManager.Feature.FREE_PET)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openMainMenu(player);
+            return;
+        }
         String title = this.plugin.getLanguageManager().getStringReplacements("menus.confirm_free_title", "count",
                 String.valueOf(selectedPetUUIDs.size()));
         Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_CONFIRM_FREE),
@@ -842,6 +872,12 @@ public class PetManagerGUI {
     }
 
     public void openBatchFriendlyPlayerMenu(Player player, Set<UUID> selectedPetUUIDs, int page) {
+        if (!enabled(ConfigManager.Feature.BATCH_ACTIONS)
+                || !enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openMainMenu(player);
+            return;
+        }
         String title = this.plugin.getLanguageManager().getStringReplacements("menus.batch_friendly_title", "count",
                 String.valueOf(selectedPetUUIDs.size()));
         Inventory gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.BATCH_FRIENDLY), 54,
@@ -903,6 +939,11 @@ public class PetManagerGUI {
     }
 
     public void openBatchTransferMenu(Player player, Set<UUID> selectedPetUUIDs) {
+        if (!enabled(ConfigManager.Feature.BATCH_ACTIONS) || !enabled(ConfigManager.Feature.TRANSFER)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openMainMenu(player);
+            return;
+        }
         String title = this.plugin.getLanguageManager().getStringReplacements("menus.transfer_title", "count",
                 String.valueOf(selectedPetUUIDs.size()));
         List<Player> eligiblePlayers = Bukkit.getOnlinePlayers()
@@ -986,29 +1027,38 @@ public class PetManagerGUI {
                                         String.valueOf(this.plugin.getConfigManager().getReviveItemAmount()))));
                 skull.setItemMeta(meta);
                 gui.setItem(13, skull);
+                if (enabled(ConfigManager.Feature.REVIVE)) {
+                    gui.setItem(
+                            11,
+                            this.createActionButton(
+                                    this.plugin.getConfigManager().getReviveItem(),
+                                    this.plugin.getLanguageManager().getString("menus.revive_pet"),
+                                    "confirm_revive_pet",
+                                    petUUID,
+                                    this.plugin
+                                            .getLanguageManager()
+                                            .getStringListReplacements(
+                                                    "menus.revive_pet_lore",
+                                                    "item",
+                                                    this.plugin.getConfigManager().getReviveItem().name(),
+                                                    "amount",
+                                                    String.valueOf(this.plugin.getConfigManager().getReviveItemAmount()))));
+                }
+                if (enabled(ConfigManager.Feature.REMOVE_PET)) {
+                    gui.setItem(
+                            15,
+                            this.createActionButton(
+                                    Material.BARRIER,
+                                    this.plugin.getLanguageManager().getString("menus.remove_pet"),
+                                    "confirm_remove_pet",
+                                    petUUID,
+                                    this.plugin.getLanguageManager().getStringList("menus.remove_pet_lore")));
+                }
                 gui.setItem(
-                        11,
-                        this.createActionButton(
-                                this.plugin.getConfigManager().getReviveItem(),
-                                this.plugin.getLanguageManager().getString("menus.revive_pet"),
-                                "confirm_revive_pet",
-                                petUUID,
-                                this.plugin
-                                        .getLanguageManager()
-                                        .getStringListReplacements(
-                                                "menus.revive_pet_lore",
-                                                "item",
-                                                this.plugin.getConfigManager().getReviveItem().name(),
-                                                "amount",
-                                                String.valueOf(this.plugin.getConfigManager().getReviveItemAmount()))));
-                gui.setItem(
-                        15,
-                        this.createActionButton(
-                                Material.BARRIER,
-                                this.plugin.getLanguageManager().getString("menus.remove_pet"),
-                                "confirm_remove_pet",
-                                petUUID,
-                                this.plugin.getLanguageManager().getStringList("menus.remove_pet_lore")));
+                        22,
+                        this.createActionButton(Material.ARROW,
+                                this.plugin.getLanguageManager().getString("menus.back_to_list"), "back_to_main", null,
+                                null));
                 player.openInventory(gui);
             } else {
                 Entity petEntity = Bukkit.getEntity(petUUID);
@@ -1071,27 +1121,7 @@ public class PetManagerGUI {
                 hMeta.getPersistentDataContainer().set(PET_UUID_KEY, PersistentDataType.STRING, petUUID.toString());
                 hMeta.addItemFlags(new ItemFlag[] { ItemFlag.HIDE_ATTRIBUTES });
                 header.setItemMeta(hMeta);
-                gui.setItem(4, header);
                 Entity petEnt = Bukkit.getEntity(petUUID);
-                if (petEnt instanceof Ageable a && !a.isAdult()) {
-                    boolean paused = petData.isGrowthPaused();
-                    gui.setItem(
-                            8,
-                            this.createActionButton(
-                                    paused ? Material.GOLDEN_CARROT : Material.CARROT,
-                                    this.plugin.getLanguageManager().getStringReplacements("menus.toggle_growth_name",
-                                            "color", paused ? "&a" : "&e"),
-                                    "toggle_growth_pause",
-                                    petUUID,
-                                    this.plugin
-                                            .getLanguageManager()
-                                            .getStringListReplacements(
-                                                    "menus.toggle_growth_lore",
-                                                    "status",
-                                                    paused ? this.plugin.getLanguageManager().getString("menus.paused")
-                                                            : this.plugin.getLanguageManager()
-                                                                    .getString("menus.growing"))));
-                }
 
                 boolean canAttack = this.canAttack(petData.getEntityType());
                 boolean isRideable = this.isRideable(petData.getEntityType());
@@ -1100,7 +1130,7 @@ public class PetManagerGUI {
                 gui = Bukkit.createInventory(new PetInventoryHolder(PetInventoryHolder.MenuType.PET_MENU), guiSize,
                         title);
                 gui.setItem(4, header);
-                if (petEnt instanceof Ageable a && !a.isAdult()) {
+                if (petEnt instanceof Ageable a && !a.isAdult() && enabled(ConfigManager.Feature.GROWTH_CONTROL)) {
                     boolean paused = petData.isGrowthPaused();
                     gui.setItem(
                             8,
@@ -1121,26 +1151,30 @@ public class PetManagerGUI {
                 }
 
                 if (canAttack) {
-                    gui.setItem(
-                            11,
-                            this.createModeButton(Material.FEATHER,
-                                    this.plugin.getLanguageManager().getString("menus.set_passive"),
-                                    BehaviorMode.PASSIVE, petData));
-                    gui.setItem(
-                            13,
-                            this.createModeButton(Material.IRON_SWORD,
-                                    this.plugin.getLanguageManager().getString("menus.set_neutral"),
-                                    BehaviorMode.NEUTRAL, petData));
-                    gui.setItem(
-                            15,
-                            this.createModeButton(
-                                    Material.DIAMOND_SWORD,
-                                    this.plugin.getLanguageManager().getString("menus.set_aggressive"),
-                                    BehaviorMode.AGGRESSIVE, petData));
+                    List<ItemStack> modeItems = new ArrayList<>();
+                    if (enabled(ConfigManager.Feature.MODE_PASSIVE)) {
+                        modeItems.add(this.createModeButton(Material.FEATHER,
+                                this.plugin.getLanguageManager().getString("menus.set_passive"),
+                                BehaviorMode.PASSIVE, petData));
+                    }
+                    if (enabled(ConfigManager.Feature.MODE_NEUTRAL)) {
+                        modeItems.add(this.createModeButton(Material.IRON_SWORD,
+                                this.plugin.getLanguageManager().getString("menus.set_neutral"),
+                                BehaviorMode.NEUTRAL, petData));
+                    }
+                    if (enabled(ConfigManager.Feature.MODE_AGGRESSIVE)) {
+                        modeItems.add(this.createModeButton(Material.DIAMOND_SWORD,
+                                this.plugin.getLanguageManager().getString("menus.set_aggressive"),
+                                BehaviorMode.AGGRESSIVE, petData));
+                    }
+                    int[] modeSlots = this.getSymmetricalSlots(modeItems.size(), 9);
+                    for (int i = 0; i < modeItems.size(); i++) {
+                        gui.setItem(modeSlots[i], modeItems.get(i));
+                    }
                 }
 
                 List<ItemStack> row3Items = new ArrayList<>();
-                if (canSit) {
+                if (canSit && enabled(ConfigManager.Feature.SIT)) {
                     boolean isSitting = false;
                     if (petEntity instanceof Sittable s) {
                         isSitting = s.isSitting();
@@ -1165,14 +1199,16 @@ public class PetManagerGUI {
                                                                     .getString("menus.standing"))));
                 }
 
-                row3Items.add(
-                        this.createActionButton(
-                                Material.ENDER_PEARL,
-                                this.plugin.getLanguageManager().getString("menus.teleport_pet"),
-                                "teleport_pet",
-                                petData.getPetUUID(),
-                                this.plugin.getLanguageManager().getStringList("menus.teleport_pet_lore")));
-                if (canAttack) {
+                if (enabled(ConfigManager.Feature.TELEPORT)) {
+                    row3Items.add(
+                            this.createActionButton(
+                                    Material.ENDER_PEARL,
+                                    this.plugin.getLanguageManager().getString("menus.teleport_pet"),
+                                    "teleport_pet",
+                                    petData.getPetUUID(),
+                                    this.plugin.getLanguageManager().getStringList("menus.teleport_pet_lore")));
+                }
+                if (canAttack && enabled(ConfigManager.Feature.CALM)) {
                     row3Items.add(
                             this.createActionButton(
                                     Material.MILK_BUCKET,
@@ -1189,57 +1225,65 @@ public class PetManagerGUI {
                 }
 
                 List<ItemStack> row4Items = new ArrayList<>();
-                row4Items.add(
-                        this.createActionButton(
-                                Material.ANVIL,
-                                this.plugin.getLanguageManager().getString("menus.rename_pet"),
-                                "rename_pet_prompt",
-                                petData.getPetUUID(),
-                                this.plugin.getLanguageManager().getStringList("menus.rename_pet_lore")));
-                if (isRideable) {
+                if (enabled(ConfigManager.Feature.RENAME)) {
                     row4Items.add(
                             this.createActionButton(
-                                    Material.PLAYER_HEAD,
-                                    this.plugin.getLanguageManager().getString("menus.manage_trusted_riders"),
-                                    "manage_friendly",
+                                    Material.ANVIL,
+                                    this.plugin.getLanguageManager().getString("menus.rename_pet"),
+                                    "rename_pet_prompt",
                                     petData.getPetUUID(),
-                                    this.plugin.getLanguageManager()
-                                            .getStringList("menus.manage_trusted_riders_lore")));
-                } else if (canAttack) {
-                    row4Items.add(
-                            this.createActionButton(
-                                    Material.PLAYER_HEAD,
-                                    this.plugin.getLanguageManager().getString("menus.manage_friendly"),
-                                    "manage_friendly",
-                                    petData.getPetUUID(),
-                                    this.plugin.getLanguageManager()
-                                            .getStringList("menus.manage_friendly_lore_single")));
+                                    this.plugin.getLanguageManager().getStringList("menus.rename_pet_lore")));
+                }
+                if (enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)) {
+                    if (isRideable) {
+                        row4Items.add(
+                                this.createActionButton(
+                                        Material.PLAYER_HEAD,
+                                        this.plugin.getLanguageManager().getString("menus.manage_trusted_riders"),
+                                        "manage_friendly",
+                                        petData.getPetUUID(),
+                                        this.plugin.getLanguageManager()
+                                                .getStringList("menus.manage_trusted_riders_lore")));
+                    } else if (canAttack) {
+                        row4Items.add(
+                                this.createActionButton(
+                                        Material.PLAYER_HEAD,
+                                        this.plugin.getLanguageManager().getString("menus.manage_friendly"),
+                                        "manage_friendly",
+                                        petData.getPetUUID(),
+                                        this.plugin.getLanguageManager()
+                                                .getStringList("menus.manage_friendly_lore_single")));
+                    }
                 }
 
-                row4Items.add(
-                        this.createActionButton(
-                                Material.LEAD,
-                                this.plugin.getLanguageManager().getString("menus.transfer_pet"),
-                                "open_transfer",
-                                petData.getPetUUID(),
-                                this.plugin.getLanguageManager().getStringList("menus.transfer_pet_lore")));
-                String protName = protectionEnabled
-                        ? this.plugin.getLanguageManager().getString("menus.disable_protection")
-                        : this.plugin.getLanguageManager().getString("menus.enable_protection");
-                List<String> protLore = new ArrayList<>();
-                protLore.add(
-                        this.plugin
-                                .getLanguageManager()
-                                .getStringReplacements(
-                                        "menus.protection_status",
-                                        "status",
-                                        protectionEnabled
-                                                ? this.plugin.getLanguageManager().getString("menus.enabled")
-                                                : this.plugin.getLanguageManager().getString("menus.disabled")));
-                protLore.add("");
-                protLore.addAll(this.plugin.getLanguageManager().getStringList("menus.protection_desc"));
-                row4Items.add(this.createActionButton(Material.SHIELD, protName, "toggle_mutual_protection",
-                        petData.getPetUUID(), protLore));
+                if (enabled(ConfigManager.Feature.TRANSFER)) {
+                    row4Items.add(
+                            this.createActionButton(
+                                    Material.LEAD,
+                                    this.plugin.getLanguageManager().getString("menus.transfer_pet"),
+                                    "open_transfer",
+                                    petData.getPetUUID(),
+                                    this.plugin.getLanguageManager().getStringList("menus.transfer_pet_lore")));
+                }
+                if (enabled(ConfigManager.Feature.PROTECTION)) {
+                    String protName = protectionEnabled
+                            ? this.plugin.getLanguageManager().getString("menus.disable_protection")
+                            : this.plugin.getLanguageManager().getString("menus.enable_protection");
+                    List<String> protLore = new ArrayList<>();
+                    protLore.add(
+                            this.plugin
+                                    .getLanguageManager()
+                                    .getStringReplacements(
+                                            "menus.protection_status",
+                                            "status",
+                                            protectionEnabled
+                                                    ? this.plugin.getLanguageManager().getString("menus.enabled")
+                                                    : this.plugin.getLanguageManager().getString("menus.disabled")));
+                    protLore.add("");
+                    protLore.addAll(this.plugin.getLanguageManager().getStringList("menus.protection_desc"));
+                    row4Items.add(this.createActionButton(Material.SHIELD, protName, "toggle_mutual_protection",
+                            petData.getPetUUID(), protLore));
+                }
                 int[] row4Slots = this.getSymmetricalSlots(row4Items.size(), 27);
 
                 for (int i = 0; i < row4Items.size(); i++) {
@@ -1248,99 +1292,109 @@ public class PetManagerGUI {
 
                 if (canAttack) {
                     List<ItemStack> row5Items = new ArrayList<>();
-                    boolean isStationed = petData.getStationLocation() != null;
-                    String currentRadius = String.format("%.0fm", petData.getStationRadius());
-                    Set<String> types = petData.getStationTargetTypes();
-                    if (types == null) {
-                        types = new HashSet<>();
-                    }
-
-                    String currentTypes = this.formatTargetTypes(types);
-                    List<String> stationLore = new ArrayList<>();
-                    stationLore.add(
-                            isStationed
-                                    ? this.plugin.getLanguageManager().getString("menus.station_active")
-                                    : this.plugin.getLanguageManager().getString("menus.station_inactive"));
-                    stationLore.add("");
-                    stationLore.add(this.plugin.getLanguageManager().getString("menus.station_settings"));
-                    stationLore.add(this.plugin.getLanguageManager().getStringReplacements("menus.station_radius",
-                            "radius", String.valueOf(currentRadius)));
-                    stationLore.add(this.plugin.getLanguageManager().getStringReplacements("menus.station_targets",
-                            "targets", currentTypes));
-                    stationLore.addAll(
-                            this.plugin
-                                    .getLanguageManager()
-                                    .getStringListReplacements(
-                                            "menus.station_click_lore",
-                                            "action",
-                                            isStationed
-                                                    ? this.plugin.getLanguageManager()
-                                                            .getString("menus.unstation_action")
-                                                    : this.plugin.getLanguageManager()
-                                                            .getString("menus.station_action")));
-                    row5Items.add(
-                            this.createActionButton(
-                                    isStationed ? Material.CAMPFIRE : Material.SOUL_CAMPFIRE,
-                                    isStationed
-                                            ? this.plugin.getLanguageManager().getString("menus.modify_station")
-                                            : this.plugin.getLanguageManager().getString("menus.station_here"),
-                                    "toggle_station",
-                                    petData.getPetUUID(),
-                                    stationLore));
-                    boolean hasExplicitTarget = petData.getExplicitTargetUUID() != null;
-                    String targetName = this.plugin.getLanguageManager().getString("menus.target_none");
-                    if (hasExplicitTarget) {
-                        Entity t = Bukkit.getEntity(petData.getExplicitTargetUUID());
-                        if (t != null) {
-                            targetName = t.getName();
-                        } else {
-                            targetName = this.plugin.getLanguageManager().getString("menus.unloaded_unknown");
+                    if (enabled(ConfigManager.Feature.STATION)) {
+                        boolean isStationed = petData.getStationLocation() != null;
+                        String currentRadius = String.format("%.0fm", petData.getStationRadius());
+                        Set<String> types = petData.getStationTargetTypes();
+                        if (types == null) {
+                            types = new HashSet<>();
                         }
+
+                        String currentTypes = this.formatTargetTypes(types);
+                        List<String> stationLore = new ArrayList<>();
+                        stationLore.add(
+                                isStationed
+                                        ? this.plugin.getLanguageManager().getString("menus.station_active")
+                                        : this.plugin.getLanguageManager().getString("menus.station_inactive"));
+                        stationLore.add("");
+                        stationLore.add(this.plugin.getLanguageManager().getString("menus.station_settings"));
+                        stationLore.add(this.plugin.getLanguageManager().getStringReplacements("menus.station_radius",
+                                "radius", String.valueOf(currentRadius)));
+                        stationLore.add(this.plugin.getLanguageManager().getStringReplacements("menus.station_targets",
+                                "targets", currentTypes));
+                        stationLore.addAll(
+                                this.plugin
+                                        .getLanguageManager()
+                                        .getStringListReplacements(
+                                                "menus.station_click_lore",
+                                                "action",
+                                                isStationed
+                                                        ? this.plugin.getLanguageManager()
+                                                                .getString("menus.unstation_action")
+                                                        : this.plugin.getLanguageManager()
+                                                                .getString("menus.station_action")));
+                        row5Items.add(
+                                this.createActionButton(
+                                        isStationed ? Material.CAMPFIRE : Material.SOUL_CAMPFIRE,
+                                        isStationed
+                                                ? this.plugin.getLanguageManager().getString("menus.modify_station")
+                                                : this.plugin.getLanguageManager().getString("menus.station_here"),
+                                        "toggle_station",
+                                        petData.getPetUUID(),
+                                        stationLore));
                     }
 
-                    List<String> targetLore = new ArrayList<>();
-                    targetLore.add(this.plugin.getLanguageManager().getStringReplacements("menus.target_current",
-                            "target", targetName));
-                    targetLore.addAll(this.plugin.getLanguageManager().getStringList("menus.target_click_lore"));
-                    row5Items.add(
-                            this.createActionButton(
-                                    Material.CROSSBOW,
-                                    hasExplicitTarget
-                                            ? this.plugin.getLanguageManager().getString("menus.clear_target")
-                                            : this.plugin.getLanguageManager().getString("menus.set_target"),
-                                    "toggle_target_prompt",
-                                    petData.getPetUUID(),
-                                    targetLore));
-                    CreeperBehavior creeperBehavior = petData.getCreeperBehavior();
+                    if (enabled(ConfigManager.Feature.TARGETING)) {
+                        boolean hasExplicitTarget = petData.getExplicitTargetUUID() != null;
+                        String targetName = this.plugin.getLanguageManager().getString("menus.target_none");
+                        if (hasExplicitTarget) {
+                            Entity t = Bukkit.getEntity(petData.getExplicitTargetUUID());
+                            if (t != null) {
+                                targetName = t.getName();
+                            } else {
+                                targetName = this.plugin.getLanguageManager().getString("menus.unloaded_unknown");
+                            }
+                        }
 
-                    String creeperStatusKey = switch (creeperBehavior) {
-                        case NEUTRAL -> "menus.creeper_behavior_neutral";
-                        case FLEE -> "menus.creeper_behavior_flee";
-                        case IGNORE -> "menus.creeper_behavior_ignore";
-                    };
-                    String creeperStatus = this.plugin.getLanguageManager().getString(creeperStatusKey);
-                    List<String> creeperLore = new ArrayList<>();
-                    creeperLore.addAll(this.plugin.getLanguageManager()
-                            .getStringListReplacements("menus.creeper_behavior_lore", "status", creeperStatus));
-                    if (petData.getEntityType() == EntityType.CAT) {
-                        creeperLore.addAll(
-                                this.plugin.getLanguageManager().getStringList("menus.creeper_behavior_cat_note"));
+                        List<String> targetLore = new ArrayList<>();
+                        targetLore.add(this.plugin.getLanguageManager().getStringReplacements("menus.target_current",
+                                "target", targetName));
+                        targetLore.addAll(this.plugin.getLanguageManager().getStringList("menus.target_click_lore"));
+                        row5Items.add(
+                                this.createActionButton(
+                                        Material.CROSSBOW,
+                                        hasExplicitTarget
+                                                ? this.plugin.getLanguageManager().getString("menus.clear_target")
+                                                : this.plugin.getLanguageManager().getString("menus.set_target"),
+                                        "toggle_target_prompt",
+                                        petData.getPetUUID(),
+                                        targetLore));
                     }
 
-                    row5Items.add(
-                            this.createActionButton(
-                                    Material.CREEPER_HEAD,
-                                    this.plugin.getLanguageManager().getString("menus.creeper_behavior_title"),
-                                    "cycle_creeper_behavior",
-                                    petData.getPetUUID(),
-                                    creeperLore));
+                    if (enabled(ConfigManager.Feature.CREEPER_BEHAVIOR)) {
+                        CreeperBehavior creeperBehavior = petData.getCreeperBehavior();
+
+                        String creeperStatusKey = switch (creeperBehavior) {
+                            case NEUTRAL -> "menus.creeper_behavior_neutral";
+                            case FLEE -> "menus.creeper_behavior_flee";
+                            case IGNORE -> "menus.creeper_behavior_ignore";
+                        };
+                        String creeperStatus = this.plugin.getLanguageManager().getString(creeperStatusKey);
+                        List<String> creeperLore = new ArrayList<>();
+                        creeperLore.addAll(this.plugin.getLanguageManager()
+                                .getStringListReplacements("menus.creeper_behavior_lore", "status", creeperStatus));
+                        if (petData.getEntityType() == EntityType.CAT) {
+                            creeperLore.addAll(
+                                    this.plugin.getLanguageManager().getStringList("menus.creeper_behavior_cat_note"));
+                        }
+
+                        row5Items.add(
+                                this.createActionButton(
+                                        Material.CREEPER_HEAD,
+                                        this.plugin.getLanguageManager().getString("menus.creeper_behavior_title"),
+                                        "cycle_creeper_behavior",
+                                        petData.getPetUUID(),
+                                        creeperLore));
+                    }
+
                     int[] row5Slots = this.getSymmetricalSlots(row5Items.size(), 36);
 
                     for (int i = 0; i < row5Items.size(); i++) {
                         gui.setItem(row5Slots[i], row5Items.get(i));
                     }
-                } else if (isRideable) {
-                    gui.setItem(31, this.createAccessItem(petData));
+                }
+                if (isRideable && enabled(ConfigManager.Feature.PUBLIC_ACCESS)) {
+                    gui.setItem(guiSize - 9, this.createAccessItem(petData));
                 }
 
                 double currentHp = 0.0;
@@ -1353,23 +1407,25 @@ public class PetManagerGUI {
                 double missingHp = Math.max(0.0, maxHp - currentHp);
                 int healCost = (int) Math.ceil(missingHp) * this.plugin.getConfigManager().getHealCost();
                 int bottomRowStart = guiSize - 9;
-                gui.setItem(
-                        bottomRowStart + 2,
-                        this.createActionButton(
-                                Material.GOLDEN_APPLE,
-                                this.plugin.getLanguageManager().getString("menus.heal_pet"),
-                                "heal_pet",
-                                petData.getPetUUID(),
-                                this.plugin
-                                        .getLanguageManager()
-                                        .getStringListReplacements(
-                                                "menus.heal_lore",
-                                                "health",
-                                                String.format("%.1f", currentHp),
-                                                "max_health",
-                                                String.format("%.1f", maxHp),
-                                                "cost",
-                                                String.valueOf(healCost))));
+                if (enabled(ConfigManager.Feature.HEAL)) {
+                    gui.setItem(
+                            bottomRowStart + 2,
+                            this.createActionButton(
+                                    Material.GOLDEN_APPLE,
+                                    this.plugin.getLanguageManager().getString("menus.heal_pet"),
+                                    "heal_pet",
+                                    petData.getPetUUID(),
+                                    this.plugin
+                                            .getLanguageManager()
+                                            .getStringListReplacements(
+                                                    "menus.heal_lore",
+                                                    "health",
+                                                    String.format("%.1f", currentHp),
+                                                    "max_health",
+                                                    String.format("%.1f", maxHp),
+                                                    "cost",
+                                                    String.valueOf(healCost))));
+                }
                 gui.setItem(
                         bottomRowStart + 4,
                         this.createActionButton(Material.ARROW,
@@ -1377,32 +1433,41 @@ public class PetManagerGUI {
                                 null));
                 // Store/Withdraw toggle button
                 boolean isStored = petData.isStored();
-                gui.setItem(
-                        bottomRowStart + 6,
-                        this.createActionButton(
-                                isStored ? Material.CHEST : Material.ENDER_CHEST,
-                                isStored
-                                        ? this.plugin.getLanguageManager().getString("menus.withdraw_pet")
-                                        : this.plugin.getLanguageManager().getString("menus.store_pet"),
-                                isStored ? "withdraw_pet" : "store_pet",
-                                petData.getPetUUID(),
-                                isStored
-                                        ? this.plugin.getLanguageManager().getStringList("menus.withdraw_lore")
-                                        : this.plugin.getLanguageManager().getStringList("menus.store_lore")));
-                gui.setItem(
-                        bottomRowStart + 8,
-                        this.createActionButton(
-                                Material.BARRIER,
-                                this.plugin.getLanguageManager().getString("menus.free_pet"),
-                                "confirm_free_pet_prompt",
-                                petData.getPetUUID(),
-                                this.plugin.getLanguageManager().getStringList("menus.free_pet_lore")));
+                if (enabled(ConfigManager.Feature.STORAGE)) {
+                    gui.setItem(
+                            bottomRowStart + 6,
+                            this.createActionButton(
+                                    isStored ? Material.CHEST : Material.ENDER_CHEST,
+                                    isStored
+                                            ? this.plugin.getLanguageManager().getString("menus.withdraw_pet")
+                                            : this.plugin.getLanguageManager().getString("menus.store_pet"),
+                                    isStored ? "withdraw_pet" : "store_pet",
+                                    petData.getPetUUID(),
+                                    isStored
+                                            ? this.plugin.getLanguageManager().getStringList("menus.withdraw_lore")
+                                            : this.plugin.getLanguageManager().getStringList("menus.store_lore")));
+                }
+                if (enabled(ConfigManager.Feature.FREE_PET)) {
+                    gui.setItem(
+                            bottomRowStart + 8,
+                            this.createActionButton(
+                                    Material.BARRIER,
+                                    this.plugin.getLanguageManager().getString("menus.free_pet"),
+                                    "confirm_free_pet_prompt",
+                                    petData.getPetUUID(),
+                                    this.plugin.getLanguageManager().getStringList("menus.free_pet_lore")));
+                }
                 player.openInventory(gui);
             }
         }
     }
 
     public void openConfirmFreeMenu(Player player, UUID petUUID) {
+        if (!enabled(ConfigManager.Feature.FREE_PET)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openPetMenu(player, petUUID);
+            return;
+        }
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
             this.plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
@@ -1446,6 +1511,11 @@ public class PetManagerGUI {
     }
 
     public void openTransferMenu(Player player, UUID petUUID) {
+        if (!enabled(ConfigManager.Feature.TRANSFER)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openPetMenu(player, petUUID);
+            return;
+        }
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
             this.plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
@@ -1504,6 +1574,11 @@ public class PetManagerGUI {
     }
 
     public void openFriendlyPlayerMenu(Player player, UUID petUUID, int page) {
+        if (!enabled(ConfigManager.Feature.FRIENDLY_PLAYERS)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openPetMenu(player, petUUID);
+            return;
+        }
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
             this.plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
@@ -1566,6 +1641,11 @@ public class PetManagerGUI {
     }
 
     public void openColorPicker(Player player, UUID petUUID) {
+        if (!enabled(ConfigManager.Feature.CUSTOMIZATION)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openPetMenu(player, petUUID);
+            return;
+        }
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
             this.plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
@@ -1672,6 +1752,11 @@ public class PetManagerGUI {
     }
 
     public void openBatchConfirmRemoveDeadMenu(Player player, EntityType petType, int deadPetCount) {
+        if (!enabled(ConfigManager.Feature.BATCH_ACTIONS) || !enabled(ConfigManager.Feature.REMOVE_PET)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openMainMenu(player);
+            return;
+        }
         String typeName = this.formatEntityType(petType);
         String title = this.plugin.getLanguageManager().getStringReplacements("menus.batch_remove_dead_title", "type",
                 typeName);
@@ -2116,6 +2201,11 @@ public class PetManagerGUI {
     }
 
     public void openCustomizationMenu(Player player, UUID petUUID) {
+        if (!enabled(ConfigManager.Feature.CUSTOMIZATION)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openPetMenu(player, petUUID);
+            return;
+        }
         PetData petData = this.petManager.getPetData(petUUID);
         if (petData == null) {
             this.plugin.getLanguageManager().sendMessage(player, "gui.pet_data_error");
@@ -2158,6 +2248,11 @@ public class PetManagerGUI {
     }
 
     public void openStorePetMenu(Player player) {
+        if (!enabled(ConfigManager.Feature.STORAGE)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openMainMenu(player);
+            return;
+        }
         UUID ownerUUID = this.getEffectiveOwner(player);
         List<PetData> activePets = this.petManager
                 .getPetsOwnedBy(ownerUUID)
@@ -2206,6 +2301,11 @@ public class PetManagerGUI {
     }
 
     public void openWithdrawPetMenu(Player player) {
+        if (!enabled(ConfigManager.Feature.STORAGE)) {
+            this.plugin.getLanguageManager().sendMessage(player, "gui.feature_disabled");
+            this.openMainMenu(player);
+            return;
+        }
         UUID ownerUUID = this.getEffectiveOwner(player);
         List<PetData> storedPets = this.petManager.getPetsOwnedBy(ownerUUID).stream().filter(PetData::isStored)
                 .collect(Collectors.toList());
